@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taakverdeling · Planning magazijn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a1424; --panel:#13233e; --panel2:#0f1d35; --inset:#0b1830;
+  --line:rgba(141,178,255,.16); --line2:rgba(141,178,255,.32);
+  --txt:#e9f1ff; --muted:#8fa6c9;
+  --cyan:#2dd4ee; --cyan-dim:rgba(45,212,238,.13);
+  --green:#3ddc97; --yellow:#f6c945; --red:#ff6b6b; --orange:#ff9f43; --blue:#6fc3ff; --violet:#a78bfa;
+  --r:14px;
+  --fd:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  --fb:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(900px 420px at 80% -10%, rgba(45,212,238,.10), transparent 60%),
+    radial-gradient(700px 380px at 0% 0%, rgba(111,195,255,.07), transparent 55%),
+    var(--bg);
+  color:var(--txt); font-family:var(--fb); font-size:15px; min-height:100vh;
+}
+button{font-family:inherit}
+.wrap{max-width:1500px;margin:0 auto;padding:0 18px 60px}
+
+/* ---------- topbar ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(10,20,36,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1500px;margin:0 auto;padding:11px 18px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.brand{display:flex;flex-direction:column;margin-right:6px}
+.brand h1{font-family:var(--fd);font-weight:700;font-size:25px;letter-spacing:.05em;text-transform:uppercase;margin:0;line-height:1}
+.brand h1 b{color:var(--cyan);font-weight:700}
+.brand span{color:var(--muted);font-size:12px}
+.spacer{flex:1}
+.ctrl{display:flex;align-items:center;gap:6px}
+.ctrl label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+select,.btn,input[type="text"],input[type="url"]{
+  background:var(--panel);border:1px solid var(--line2);color:var(--txt);
+  border-radius:10px;padding:8px 12px;font-size:14px;
+}
+select,.btn{cursor:pointer}
+select:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn:hover,select:hover{border-color:var(--cyan)}
+.btn.primary{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);font-weight:600}
+.btn.linked{border-color:var(--green);color:var(--green);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dragfile .topbar{box-shadow:inset 0 0 0 2px var(--cyan)}
+
+/* ---------- banner & stats ---------- */
+.banner{margin:14px 0 0;display:flex;flex-direction:column;gap:8px}
+.note{border:1px solid var(--line2);border-left:4px solid var(--cyan);background:var(--panel2);padding:10px 14px;border-radius:10px;font-size:14px}
+.note.warn{border-left-color:var(--yellow)}
+.note.err{border-left-color:var(--red)}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 14px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;display:flex;align-items:baseline;gap:9px}
+.stat b{font-family:var(--fd);font-size:30px;line-height:1;font-weight:700}
+.stat span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.07em}
+.stat.av b{color:var(--green)} .stat.pl b{color:var(--cyan)} .stat.ab b{color:var(--red)}
+.daylabel{margin-left:auto;align-self:center;color:var(--muted);font-size:14px;text-align:right}
+.daylabel b{color:var(--txt);font-family:var(--fd);font-size:21px;letter-spacing:.04em;text-transform:uppercase}
+
+/* ---------- blokfilter ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chipbtn{background:var(--panel2);border:1px solid var(--line2);color:var(--muted);border-radius:999px;padding:7px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.chipbtn .dot{width:8px;height:8px;border-radius:50%;background:var(--bdot,var(--muted))}
+.chipbtn.on{color:var(--txt);border-color:var(--bdot,var(--cyan));background:var(--inset)}
+.chipbtn:hover{border-color:var(--cyan)}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start}
+@media (max-width:1020px){.layout{grid-template-columns:1fr}}
+.pool{position:sticky;top:70px;max-height:calc(100vh - 86px);overflow:auto;padding-right:2px}
+@media (max-width:1020px){.pool{position:static;max-height:none}}
+.pool h2{font-family:var(--fd);font-size:14px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:4px 0 8px}
+.search{width:100%;margin:0 0 10px}
+.blok{margin-bottom:8px}
+.blok-h{display:flex;align-items:center;gap:8px;margin:12px 0 6px;font-family:var(--fd);font-size:17px;letter-spacing:.07em;text-transform:uppercase}
+.blok-h .dot{width:9px;height:9px;border-radius:50%}
+.blok-h .cnt{color:var(--muted);font-size:13px;font-family:var(--fb)}
+.sub-h{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;margin:8px 0 5px;padding-left:2px}
+.pcard{
+  display:flex;align-items:center;gap:8px;width:100%;
+  background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--bclr,var(--cyan));
+  border-radius:11px;padding:8px 9px;margin-bottom:6px;cursor:pointer;color:var(--txt);
+  transition:transform .08s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.pcard:hover{transform:translateY(-1px);border-color:var(--line2);border-left-color:var(--bclr,var(--cyan))}
+.pcard.sel{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-dim), 0 6px 18px rgba(45,212,238,.15)}
+.pcard .pmain{flex:1;min-width:0}
+.pname{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbadges{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center}
+.bdg{font-size:11px;line-height:1;padding:4px 7px;border-radius:999px;border:1px solid var(--line2);color:var(--muted);background:var(--inset)}
+.bdg.half{color:#1b1b1b;background:var(--yellow);border-color:var(--yellow);font-weight:700}
+.bdg.early{color:#1b1b1b;background:var(--orange);border-color:var(--orange);font-weight:700}
+.bdg.extra{color:#04222b;background:var(--cyan);border-color:var(--cyan);font-weight:700}
+.bdg.verlof{color:#1b1b1b;background:var(--yellow);border-color:var(--yellow);font-weight:700}
+.bdg.ziek{color:#fff;background:var(--red);border-color:var(--red);font-weight:700}
+.bdg.code{color:var(--blue);background:rgba(111,195,255,.12);border-color:rgba(111,195,255,.5)}
+.tdot{width:9px;height:9px;border-radius:3px;display:inline-block;background:var(--td,var(--cyan))}
+.cycle{flex:none;background:transparent;border:1px solid var(--line);border-radius:8px;color:var(--muted);width:27px;height:27px;cursor:pointer;font-size:13px}
+.cycle:hover{border-color:var(--cyan);color:var(--cyan)}
+.absent{margin-top:16px;border-top:1px dashed var(--line2);padding-top:12px}
+.absent .pcard{opacity:.55;cursor:default}
+.absent .pcard:hover{transform:none}
+.empty{color:var(--muted);font-size:13px;padding:8px 2px}
+.cta{display:block;text-align:center;border:1px dashed var(--line2);border-radius:12px;padding:22px 14px;color:var(--muted);font-size:14px}
+
+/* ---------- taken: volledige kaart in de taakkleur ---------- */
+.tasks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.tcard{
+  background:color-mix(in srgb, var(--hue,#2dd4ee) 13%, var(--panel2));
+  border:1px solid color-mix(in srgb, var(--hue,#2dd4ee) 40%, var(--line));
+  border-radius:var(--r);min-height:150px;display:flex;flex-direction:column;overflow:hidden;
+  transition:border-color .12s ease, box-shadow .12s ease;
+}
+@supports not (background:color-mix(in srgb, red 10%, blue)){
+  .tcard{background:var(--panel2);border-color:var(--hue,var(--line2))}
+}
+.tcard header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(10,20,36,.25);background:var(--hue,var(--cyan))}
+.tname{font-family:var(--fd);font-weight:700;font-size:19px;letter-spacing:.05em;text-transform:uppercase;flex:1;line-height:1.05;color:#0a1424}
+.tcount{font-family:var(--fd);font-weight:700;font-size:17px;min-width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:rgba(10,20,36,.22);border:1px solid rgba(10,20,36,.25);color:#0a1424}
+.tdel{flex:none;background:transparent;border:0;color:rgba(10,20,36,.55);font-size:17px;line-height:1;cursor:pointer;padding:3px 7px;border-radius:7px}
+.tdel:hover{color:var(--red);background:rgba(255,255,255,.4)}
+.tbody{padding:10px;display:flex;flex-direction:column;gap:7px;flex:1}
+.thint{color:var(--muted);font-size:13px;border:1px dashed var(--line2);border-radius:9px;padding:10px;text-align:center}
+.thint small{display:block;margin-top:3px;color:var(--cyan)}
+.tcard.drop{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-dim);cursor:copy}
+.tcard.drop .thint{border-color:var(--cyan);color:var(--cyan)}
+@media (prefers-reduced-motion:no-preference){
+  .tcard.drop{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 3px var(--cyan-dim)}50%{box-shadow:0 0 0 6px rgba(45,212,238,.07)}}
+}
+.chip{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:7px 8px 7px 11px;font-size:13.5px;font-weight:600;cursor:grab}
+.chip .cb{display:flex;gap:4px;margin-left:auto;align-items:center}
+.chip .x{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px 5px;border-radius:6px}
+.chip .x:hover{color:var(--red);background:rgba(255,107,107,.12)}
+.addtask{
+  border:1px dashed var(--line2);background:transparent;color:var(--muted);
+  align-items:center;justify-content:center;
+  font-family:var(--fd);font-size:18px;letter-spacing:.06em;text-transform:uppercase;
+}
+.addtask:hover{border-color:var(--cyan)}
+.addtask .addin{display:flex;flex-direction:column;gap:8px;width:100%;padding:14px}
+.addtask input{width:100%;font-family:var(--fb);text-transform:none;letter-spacing:0}
+.addtask .btn{font-family:var(--fb);text-transform:none;letter-spacing:0}
+
+/* ---------- panelen ---------- */
+.subpanel{margin-top:20px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.subpanel summary{cursor:pointer;font-family:var(--fd);font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.subpanel summary:hover{color:var(--cyan)}
+.subpanel p{color:var(--muted);font-size:13.5px;line-height:1.55}
+.urlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.urlrow input{flex:1;min-width:240px}
+.tscroll{overflow-x:auto}
+table.prev{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+table.prev th{font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+table.prev td{padding:5px 8px;border-bottom:1px solid var(--line)}
+table.prev td.raw{font-family:ui-monospace,Consolas,monospace;color:var(--cyan)}
+table.prev td.num{text-align:center;font-weight:600}
+
+/* ---------- legende / toast ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px;color:var(--muted);font-size:12.5px;align-items:center}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--cyan);color:var(--txt);border-radius:12px;padding:10px 18px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:99}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* =====================================================================
+   BORDMODUS — groot scherm (100"): taakkaarten + afwezigheidsblokken
+   ===================================================================== */
+#boardBar{display:none}
+body.board .topbar, body.board .banner, body.board .stats, body.board .chips,
+body.board .pool, body.board .subpanel, body.board .legend{display:none}
+body.board .wrap{max-width:none;padding:0 1.2vw}
+body.board .layout{display:block}
+body.board #boardBar{
+  display:flex;align-items:center;gap:1.4vw;padding:1vw 1.4vw .6vw;
+}
+#boardBar .bb-title{font-family:var(--fd);font-weight:700;font-size:2.3vw;letter-spacing:.05em;text-transform:uppercase;line-height:1}
+#boardBar .bb-title b{color:var(--cyan)}
+#boardBar .bb-day{font-family:var(--fd);font-weight:600;font-size:1.7vw;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+#boardBar .sp{flex:1}
+#boardBar .bb-clock{font-family:var(--fd);font-weight:700;font-size:3vw;color:var(--cyan);line-height:1;font-variant-numeric:tabular-nums}
+#boardBar .btn{font-size:1vw;padding:.5vw .9vw;border-radius:.6vw}
+body.board .tasks{
+  grid-template-columns:repeat(4,1fr);grid-auto-rows:auto;gap:1vw;
+}
+@media (max-width:1100px){ body.board .tasks{grid-template-columns:repeat(2,1fr)} }
+body.board .tcard{min-height:0;border-radius:1vw;overflow:visible}
+body.board .tcard header{padding:.8vw 1vw;border-radius:1vw 1vw 0 0;cursor:grab}
+body.board .tname{font-size:1.75vw}
+body.board .tcount{font-size:1.5vw;min-width:2.4vw;height:2.4vw;border-radius:.5vw}
+body.board .tbody{padding:.8vw;gap:.45vw;overflow:visible}
+/* veel namen op één taak → automatisch 2 kolommen met kleinere letters */
+body.board .tcard.dense .tbody{display:grid;grid-template-columns:1fr 1fr;gap:.3vw .9vw;align-content:start}
+body.board .tcard.dense .chip{font-size:1.2vw}
+body.board .tcard.dense .chip .bdg{font-size:.62vw;padding:.22vw .42vw}
+body.board .chip{border:0;background:transparent;padding:.15vw .2vw;font-size:1.55vw;font-weight:700;cursor:default;letter-spacing:.01em;color:var(--txt)}
+body.board .chip .x,body.board .thint,body.board .cycle,body.board .tdel,body.board .addtask{display:none}
+body.board .chip .bdg{font-size:.75vw;padding:.3vw .55vw}
+body.board .chip .tdot{display:none}
+
+/* compacte afwezigheidsrij op het bord (Verlof / Ziek / Tijdskrediet) */
+#absGrid{display:none}
+body.board #absGrid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(18vw,1fr));gap:1vw;margin-top:1vw;padding-bottom:1vw;
+}
+body.board #absGrid .tcard{min-height:0;border-radius:.8vw}
+body.board #absGrid .tcard header{padding:.45vw .9vw}
+body.board #absGrid .tname{font-size:1.15vw}
+body.board #absGrid .tcount{font-size:1vw;min-width:1.8vw;height:1.8vw;border-radius:.4vw}
+body.board #absGrid .tbody{flex-direction:row;flex-wrap:wrap;align-items:center;gap:.4vw;padding:.55vw .8vw;overflow:visible}
+body.board #absGrid .chip{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:.5vw;padding:.3vw .65vw;font-size:1vw;font-weight:600;color:var(--txt)}
+body.board #absGrid .chip .bdg{font-size:.65vw;padding:.2vw .45vw}
+body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
+</style>
+</head>
+<body>
+
+<header class="topbar"><div class="topbar-in">
+  <div class="brand">
+    <h1>Taak<b>verdeling</b></h1>
+    <span>Planning magazijn · per dag</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn" id="linkBtn" title="Eén keer je OneDrive-gesynchroniseerde planning kiezen; daarna onthoudt het dashboard het bestand">📂 Planning koppelen</button>
+  <button class="btn" id="syncBtn" title="Gedeeld sync-bestand koppelen (taakverdeling.json in dezelfde OneDrive-map) — zo delen invul-PC en bord dezelfde toewijzingen, historiek en taken">🔗 Sync</button>
+  <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden>
+  <button class="btn" id="reloadBtn" title="Gekoppelde planning opnieuw inlezen" hidden>🔄</button>
+  <div class="ctrl" id="weekCtrl" hidden>
+    <label for="weekSel">Week</label>
+    <select id="weekSel"></select>
+  </div>
+  <div class="ctrl" id="dayCtrl" hidden>
+    <label for="daySel">Dag</label>
+    <select id="daySel"></select>
+  </div>
+  <button class="btn" id="addTaskBtn" title="Manueel een taak toevoegen (bv. BANDEN MSI)">＋ Taak</button>
+  <button class="btn primary" id="boardBtn" title="Groot bord voor op het scherm (Esc om terug te keren)">📺 Bord</button>
+  <button class="btn" id="copyBtn" title="Overzicht kopiëren">📋</button>
+  <button class="btn" id="resetBtn" title="Toewijzingen van deze dag wissen">↺</button>
+  <button class="btn" id="setBtn" title="Instellingen">⚙</button>
+</div></header>
+
+<div class="wrap">
+  <div id="boardBar">
+    <span class="bb-title">Taak<b>verdeling</b></span>
+    <span class="bb-day" id="bDay"></span>
+    <span class="sp"></span>
+    <span class="bb-clock" id="bClock"></span>
+    <button class="btn" id="bSwap" title="Wissel tussen taakbord en webbord">🌐 Web</button>
+    <button class="btn" id="bAuto" title="Automatisch: taken 07:00–07:10, daarna webbord">AUTO ✓</button>
+    <button class="btn" id="bExit" title="Terug naar invulblad">✏</button>
+  </div>
+
+  <div class="banner" id="banner"></div>
+
+  <section class="stats">
+    <div class="stat av"><b id="stAvail">0</b><span>Vrij</span></div>
+    <div class="stat pl"><b id="stPlan">0</b><span>Ingepland</span></div>
+    <div class="stat ab"><b id="stAbs">0</b><span>Afwezig</span></div>
+    <div class="daylabel" id="dayLabel"></div>
+  </section>
+
+  <div class="chips" id="blockChips"></div>
+
+  <main class="layout">
+    <aside class="pool">
+      <h2>Klik naam, daarna een taak — meerdere taken kan</h2>
+      <input type="text" class="search" id="searchBox" placeholder="Zoek naam…" autocomplete="off">
+      <div id="poolList"></div>
+      <div class="absent">
+        <h2>Niet beschikbaar</h2>
+        <div id="absentList"></div>
+      </div>
+    </aside>
+
+    <section>
+      <div class="tasks" id="taskGrid"></div>
+      <div id="absGrid"></div>
+
+      <details class="subpanel" id="histPanel">
+        <summary>📊 Historiek — wie deed wat (laatste 4 weken)</summary>
+        <p>Telt per persoon hoe vaak die op elke taak stond. Zo zie je meteen wie aan rotatie toe is.
+        Bij een geselecteerde naam tonen de taakkaarten dit ook live.</p>
+        <div class="tscroll"><table class="prev"><thead id="histHead"></thead><tbody id="histBody"></tbody></table></div>
+      </details>
+
+      <details class="subpanel" id="setPanel">
+        <summary>⚙ Instellingen &amp; gegevensbron</summary>
+        <p><b>Aanrader:</b> gebruik “📂 Planning koppelen” en kies het bestand in je lokale OneDrive-map.
+        Het dashboard onthoudt de koppeling en leest bij het openen (en via 🔄) telkens de actuele versie.
+        Alles blijft in je browser — er wordt niets geüpload, dus geen personeelsdata op een publieke plek.
+        Nieuwe namen die in de Excel bijkomen verschijnen automatisch bij de volgende inlezing.</p>
+        <p><b>Sync tussen PC's (🔗):</b> koppel op elke PC (invul-PC én bord) hetzelfde bestand
+        <i>taakverdeling.json</i> in dezelfde OneDrive/SharePoint-map als de planning. Bestaat het nog niet,
+        dan maakt de eerste koppeling het aan. Toewijzingen, historiek, eigen taken en bordvolgorde reizen
+        dan via OneDrive mee — een wijziging op het invulblad staat binnen ±30 s (plus OneDrive-synctijd)
+        op het bord. Kies bij de machtiging "bij elk bezoek toestaan".</p>
+        <p>Eigen taken (toegevoegd via <b>＋ Taak</b>, bv. BANDEN MSI) worden in je browser bewaard en
+        blijven staan over weken en dagen heen. Verwijderen kan met het ×-icoontje in de taakkop.</p>
+        <p>Heb je later een directe download-URL (bv. via Power Automate naar een interne host, of een
+        persoonlijke OneDrive-deellink), dan kan het dashboard die automatisch laden bij het openen.
+        Let op: SharePoint/OneDrive van het bedrijf blokkeert dit meestal (CORS) — de koppeling hierboven heeft daar geen last van.</p>
+        <div class="urlrow">
+          <input type="url" id="srcUrl" placeholder="https://… (directe .xlsx-link, optioneel)">
+          <button class="btn primary" id="srcSave">Opslaan &amp; laden</button>
+          <button class="btn" id="srcClear">Wissen</button>
+        </div>
+        <p><b>Webbord:</b> klik in bordmodus op 🌐 — het dashboard opent de twee sites als vensters,
+        elk op een halve schermbreedte, en ververst het CLIPS-venster zelf elke 10 s (geen extensie nodig).
+        Met AUTO ✓ sluiten de vensters om 07:00 (taakbord zichtbaar) en gaan ze om 07:10 vanzelf weer open.
+        <b>Eenmalig:</b> bij de eerste klik op 🌐 pop-ups toestaan via het icoontje in de adresbalk — daarna loopt alles vanzelf.</p>
+        <div class="urlrow">
+          <input type="url" id="web1Url" placeholder="URL linkerpaneel (vrachtwagens)">
+          <input type="url" id="web2Url" placeholder="URL rechterpaneel (containers)">
+          <button class="btn primary" id="webSave">Webbord opslaan</button>
+        </div>
+        <p>Tip voor het grote scherm: open deze pagina met <b>#bord</b> achter het adres
+        (bv. <i>…/index.html#bord</i>) — dan start ze meteen in bordmodus. Met <b>#web</b> start ze direct op het webbord.</p>
+      </details>
+
+      <details class="subpanel" id="prevPanel">
+        <summary>🔍 Controle — wat werd uit het blad gelezen</summary>
+        <div class="tscroll"><table class="prev"><thead><tr>
+          <th>Naam</th><th>Blok</th><th>Rij</th><th>VM</th><th>NM</th><th>Interpretatie</th>
+        </tr></thead><tbody id="prevBody"></tbody></table></div>
+      </details>
+
+      <div class="legend">
+        <span>Codes per halve dag:</span>
+        <span class="bdg verlof">X = verlof</span>
+        <span class="bdg ziek">Z = ziek</span>
+        <span class="bdg half">½ = enkel VM of NM</span>
+        <span class="bdg early">-2 = 2u verlof in uren</span>
+        <span class="bdg code">TK · TR · Syn · SV · HT · IP = afwezig</span>
+        <span class="bdg code">PW = ploegwissel (wel inzetbaar)</span>
+        <span class="bdg">✎ = status manueel overschrijven</span>
+        <span class="bdg"><span class="tdot" style="--td:var(--cyan)"></span> = staat al op die taak</span>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* =====================================================================
+   ★ VASTE PLANNING-URL — plak hieronder tussen de aanhalingstekens je
+   deellink naar Planning_magazijn_2026.xlsx (OneDrive/1drv.ms-link).
+   Het dashboard laadt deze automatisch bij het openen, op elke PC,
+   ook binnen de iObeya-iframe. Leeg laten = oude gedrag.
+   ===================================================================== */
+var PLAN_URL = "";   /* ← HIER JE LINK */
+
+/* =====================================================================
+   CONFIG — taken en codebetekenis (1 regel per code, makkelijk aan te passen)
+   blocks:true  → die halve dag NIET inzetbaar
+   blocks:false → wel inzetbaar, code wordt als badge getoond
+   Eigen taken (＋ Taak) komen achteraan bij BASE_TASKS en worden bewaard.
+   ===================================================================== */
+var BASE_TASKS = [
+  "VW - SEAT - SKODA","PORSCHE","EXPRESS KLEIN","EXPRESS GROOT",
+  "RETOURS","BELGISCHE MARKT","VIDANGES","COMPLETE"
+];
+var TASKS = BASE_TASKS.slice();
+var TASK_HUES = ["#2dd4ee","#6fc3ff","#a78bfa","#3ddc97","#f6c945","#ff9f43","#ff7eb6","#34d4b8"];
+var BLOCK_CLRS = ["#3ddc97","#6fc3ff","#2dd4ee","#a78bfa","#f6c945"];
+var HIST_DAGEN = 28;          /* rotatie-venster historiek */
+
+/* afwezigheidsblokken op het bord */
+var ABS_GROUPS = ["VERLOF","ZIEK","TIJDSKREDIET","ANDERE"];
+var ABS_HUES = {VERLOF:"#f6c945", ZIEK:"#ff6b6b", TIJDSKREDIET:"#6fc3ff", ANDERE:"#a78bfa"};
+
+/*CORE-START*/
+var CODE_MAP = {
+  "X":   {label:"Verlof",          blocks:true,  kleur:"verlof"},
+  "Z":   {label:"Ziek",            blocks:true,  kleur:"ziek"},
+  "TK":  {label:"Tijdskrediet",    blocks:true,  kleur:"code"},
+  "TR":  {label:"Training",        blocks:true,  kleur:"code"},
+  "SYN": {label:"Syndicaal",       blocks:true,  kleur:"code"},
+  "SV":  {label:"Sociaal verlof",  blocks:true,  kleur:"verlof"},
+  "HT":  {label:"Halftijds",       blocks:true,  kleur:"code"},
+  "IP":  {label:"iPunkt",          blocks:true,  kleur:"code"},
+  "PW":  {label:"Ploegwissel",     blocks:false, kleur:"code"}
+};
+
+var DAY_TOKENS = {MA:"Maandag", DI:"Dinsdag", WO:"Woensdag", DO:"Donderdag", VR:"Vrijdag", ZA:"Zaterdag", ZO:"Zondag"};
+var STOP_WORDS = ["VERLOF","ZIEK","TRAINING","SYNDICALE ACTIVITEIT","- UREN","-UREN","GEPREST UREN",
+  "CAPACITEIT INBOUND","CAPACITEIT OUTBOUND","CAPACITEIT TOTAAL","BEREKENING VOOR LOOP DASHBOARD","WEEK"];
+
+function norm(v){
+  return String(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toUpperCase().replace(/[.,;:]/g," ").replace(/\s+/g," ").trim();
+}
+function parseNum(v){
+  if(typeof v === "number") return v;
+  if(typeof v === "string"){
+    var s = v.trim().replace(",",".");
+    if(/^[+-]?\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  }
+  return null;
+}
+function asDate(v){
+  if(v instanceof Date) return v;
+  if(typeof v === "number" && v > 20000 && v < 60000) return new Date(Math.round((v - 25569) * 86400000));
+  return null;
+}
+function dayTokenOf(v){
+  if(typeof v !== "string") return null;
+  var m = norm(v).match(/^(MA|DI|WO|DO|VR|ZA|ZO)\b/);
+  return m ? m[1] : null;
+}
+
+/* één halve-dag-cel interpreteren */
+function halfInfo(v){
+  if(v === null || v === undefined || String(v).trim() === "") return {ok:true};
+  var n = parseNum(v);
+  if(n !== null){
+    if(n < 0) return {ok:true, early:-n};
+    return {ok:true, extra:n};
+  }
+  var code = norm(v);
+  var def = CODE_MAP[code] || {label:String(v).trim(), blocks:true, kleur:"code"};
+  if(def.blocks) return {ok:false, code:code, label:def.label, kleur:def.kleur || "code"};
+  return {ok:true, code:code, note:def.label, kleur:def.kleur || "code"};
+}
+
+/* VM + NM samenvoegen tot dagstatus */
+function aggregate(vm, nm){
+  var early = (vm.early || 0) + (nm.early || 0);
+  var extra = (vm.extra || 0) + (nm.extra || 0);
+  var notes = [];
+  if(vm.note) notes.push(vm.note);
+  if(nm.note && nm.note !== vm.note) notes.push(nm.note);
+  var blocked = [];
+  if(!vm.ok) blocked.push(vm);
+  if(!nm.ok) blocked.push(nm);
+  function pick(arr){
+    for(var i = 0; i < arr.length; i++) if(arr[i].code === "Z") return arr[i];
+    for(var j = 0; j < arr.length; j++) if(arr[j].code === "X") return arr[j];
+    return arr[0];
+  }
+  if(blocked.length === 2){
+    var r = pick(blocked);
+    return {status:"afwezig", reason:r.label, kleur:r.kleur, code:r.code, early:early, extra:extra, notes:notes};
+  }
+  if(blocked.length === 1){
+    var b = blocked[0];
+    return {status:"half", avail:(vm.ok ? "VM" : "NM"), reason:b.label, kleur:b.kleur, code:b.code, early:early, extra:extra, notes:notes};
+  }
+  return {status:"aanwezig", early:early, extra:extra, notes:notes};
+}
+
+/* volledig weekblad → model {week, monday, days[], blocks[]} */
+function parseSheet(XL, wb, sheetName){
+  var ws = wb.Sheets[sheetName];
+  if(!ws) return null;
+  var grid = XL.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+
+  /* weeknummer + maandag uit rij 1 */
+  var week = null, monday = null;
+  for(var r0 = 0; r0 < Math.min(2, grid.length); r0++){
+    var row0 = grid[r0] || [];
+    for(var c0 = 0; c0 < row0.length; c0++){
+      var d = asDate(row0[c0]);
+      if(d && !monday) monday = d;
+      if(week === null && typeof row0[c0] === "string" && norm(row0[c0]) === "WEEK"){
+        var wv = parseNum(row0[c0 + 1]); if(wv !== null) week = wv;
+      }
+    }
+  }
+
+  /* headerrij = eerste rij met ≥3 dag-tokens */
+  var headerRow = -1;
+  for(var r = 0; r < Math.min(8, grid.length); r++){
+    var cnt = 0, row = grid[r] || [];
+    for(var c = 0; c < row.length; c++) if(dayTokenOf(row[c])) cnt++;
+    if(cnt >= 3){ headerRow = r; break; }
+  }
+  if(headerRow < 0) return null;
+
+  /* blokken + dagkolommen */
+  var hrow = grid[headerRow] || [];
+  var blocks = [], markers = [];
+  for(var c1 = 0; c1 < hrow.length; c1++){
+    var v = hrow[c1];
+    if(v === null || String(v).trim() === "") continue;
+    var tok = dayTokenOf(v);
+    markers.push(c1);
+    if(tok){
+      if(blocks.length) blocks[blocks.length - 1].days.push({key:tok, col:c1});
+    } else if(typeof v === "string"){
+      blocks.push({name:String(v).trim(), nameCol:c1, days:[]});
+    }
+  }
+  markers.sort(function(a,b){ return a - b; });
+  var lastW = grid.reduce(function(m, rw){ return Math.max(m, (rw || []).length); }, 0);
+  blocks.forEach(function(b){
+    b.days.forEach(function(d){
+      var next = null;
+      for(var i = 0; i < markers.length; i++) if(markers[i] > d.col){ next = markers[i]; break; }
+      d.span = Math.max(1, Math.min(3, (next === null ? lastW : next) - d.col));
+    });
+    b.dayMap = {};
+    b.days.forEach(function(d){ if(!b.dayMap[d.key]) b.dayMap[d.key] = d; });
+  });
+
+  /* leden per blok: namenkolom = blokheaderkolom, sublabel = kolom ervoor */
+  blocks.forEach(function(b){
+    b.members = [];
+    var sub = "";
+    for(var r2 = headerRow + 1; r2 < grid.length; r2++){
+      var row2 = grid[r2] || [];
+      var lbl = row2[b.nameCol - 1];
+      if(typeof lbl === "string" && lbl.trim() !== "" && STOP_WORDS.indexOf(norm(lbl)) < 0){
+        if(/^ADM/.test(norm(lbl))) break;   /* vanaf "Adm…" (administratie) niet meer meenemen */
+        sub = lbl.trim();
+      }
+      var nv = row2[b.nameCol];
+      if(nv === null || typeof nv !== "string" || nv.trim() === "") continue;
+      var nn = norm(nv);
+      if(STOP_WORDS.indexOf(nn) >= 0 || /^CAPACITEIT/.test(nn) || /^GEPREST/.test(nn) || /^BEREKENING/.test(nn)) break;
+      b.members.push({name:nv.trim().replace(/\s+/g," "), sub:sub, row:r2});
+    }
+  });
+
+  /* daglijst (volgorde van eerste blok) */
+  var dayKeys = [], seen = {};
+  blocks.forEach(function(b){ b.days.forEach(function(d){ if(!seen[d.key]){ seen[d.key] = 1; dayKeys.push(d.key); } }); });
+
+  return {sheet:sheetName, week:week, monday:monday, dayKeys:dayKeys, blocks:blocks, grid:grid};
+}
+
+/* status van één lid op één dag */
+function statusOf(model, block, member, dayKey){
+  var d = block.dayMap[dayKey];
+  if(!d) return {status:"aanwezig", early:0, extra:0, notes:[], rawVM:"", rawNM:""};
+  var row = model.grid[member.row] || [];
+  var vmVal = row[d.col];
+  var nmVal = d.span > 1 ? row[d.col + 1] : vmVal;
+  var info = aggregate(halfInfo(vmVal), halfInfo(nmVal));
+  info.rawVM = (vmVal === null || vmVal === undefined) ? "" : String(vmVal);
+  info.rawNM = d.span > 1 ? ((nmVal === null || nmVal === undefined) ? "" : String(nmVal)) : info.rawVM;
+  return info;
+}
+
+/* weekbladen oplijsten: numerieke bladnamen, met weeknr + maandag */
+function listWeeks(XL, wb){
+  var out = [];
+  wb.SheetNames.forEach(function(n){
+    if(!/^\s*\d{1,2}\s*$/.test(n)) return;
+    var ws = wb.Sheets[n], week = null, monday = null;
+    try{
+      var g = XL.utils.sheet_to_json(ws, {header:1, raw:true, defval:null, range:"A1:M2"});
+      var row0 = (g[0] || []);
+      for(var c = 0; c < row0.length; c++){
+        var d = asDate(row0[c]); if(d && !monday) monday = d;
+        if(week === null && typeof row0[c] === "string" && norm(row0[c]) === "WEEK"){
+          var wv = parseNum(row0[c + 1]); if(wv !== null) week = wv;
+        }
+      }
+    }catch(e){}
+    out.push({sheet:n, week:week, monday:monday});
+  });
+  out.sort(function(a,b){ return parseInt(a.sheet,10) - parseInt(b.sheet,10); });
+  return out;
+}
+function isoWeek(d){
+  var t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  var dn = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - dn + 3);
+  var f = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((t - f) / 86400000 - 3 + ((f.getUTCDay() + 6) % 7)) / 7);
+}
+/*CORE-END*/
+
+/* =====================================================================
+   Opslag — localStorage waar mogelijk (GitHub Pages), anders geheugen
+   ===================================================================== */
+var store = (function(){
+  var mem = {}, ok = false;
+  try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); ok = true; }catch(e){}
+  return {
+    get:function(k){ if(ok){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){} } return (k in mem) ? mem[k] : null; },
+    set:function(k,v){ mem[k] = v; if(ok){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } },
+    del:function(k){ delete mem[k]; if(ok){ try{ localStorage.removeItem(k); }catch(e){} } }
+  };
+})();
+
+/* IndexedDB enkel voor de bestandskoppeling (FileSystemHandle) */
+var idb = {
+  _db:null,
+  open:function(){
+    return new Promise(function(res, rej){
+      try{
+        var r = indexedDB.open("vpdash", 1);
+        r.onupgradeneeded = function(){ r.result.createObjectStore("kv"); };
+        r.onsuccess = function(){ res(r.result); };
+        r.onerror = function(){ rej(r.error); };
+      }catch(e){ rej(e); }
+    });
+  },
+  get:function(k){
+    var self = this;
+    return new Promise(function(res){
+      (self._db ? Promise.resolve(self._db) : self.open().then(function(d){ self._db = d; return d; }))
+        .then(function(db){
+          var t = db.transaction("kv","readonly").objectStore("kv").get(k);
+          t.onsuccess = function(){ res(t.result || null); };
+          t.onerror = function(){ res(null); };
+        }).catch(function(){ res(null); });
+    });
+  },
+  set:function(k, v){
+    var self = this;
+    return new Promise(function(res){
+      (self._db ? Promise.resolve(self._db) : self.open().then(function(d){ self._db = d; return d; }))
+        .then(function(db){
+          var t = db.transaction("kv","readwrite").objectStore("kv").put(v, k);
+          t.onsuccess = function(){ res(true); };
+          t.onerror = function(){ res(false); };
+        }).catch(function(){ res(false); });
+    });
+  }
+};
+
+/* =====================================================================
+   SYNC — gedeeld bestand taakverdeling.json in de OneDrive/SharePoint-map
+   Invul-PC schrijft toewijzingen, historiek, eigen taken en volgorde
+   erin; het bord (en elke andere PC) leest ze er elke 30 s uit.
+   Persoonsgegevens blijven zo binnen de bedrijfs-SharePoint.
+   ===================================================================== */
+var sync = {handle:null, lastMod:0, lastWrite:0, timer:null};
+var CLIENT_ID = (function(){
+  var c = store.get("vp_client");
+  if(!c){ c = Math.random().toString(36).slice(2, 10); store.set("vp_client", c); }
+  return c;
+})();
+function collectLocal(){
+  var days = {};
+  try{
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)){
+        var v = store.get(k); if(v) days[k.slice(3)] = v;
+      }
+    }
+  }catch(e){}
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || []};
+}
+async function syncPerm(ask){
+  if(!sync.handle) return false;
+  try{
+    var p = await sync.handle.queryPermission({mode:"readwrite"});
+    if(p !== "granted" && ask) p = await sync.handle.requestPermission({mode:"readwrite"});
+    return p === "granted";
+  }catch(e){ return false; }
+}
+async function syncRead(force){
+  if(!sync.handle || !(await syncPerm(false))) return;
+  try{
+    var f = await sync.handle.getFile();
+    if(!force && f.lastModified <= sync.lastMod) return;
+    sync.lastMod = f.lastModified;
+    var txt = await f.text(); if(!txt || txt.length < 5) return;
+    var doc = JSON.parse(txt);
+    if(!force && doc.writer === CLIENT_ID && doc.updated === sync.lastWrite) return; /* eigen schrijfactie */
+    Object.keys(doc.days || {}).forEach(function(k){ store.set("vp_" + k, doc.days[k]); });
+    if(doc.hist)  store.set("vp_hist", doc.hist);
+    if(doc.tasks) store.set("vp_tasks", doc.tasks);
+    if(doc.order) store.set("vp_taskorder", doc.order);
+    rebuildTasks();
+    if(state.model) loadDayState();
+    render();
+  }catch(e){ console.error("sync lezen:", e); }
+}
+async function syncWrite(){
+  if(!sync.handle || !(await syncPerm(true))) return;
+  try{
+    var local = collectLocal();
+    var doc = {v:1, updated:Date.now(), writer:CLIENT_ID, days:{}, hist:{}, tasks:local.tasks, order:local.order};
+    /* dagen en historiek van andere schrijvers behouden (per-dag samenvoegen) */
+    try{
+      var f0 = await sync.handle.getFile();
+      var t0 = await f0.text();
+      if(t0 && t0.length > 5){ var old = JSON.parse(t0); doc.days = old.days || {}; doc.hist = old.hist || {}; }
+    }catch(e){}
+    Object.keys(local.days).forEach(function(k){ doc.days[k] = local.days[k]; });
+    Object.keys(local.hist).forEach(function(d){ doc.hist[d] = local.hist[d]; });
+    sync.lastWrite = doc.updated;
+    var w = await sync.handle.createWritable();
+    await w.write(JSON.stringify(doc));
+    await w.close();
+    var f = await sync.handle.getFile(); sync.lastMod = f.lastModified;
+  }catch(e){ console.error("sync schrijven:", e); }
+}
+function scheduleSyncWrite(){
+  if(!sync.handle) return;
+  clearTimeout(sync.timer);
+  sync.timer = setTimeout(syncWrite, 1200);
+}
+async function syncLink(){
+  if(!window.showSaveFilePicker){ toast("Deze browser ondersteunt bestandskoppeling niet — gebruik Edge of Chrome"); return; }
+  try{
+    var h = await window.showSaveFilePicker({
+      suggestedName:"taakverdeling.json",
+      types:[{description:"Taakverdeling-sync", accept:{"application/json":[".json"]}}]
+    });
+    sync.handle = h;
+    await idb.set("sh", h);
+    $("#reloadBtn").hidden = false;
+    var f = await h.getFile();
+    if(f.size > 5){ await syncRead(true); toast("Sync gekoppeld — gedeelde gegevens ingeladen"); }
+    else { await syncWrite(); toast("Sync-bestand aangemaakt in de gekozen map"); }
+    updSyncBtn();
+  }catch(e){ /* geannuleerd */ }
+}
+function updSyncBtn(){
+  var b = $("#syncBtn");
+  if(sync.handle){
+    b.classList.add("linked");
+    b.textContent = "🔗 sync actief";
+    b.title = "Sync gekoppeld — klik om een ander bestand te kiezen";
+  }
+}
+setInterval(function(){ syncRead(false); }, 30000);
+window.addEventListener("focus", function(){ syncRead(false); });
+
+/* eigen taken (＋ Taak) — bewaard over dagen en weken heen
+   + bewaarde volgorde (verslepen) en vaste kleur per taaknaam */
+var TASK_HUE_MAP = {};
+function rebuildTasks(){
+  var extra = store.get("vp_tasks") || [];
+  var all = BASE_TASKS.concat(extra.filter(function(t){ return BASE_TASKS.indexOf(t) < 0; }));
+  /* kleur hangt aan de taaknaam (volgorde van aanmaak), niet aan de positie */
+  TASK_HUE_MAP = {};
+  all.forEach(function(t, i){ TASK_HUE_MAP[t] = TASK_HUES[i % TASK_HUES.length]; });
+  /* weergavevolgorde: bewaarde volgorde eerst, nieuwe taken achteraan */
+  var ord = store.get("vp_taskorder") || [];
+  TASKS = ord.filter(function(t){ return all.indexOf(t) >= 0; })
+             .concat(all.filter(function(t){ return ord.indexOf(t) < 0; }));
+}
+function taskHue(t){ return TASK_HUE_MAP[t] || TASK_HUES[0]; }
+function isCustomTask(t){ return BASE_TASKS.indexOf(t) < 0; }
+function reorderTask(from, to){
+  if(!from || from === to || TASKS.indexOf(from) < 0 || TASKS.indexOf(to) < 0) return;
+  var ord = TASKS.slice();
+  ord.splice(ord.indexOf(from), 1);
+  ord.splice(ord.indexOf(to), 0, from);
+  store.set("vp_taskorder", ord);
+  rebuildTasks(); render();
+  scheduleSyncWrite();
+  toast("Volgorde aangepast");
+}
+
+/* =====================================================================
+   State
+   ===================================================================== */
+var state = {
+  wb:null, weeks:[], model:null,
+  dayKey:null, selected:null,
+  overrides:{}, assign:{},
+  handle:null, fileInfo:"", lastLoad:0,
+  filter:"", board:false, dragFrom:null, dragTask:null,
+  webview:false, autoSwitch:true
+};
+function $(s){ return document.querySelector(s); }
+function el(tag, cls, html){ var d = document.createElement(tag); if(cls) d.className = cls; if(html !== undefined) d.innerHTML = html; return d; }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function toast(msg){
+  var t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+}
+function stateKey(){ return "vp_" + (state.model ? state.model.sheet : "-") + "_" + state.dayKey; }
+function fmtDate(d){ return ("0"+d.getUTCDate()).slice(-2) + "/" + ("0"+(d.getUTCMonth()+1)).slice(-2); }
+function fmtDT(ms){ var d = new Date(ms); return ("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2)+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+function curDateISO(){
+  if(!state.model || !state.model.monday) return null;
+  var i = state.model.dayKeys.indexOf(state.dayKey);
+  if(i < 0) return null;
+  return new Date(state.model.monday.getTime() + i * 86400000).toISOString().slice(0, 10);
+}
+
+/* =====================================================================
+   Laden van het werkboek (koppeling / bestand / URL)
+   ===================================================================== */
+function ingestWorkbook(wb, info){
+  state.wb = wb;
+  state.weeks = listWeeks(XLSX, wb);
+  state.fileInfo = info || "";
+  state.lastLoad = Date.now();
+  if(!state.weeks.length){ banner("err", "Geen weekbladen (1–53) gevonden in dit bestand."); render(); return; }
+
+  var sel = $("#weekSel"); sel.innerHTML = "";
+  state.weeks.forEach(function(w){
+    var o = document.createElement("option");
+    o.value = w.sheet;
+    o.textContent = "Week " + (w.week !== null ? w.week : w.sheet) + (w.monday ? " · " + fmtDate(w.monday) : "");
+    sel.appendChild(o);
+  });
+  $("#weekCtrl").hidden = false;
+
+  var keep = state.model && wb.Sheets[state.model.sheet] ? state.model.sheet : null;
+  var target = keep || sheetForWeek(isoWeek(new Date())) || state.weeks[0].sheet;
+  sel.value = target;
+  setSheet(target);
+  updateLinkBtn();
+}
+function sheetForWeek(wk){
+  var now = Date.now(), best = null, bestD = Infinity;
+  state.weeks.forEach(function(w){
+    if(w.week === wk){
+      var dist = w.monday ? Math.abs(w.monday.getTime() - now) : 0;
+      if(dist < bestD){ bestD = dist; best = w.sheet; }
+    }
+  });
+  return best;
+}
+
+function setSheet(name){
+  var m = parseSheet(XLSX, state.wb, name);
+  if(!m){ banner("err", "Kon blad “" + esc(name) + "” niet lezen — structuur niet herkend."); return; }
+  state.model = m;
+  $("#weekSel").value = name;
+
+  var ds = $("#daySel"); ds.innerHTML = "";
+  m.dayKeys.forEach(function(k, i){
+    var o = document.createElement("option"); o.value = k;
+    o.textContent = DAY_TOKENS[k] + (m.monday ? " " + fmtDate(new Date(m.monday.getTime() + i * 86400000)) : "");
+    ds.appendChild(o);
+  });
+  $("#dayCtrl").hidden = false;
+  var todayKey = ["MA","DI","WO","DO","VR","ZA","ZO"][(new Date().getDay() + 6) % 7];
+  state.dayKey = (state.dayKey && m.dayKeys.indexOf(state.dayKey) >= 0) ? state.dayKey
+               : (m.dayKeys.indexOf(todayKey) >= 0 ? todayKey : m.dayKeys[0]);
+  ds.value = state.dayKey;
+
+  buildBlockChips();
+  loadDayState();
+  render();
+}
+
+async function loadFile(file, viaHandle){
+  try{
+    var buf = await file.arrayBuffer();
+    var wb = XLSX.read(buf, {type:"array"});
+    ingestWorkbook(wb, file.name + (file.lastModified ? " · " + fmtDT(file.lastModified) : ""));
+    toast("Planning ingelezen" + (viaHandle ? " (gekoppeld bestand)" : ""));
+  }catch(e){ console.error(e); banner("err", "Kon dit bestand niet lezen als Excel."); }
+}
+
+async function pickAndLink(){
+  if(window.showOpenFilePicker){
+    try{
+      var hs = await window.showOpenFilePicker({
+        types:[{description:"Excel-planning", accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx",".xlsm"]}}],
+        multiple:false
+      });
+      state.handle = hs[0];
+      await idb.set("fh", state.handle);
+      $("#reloadBtn").hidden = false;
+      var f = await state.handle.getFile();
+      await loadFile(f, true);
+    }catch(e){ /* geannuleerd */ }
+  } else {
+    $("#fileInput").click();
+  }
+}
+
+async function reloadFromHandle(askPerm){
+  if(!state.handle) return false;
+  try{
+    var p = await state.handle.queryPermission({mode:"read"});
+    if(p !== "granted"){
+      if(!askPerm) return false;
+      p = await state.handle.requestPermission({mode:"read"});
+      if(p !== "granted") return false;
+    }
+    var f = await state.handle.getFile();
+    await loadFile(f, true);
+    return true;
+  }catch(e){ console.error(e); return false; }
+}
+
+function odDirect(u){
+  if(/api\.onedrive\.com/.test(u)) return u;
+  if(/1drv\.ms|onedrive\.live\.com/.test(u)){
+    var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    return "https://api.onedrive.com/v1.0/shares/u!" + b + "/root/content";
+  }
+  return u;
+}
+async function loadFromUrl(url){
+  try{
+    var res = await fetch(odDirect(url));
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    var buf = await res.arrayBuffer();
+    var wb = XLSX.read(buf, {type:"array"});
+    ingestWorkbook(wb, "via URL · " + fmtDT(Date.now()));
+    toast("Planning geladen via URL");
+    return true;
+  }catch(e){
+    console.error(e);
+    banner("err", "Laden via URL mislukt (vaak CORS bij SharePoint/OneDrive van het bedrijf). Gebruik “📂 Planning koppelen” — dat werkt altijd.");
+    return false;
+  }
+}
+
+function updateLinkBtn(){
+  var b = $("#linkBtn");
+  if(state.handle || state.fileInfo){
+    b.classList.add("linked");
+    b.textContent = "📂 " + (state.fileInfo || "gekoppeld");
+    b.title = "Andere planning kiezen";
+  }
+}
+
+/* =====================================================================
+   Dagstate + historiek
+   ===================================================================== */
+function loadDayState(){
+  rebuildTasks();
+  var s = store.get(stateKey()) || {};
+  state.assign = {}; TASKS.forEach(function(t){ state.assign[t] = []; });
+  var valid = {};
+  eachMember(function(m){ valid[m.name] = true; });
+  TASKS.forEach(function(t){ ((s.a || {})[t] || []).forEach(function(n){ if(valid[n] && state.assign[t].indexOf(n) < 0) state.assign[t].push(n); }); });
+  state.overrides = s.o || {};
+  prune();
+}
+function saveDayState(){
+  store.set(stateKey(), {a:state.assign, o:state.overrides});
+  snapshotHist();
+  scheduleSyncWrite();
+}
+
+/* historiek: per datum onthouden wie waar stond (voor rotatie) */
+function snapshotHist(){
+  var d = curDateISO(); if(!d) return;
+  var hist = store.get("vp_hist") || {};
+  var compact = {}, any = false;
+  TASKS.forEach(function(t){
+    if((state.assign[t] || []).length){ compact[t] = state.assign[t].slice(); any = true; }
+  });
+  if(any) hist[d] = compact; else delete hist[d];
+  var cutoff = new Date(Date.now() - 220 * 86400000).toISOString().slice(0, 10);
+  Object.keys(hist).forEach(function(k){ if(k < cutoff) delete hist[k]; });
+  store.set("vp_hist", hist);
+}
+/* tellingen per taak voor één naam, laatste N dagen, huidige datum niet meegeteld */
+function histCounts(name){
+  var out = {}, tot = 0;
+  var hist = store.get("vp_hist") || {};
+  var cur = curDateISO();
+  var cutoff = new Date(Date.now() - HIST_DAGEN * 86400000).toISOString().slice(0, 10);
+  Object.keys(hist).forEach(function(d){
+    if(d < cutoff || d === cur) return;
+    TASKS.forEach(function(t){
+      if((hist[d][t] || []).indexOf(name) >= 0){ out[t] = (out[t] || 0) + 1; tot++; }
+    });
+  });
+  out._tot = tot;
+  return out;
+}
+
+function eachMember(fn){
+  if(!state.model) return;
+  state.model.blocks.forEach(function(b, bi){
+    b.members.forEach(function(m){ fn(m, b, bi); });
+  });
+}
+function memberInfo(name){
+  var out = null;
+  eachMember(function(m, b, bi){ if(!out && m.name === name) out = {m:m, b:b, bi:bi}; });
+  return out;
+}
+function dayInfoOf(name){
+  var mi = memberInfo(name);
+  if(!mi) return {status:"afwezig", reason:"?", kleur:"code", early:0, extra:0, notes:[]};
+  return statusOf(state.model, mi.b, mi.m, state.dayKey);
+}
+var VM_EINDE_UUR = 11;   /* halve dag (enkel VM) is om 11u gedaan */
+function vmVoorbij(){
+  var d = curDateISO(); if(!d) return false;
+  var n = new Date();
+  var vandaag = n.getFullYear() + "-" + ("0"+(n.getMonth()+1)).slice(-2) + "-" + ("0"+n.getDate()).slice(-2);
+  return d === vandaag && n.getHours() >= VM_EINDE_UUR;
+}
+function effectiveBase(name){
+  var ov = state.overrides[name];
+  var info = dayInfoOf(name);
+  if(!ov) return info;
+  if(ov === "aanwezig") return {status:"aanwezig", early:info.early, extra:info.extra, notes:info.notes, ov:true};
+  if(ov === "half") return {status:"half", avail:"VM", reason:"manueel", kleur:"code", code:info.code, early:info.early, extra:info.extra, notes:info.notes, ov:true};
+  return {status:"afwezig", reason:(ov === "ziek" ? "Ziek" : "Verlof"), kleur:(ov === "ziek" ? "ziek" : "verlof"), code:(ov === "ziek" ? "Z" : "X"), early:0, extra:0, notes:[], ov:true};
+}
+function effective(name){
+  var e = effectiveBase(name);
+  if(e.status === "half" && e.avail === "VM" && vmVoorbij()){
+    return {status:"afwezig", reason:(e.reason === "manueel" ? "VM voorbij" : e.reason), kleur:(e.kleur || "code"), code:e.code, early:0, extra:0, notes:[], ov:e.ov};
+  }
+  return e;
+}
+function selectable(name){ return effective(name).status !== "afwezig"; }
+function tasksOf(name){
+  return TASKS.filter(function(t){ return (state.assign[t] || []).indexOf(name) >= 0; });
+}
+function prune(){
+  TASKS.forEach(function(t){ state.assign[t] = (state.assign[t] || []).filter(function(n){ return selectable(n); }); });
+}
+/* meerdere taken per persoon: toevoegen i.p.v. verplaatsen; fromTask = verslepen tussen taken */
+function assignName(name, task, fromTask){
+  if(!selectable(name)) return;
+  if(fromTask && fromTask !== task){
+    state.assign[fromTask] = (state.assign[fromTask] || []).filter(function(n){ return n !== name; });
+  }
+  if(state.assign[task].indexOf(name) < 0) state.assign[task].push(name);
+  else if(!fromTask) toast(name + " staat al op " + task);
+  state.selected = null;
+  saveDayState(); render();
+}
+function unassign(name, task){
+  if(task){
+    state.assign[task] = (state.assign[task] || []).filter(function(n){ return n !== name; });
+  } else {
+    TASKS.forEach(function(t){ state.assign[t] = state.assign[t].filter(function(n){ return n !== name; }); });
+  }
+  saveDayState(); render();
+}
+function cycleStatus(name){
+  var order = [null, "verlof", "ziek", "half", "aanwezig"];
+  var cur = (name in state.overrides) ? state.overrides[name] : null;
+  var next = order[(order.indexOf(cur) + 1) % order.length];
+  if(next === null) delete state.overrides[name]; else state.overrides[name] = next;
+  if(!selectable(name)){
+    TASKS.forEach(function(t){ state.assign[t] = state.assign[t].filter(function(n){ return n !== name; }); });
+  }
+  saveDayState(); render();
+}
+
+/* =====================================================================
+   Eigen taken — manueel toevoegen/verwijderen (bv. BANDEN MSI)
+   ===================================================================== */
+function addCustomTask(rawName){
+  var n = (rawName || "").trim().toUpperCase().replace(/\s+/g, " ");
+  if(!n){ toast("Vul eerst een taaknaam in"); return; }
+  if(TASKS.indexOf(n) >= 0){ toast("Taak “" + n + "” bestaat al"); return; }
+  var extra = store.get("vp_tasks") || [];
+  extra.push(n);
+  store.set("vp_tasks", extra);
+  rebuildTasks();
+  if(!state.assign[n]) state.assign[n] = [];
+  saveDayState(); render();
+  toast("Taak “" + n + "” toegevoegd");
+}
+function removeCustomTask(t){
+  var extra = (store.get("vp_tasks") || []).filter(function(x){ return x !== t; });
+  store.set("vp_tasks", extra);
+  delete state.assign[t];
+  rebuildTasks();
+  saveDayState(); render();
+  toast("Taak “" + t + "” verwijderd");
+}
+
+/* groepering voor de afwezigheidsblokken op het bord */
+function absGroupOf(code, reason){
+  if(code === "Z" || reason === "Ziek") return "ZIEK";
+  if(code === "X" || code === "SV" || reason === "Verlof" || reason === "Sociaal verlof") return "VERLOF";
+  if(code === "TK" || reason === "Tijdskrediet") return "TIJDSKREDIET";
+  return "ANDERE";
+}
+
+/* =====================================================================
+   Blokfilter — standaard enkel Uitpak (rest aanvinkbaar als ze helpen)
+   ===================================================================== */
+function enabledBlocks(){
+  if(!state.model) return [];
+  var names = state.model.blocks.map(function(b){ return b.name; });
+  var saved = store.get("vp_blocksel");
+  if(saved && saved.length){
+    var on = names.filter(function(n){ return saved.indexOf(n) >= 0; });
+    if(on.length) return on;
+  }
+  var uit = names.filter(function(n){ return /UITPAK/i.test(n); });
+  return uit.length ? uit : names;
+}
+function buildBlockChips(){
+  var box = $("#blockChips"); box.innerHTML = "";
+  if(!state.model) return;
+  var on = enabledBlocks();
+  state.model.blocks.forEach(function(b, i){
+    var c = el("button","chipbtn" + (on.indexOf(b.name) >= 0 ? " on" : ""),
+      '<span class="dot"></span>' + esc(b.name) + ' <span class="cnt">(' + b.members.length + ')</span>');
+    c.style.setProperty("--bdot", BLOCK_CLRS[i % BLOCK_CLRS.length]);
+    c.addEventListener("click", function(){
+      var cur = enabledBlocks();
+      var nxt = (cur.indexOf(b.name) >= 0) ? cur.filter(function(n){ return n !== b.name; }) : cur.concat([b.name]);
+      if(!nxt.length) nxt = [b.name];
+      store.set("vp_blocksel", nxt);
+      buildBlockChips(); render();
+    });
+    box.appendChild(c);
+  });
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+function badgesHtml(name, incReason){
+  var e = effective(name);
+  var h = "";
+  if(incReason && e.status === "afwezig") h += '<span class="bdg ' + (e.kleur || "code") + '">' + esc(e.reason) + "</span>";
+  if(e.status === "half") h += '<span class="bdg half">½ enkel ' + e.avail + "</span>" +
+    (e.reason && e.reason !== "manueel" ? '<span class="bdg ' + (e.kleur || "code") + '">' + esc(e.reason) + "</span>" : "");
+  if(e.early) h += '<span class="bdg early">-' + (Math.round(e.early * 100) / 100) + "u</span>";
+  if(e.extra) h += '<span class="bdg extra">+' + (Math.round(e.extra * 100) / 100) + "u</span>";
+  (e.notes || []).forEach(function(n){ h += '<span class="bdg code">' + esc(n) + "</span>"; });
+  if(e.ov) h += '<span class="bdg" title="manueel aangepast">✎</span>';
+  return h;
+}
+/* compacte badges voor naamchips IN een taak: enkel ½, geen codes — namen blijven leesbaar */
+function chipBadges(name){
+  var e = effective(name);
+  return e.status === "half" ? '<span class="bdg half">½ ' + e.avail + "</span>" : "";
+}
+function taskDots(name){
+  var h = "";
+  tasksOf(name).forEach(function(t){
+    h += '<span class="tdot" style="--td:' + taskHue(t) + '" title="' + esc(t) + '"></span>';
+  });
+  return h;
+}
+function histTitle(name){
+  var c = histCounts(name);
+  if(!c._tot) return "Nog geen historiek (laatste " + HIST_DAGEN + " dagen)";
+  var parts = [];
+  TASKS.forEach(function(t){ if(c[t]) parts.push(t + " ×" + c[t]); });
+  return "Laatste " + HIST_DAGEN + " dagen: " + parts.join(", ");
+}
+
+function render(){
+  var pool = $("#poolList"); pool.innerHTML = "";
+  var abs = $("#absentList"); abs.innerHTML = "";
+  var availCnt = 0, absCnt = 0;
+  var filt = state.filter;
+  var planned = {};
+  TASKS.forEach(function(t){ (state.assign[t] || []).forEach(function(n){ planned[n] = 1; }); });
+
+  if(!state.model){
+    pool.appendChild(el("div","cta","Nog geen planning geladen.<br><br>Klik bovenaan op <b>📂 Planning koppelen</b> en kies <b>Planning_magazijn_2026.xlsx</b> in je OneDrive-map — of sleep het bestand op deze pagina."));
+  } else {
+    var on = enabledBlocks();
+    state.model.blocks.forEach(function(b, bi){
+      if(on.indexOf(b.name) < 0) return;
+      var clr = BLOCK_CLRS[bi % BLOCK_CLRS.length];
+      var sec = el("div","blok");
+      var freeCnt = 0, shown = 0, frag = document.createDocumentFragment(), lastSub = null;
+      b.members.forEach(function(m){
+        if(filt && norm(m.name).indexOf(filt) < 0) return;
+        if(!selectable(m.name)) return;
+        if(m.sub !== lastSub){ lastSub = m.sub; if(m.sub) frag.appendChild(el("div","sub-h", esc(m.sub))); }
+        var c = el("div","pcard" + (state.selected === m.name ? " sel" : ""),
+          '<div class="pmain"><div class="pname">' + esc(m.name) + '</div>' +
+          '<div class="pbadges">' + taskDots(m.name) + badgesHtml(m.name, false) + "</div></div>" +
+          '<button class="cycle" data-cyc="' + esc(m.name) + '" title="Status manueel wijzigen">✎</button>');
+        c.style.setProperty("--bclr", clr);
+        c.dataset.name = m.name; c.draggable = true; c.tabIndex = 0; c.setAttribute("role","button");
+        c.title = histTitle(m.name);
+        frag.appendChild(c); shown++;
+        if(!planned[m.name]){ freeCnt++; availCnt++; }
+      });
+      sec.appendChild(el("div","blok-h",
+        '<span class="dot" style="background:' + clr + '"></span>' + esc(b.name) +
+        ' <span class="cnt">(' + freeCnt + " vrij)</span>"));
+      sec.appendChild(frag);
+      if(!shown) sec.appendChild(el("div","empty","Niemand beschikbaar"));
+      pool.appendChild(sec);
+    });
+
+    eachMember(function(m, b){
+      if(enabledBlocks().indexOf(b.name) < 0) return;
+      if(filt && norm(m.name).indexOf(filt) < 0) return;
+      var e = effective(m.name);
+      if(e.status === "afwezig"){
+        absCnt++;
+        var c = el("div","pcard",
+          '<div class="pmain"><div class="pname">' + esc(m.name) + '</div>' +
+          '<div class="pbadges">' + badgesHtml(m.name, true) + "</div></div>" +
+          '<button class="cycle" data-cyc="' + esc(m.name) + '" title="Status manueel wijzigen">✎</button>');
+        c.style.setProperty("--bclr","rgba(141,178,255,.3)");
+        abs.appendChild(c);
+      }
+    });
+    if(!absCnt) abs.appendChild(el("div","empty","Niemand afwezig 🎉"));
+  }
+
+  /* taken */
+  var grid = $("#taskGrid"); grid.innerHTML = "";
+  var planCnt = Object.keys(planned).length;
+  var selCounts = state.selected ? histCounts(state.selected) : null;
+  TASKS.forEach(function(t, i){
+    var list = state.assign[t] || [];
+    var vis = list.filter(function(n){ return effective(n).status !== "afwezig"; });
+    var card = el("div","tcard" + (state.selected ? " drop" : "") + (state.board && vis.length > 5 ? " dense" : ""));
+    card.style.setProperty("--hue", taskHue(t));
+    card.dataset.task = t;
+    card.draggable = true;
+    var body = "";
+    vis.forEach(function(n){
+      body += '<div class="chip" draggable="true" data-name="' + esc(n) + '" data-from="' + esc(t) + '"><span>' + esc(n) + "</span>" +
+              '<span class="cb">' + chipBadges(n) + "</span>" +
+              '<button class="x" data-un="' + esc(n) + '" data-task="' + esc(t) + '" title="Verwijderen">×</button></div>';
+    });
+    if(state.selected){
+      if(list.indexOf(state.selected) >= 0){
+        body += '<div class="thint">✓ ' + esc(state.selected) + " staat hier al</div>";
+      } else {
+        var hc = selCounts[t] || 0;
+        body += '<div class="thint">+ ' + esc(state.selected) + " hier plaatsen" +
+                "<small>" + (hc ? "al " + hc + "× in laatste " + HIST_DAGEN + " dagen" : "nog niet gedaan recent") + "</small></div>";
+      }
+    } else if(!vis.length){
+      body += '<div class="thint">Klik een naam links, daarna deze taak</div>';
+    }
+    var del = isCustomTask(t) ? '<button class="tdel" data-deltask="' + esc(t) + '" title="Taak verwijderen">×</button>' : "";
+    card.innerHTML = "<header><span class='tname'>" + esc(t) + "</span>" + del + "<span class='tcount'>" + vis.length + "</span></header>" +
+                     "<div class='tbody'>" + body + "</div>";
+    grid.appendChild(card);
+  });
+
+  /* invulblad: kaart om manueel een taak toe te voegen (invulveld, geen popup) */
+  if(!state.board){
+    var keepVal = "";
+    var oldIn = document.getElementById("newTaskName");
+    if(oldIn && document.activeElement === oldIn) keepVal = oldIn.value;
+    var add = el("div","tcard addtask",
+      '<div class="addin">＋ Taak toevoegen' +
+      '<input type="text" id="newTaskName" placeholder="bv. BANDEN MSI" maxlength="30" autocomplete="off">' +
+      '<button class="btn primary" id="newTaskBtn" type="button">Toevoegen</button></div>');
+    grid.appendChild(add);
+    var inp = add.querySelector("#newTaskName");
+    inp.value = keepVal;
+    add.querySelector("#newTaskBtn").addEventListener("click", function(){ addCustomTask(inp.value); });
+    inp.addEventListener("keydown", function(ev){ if(ev.key === "Enter") addCustomTask(inp.value); });
+  }
+
+  /* bord: compacte afwezigheidsrij VERLOF / ZIEK / TIJDSKREDIET (+ Andere indien nodig)
+     halve dagen tellen mee: NM-verlof → in VERLOF met badge "enkel NM" */
+  var absGrid = $("#absGrid"); absGrid.innerHTML = "";
+  if(state.board && state.model){
+    var groups = {};
+    ABS_GROUPS.forEach(function(g){ groups[g] = []; });
+    eachMember(function(m, b){
+      if(enabledBlocks().indexOf(b.name) < 0) return;
+      var e = effective(m.name);
+      if(e.status === "afwezig"){
+        var g1 = absGroupOf(e.code, e.reason);
+        groups[g1].push({name:m.name, tag:(g1 === "ANDERE" ? e.reason : null)});
+      } else if(e.status === "half" && e.reason !== "manueel"){
+        var absHalf = e.avail === "VM" ? "NM" : "VM";
+        var g2 = absGroupOf(e.code, e.reason);
+        groups[g2].push({name:m.name, tag:"enkel " + absHalf + (g2 === "ANDERE" ? " · " + e.reason : "")});
+      }
+    });
+    ABS_GROUPS.forEach(function(g){
+      if(g === "ANDERE" && !groups[g].length) return;
+      var card = el("div","tcard abscard");
+      card.style.setProperty("--hue", ABS_HUES[g]);
+      var body = "";
+      groups[g].forEach(function(p){
+        body += '<div class="chip"><span>' + esc(p.name) + "</span>" +
+                (p.tag ? '<span class="cb"><span class="bdg code">' + esc(p.tag) + "</span></span>" : "") + "</div>";
+      });
+      if(!groups[g].length) body = '<div class="thint">—</div>';
+      card.innerHTML = "<header><span class='tname'>" + g + "</span><span class='tcount'>" + groups[g].length + "</span></header>" +
+                       "<div class='tbody'>" + body + "</div>";
+      absGrid.appendChild(card);
+    });
+  }
+
+  $("#stAvail").textContent = availCnt;
+  $("#stPlan").textContent = planCnt;
+  $("#stAbs").textContent = absCnt;
+
+  renderDayLabel(); renderPreview(); renderHist();
+}
+
+function renderDayLabel(){
+  var html = "";
+  if(state.model){
+    var m = state.model, i = m.dayKeys.indexOf(state.dayKey);
+    var dateTxt = m.monday ? " " + fmtDate(new Date(m.monday.getTime() + i * 86400000)) : "";
+    html = "Week " + (m.week !== null ? m.week : m.sheet) + " · <b>" + DAY_TOKENS[state.dayKey] + dateTxt + "</b>";
+    $("#bDay").innerHTML = "Week " + (m.week !== null ? m.week : m.sheet) + " · " + DAY_TOKENS[state.dayKey] + dateTxt;
+  } else {
+    $("#bDay").innerHTML = "";
+  }
+  $("#dayLabel").innerHTML = html;
+}
+
+function renderPreview(){
+  var tb = $("#prevBody"); tb.innerHTML = "";
+  if(!state.model) return;
+  eachMember(function(m, b){
+    if(enabledBlocks().indexOf(b.name) < 0) return;
+    var info = statusOf(state.model, b, m, state.dayKey);
+    var e = effective(m.name);
+    var lbl = e.status === "aanwezig" ? "Aanwezig" :
+              e.status === "half" ? "½ enkel " + e.avail + (e.reason && e.reason !== "manueel" ? " (" + e.reason + ")" : "") :
+              "Afwezig (" + e.reason + ")";
+    if(e.early) lbl += " · -" + e.early + "u";
+    if(e.ov) lbl += " ✎";
+    tb.appendChild(el("tr","",
+      "<td>" + esc(m.name) + "</td><td>" + esc(b.name) + "</td><td>" + (m.row + 1) + "</td>" +
+      "<td class='raw'>" + esc(info.rawVM || "·") + "</td><td class='raw'>" + esc(info.rawNM || "·") + "</td>" +
+      "<td>" + esc(lbl) + "</td>"));
+  });
+}
+
+function renderHist(){
+  var head = $("#histHead"), body = $("#histBody");
+  head.innerHTML = ""; body.innerHTML = "";
+  if(!state.model) return;
+  var h = "<tr><th>Naam</th>";
+  TASKS.forEach(function(t){ h += "<th>" + esc(t) + "</th>"; });
+  h += "<th>Tot.</th></tr>";
+  head.innerHTML = h;
+  eachMember(function(m, b){
+    if(enabledBlocks().indexOf(b.name) < 0) return;
+    var c = histCounts(m.name);
+    var row = "<td>" + esc(m.name) + "</td>";
+    TASKS.forEach(function(t){
+      var n = c[t] || 0;
+      var bg = n ? " style='background:rgba(45,212,238," + Math.min(0.08 * n, 0.45) + ")'" : "";
+      row += "<td class='num'" + bg + ">" + (n || "") + "</td>";
+    });
+    row += "<td class='num'>" + (c._tot || "") + "</td>";
+    body.appendChild(el("tr","", row));
+  });
+}
+
+function banner(type, html){
+  var b = $("#banner");
+  var n = el("div","note " + (type === "warn" ? "warn" : type === "err" ? "err" : ""), html);
+  b.innerHTML = ""; b.appendChild(n);
+  clearTimeout(banner._h);
+  banner._h = setTimeout(function(){ if(b.contains(n)) b.removeChild(n); }, 9000);
+}
+
+/* =====================================================================
+   Bordmodus
+   ===================================================================== */
+/* =====================================================================
+   Webbord — twee vensters, het dashboard regelt alles zelf:
+   openen op schermhelften, sluiten om 07:00, heropenen om 07:10,
+   en het CLIPS-venster elke 10 s zelf verversen (mag, want het
+   dashboard heeft het venster zelf geopend — geen extensie nodig).
+   ===================================================================== */
+var DEF_WEB1 = "https://syncrosupply-vl.inform-cloud.io/gui/#/menu/Deliveries/CurrentDeliveries/dlg/12";
+var DEF_WEB2 = "https://dieteren-clips.operations.dynamics.com/?cmp=DISA&mi=CgkLicensePlateReceiving";
+var webWins = [null, null];
+function webOpen(){ return webWins.some(function(w){ return w && !w.closed; }); }
+function openWebWins(){
+  var u1 = store.get("vp_web1") || DEF_WEB1;
+  var u2 = store.get("vp_web2") || DEF_WEB2;
+  var W = (screen.availWidth || screen.width || 1920), H = (screen.availHeight || screen.height || 1080);
+  var half = Math.floor(W / 2);
+  if(!webWins[0] || webWins[0].closed)
+    webWins[0] = window.open(u1, "vpweb1", "left=0,top=0,width=" + half + ",height=" + H);
+  if(!webWins[1] || webWins[1].closed)
+    webWins[1] = window.open(u2, "vpweb2", "left=" + half + ",top=0,width=" + (W - half) + ",height=" + H);
+  if(!webWins[0] || !webWins[1]){
+    toast("Pop-ups geblokkeerd — sta ze één keer toe via het icoontje in de adresbalk en klik opnieuw op 🌐");
+    return false;
+  }
+  return true;
+}
+function closeWebWins(){
+  webWins.forEach(function(w){ try{ if(w && !w.closed) w.close(); }catch(e){} });
+  webWins = [null, null];
+}
+/* CLIPS elke 10 s verversen — het dashboard stuurt het venster zelf opnieuw naar de URL */
+setInterval(function(){
+  if(webWins[1] && !webWins[1].closed){
+    try{ webWins[1].location.replace(store.get("vp_web2") || DEF_WEB2); }catch(e){}
+  }
+}, 10000);
+function setWebView(on){
+  state.webview = !!on;
+  if(state.webview) state.webview = openWebWins();
+  else closeWebWins();
+  var b = $("#bSwap"); if(b) b.textContent = webOpen() ? "✕ Web sluiten" : "🌐 Web";
+}
+function updAutoBtn(){ $("#bAuto").textContent = "AUTO " + (state.autoSwitch ? "✓" : "✕"); }
+window.addEventListener("beforeunload", closeWebWins);
+
+function setBoard(on){
+  state.board = !!on;
+  document.body.classList.toggle("board", state.board);
+  if(!state.board) setWebView(false);
+  try{
+    if(state.board) history.replaceState(null, "", "#bord");
+    else history.replaceState(null, "", location.pathname + location.search);
+  }catch(e){}
+  if(state.board){
+    tickClock();
+    try{ document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }catch(e){}
+  } else {
+    try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+  }
+  state.selected = null;
+  render();
+}
+function tickClock(){
+  var d = new Date();
+  $("#bClock").textContent = ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2);
+}
+/* op het bord automatisch meeschuiven naar de juiste dag/week */
+setInterval(function(){
+  tickClock();
+  if(!state.board || !state.model || !state.weeks.length) return;
+  var now = new Date();
+  /* schema: taakbord 07:00–07:10 (vensters dicht), daarna webvensters open (zolang AUTO ✓ staat) */
+  if(state.autoSwitch){
+    var mins = now.getHours() * 60 + now.getMinutes();
+    var wantWeb = !(mins >= 7 * 60 && mins < 7 * 60 + 10);
+    if(wantWeb && !webOpen()) setWebView(true);
+    if(!wantWeb && webOpen()) setWebView(false);
+  }
+  var bw = $("#bSwap"); if(bw) bw.textContent = webOpen() ? "✕ Web sluiten" : "🌐 Web";
+  var wk = isoWeek(now);
+  if(state.model.week !== null && state.model.week !== wk){
+    var s = sheetForWeek(wk);
+    if(s && s !== state.model.sheet){ setSheet(s); return; }
+  }
+  var todayKey = ["MA","DI","WO","DO","VR","ZA","ZO"][(now.getDay() + 6) % 7];
+  if(state.model.dayKeys.indexOf(todayKey) >= 0 && state.dayKey !== todayKey){
+    state.dayKey = todayKey;
+    $("#daySel").value = todayKey;
+    loadDayState(); render();
+    return;
+  }
+  render(); /* houdt de 11u-regel (VM voorbij) en tellers actueel */
+}, 30000);
+
+/* =====================================================================
+   Overzicht kopiëren
+   ===================================================================== */
+function buildSummary(){
+  var m = state.model;
+  var head = "TAAKVERDELING";
+  if(m){
+    var i = m.dayKeys.indexOf(state.dayKey);
+    head += " — WEEK " + (m.week !== null ? m.week : m.sheet) + " — " + DAY_TOKENS[state.dayKey].toUpperCase();
+    if(m.monday) head += " " + fmtDate(new Date(m.monday.getTime() + i * 86400000));
+  }
+  var out = head + "\n" + Array(41).join("=") + "\n";
+  TASKS.forEach(function(t){
+    var list = (state.assign[t] || []).map(function(n){
+      var e = effective(n), sfx = [];
+      if(e.status === "half") sfx.push("enkel " + e.avail);
+      if(e.early) sfx.push("-" + e.early + "u");
+      (e.notes || []).forEach(function(x){ sfx.push(x); });
+      return n + (sfx.length ? " (" + sfx.join(", ") + ")" : "");
+    });
+    out += "\n" + t + ":\n  " + (list.length ? list.join("\n  ") : "—") + "\n";
+  });
+  var idle = [], abs = [], planned = {};
+  TASKS.forEach(function(t){ (state.assign[t] || []).forEach(function(n){ planned[n] = 1; }); });
+  eachMember(function(mm, b){
+    if(enabledBlocks().indexOf(b.name) < 0) return;
+    var e = effective(mm.name);
+    if(e.status === "afwezig") abs.push(mm.name + " (" + e.reason + ")");
+    else if(!planned[mm.name]) idle.push(mm.name);
+  });
+  out += "\nNiet ingepland: " + (idle.length ? idle.join(", ") : "—");
+  out += "\nAfwezig: " + (abs.length ? abs.join(", ") : "—") + "\n";
+  return out;
+}
+async function copySummary(){
+  var txt = buildSummary();
+  try{ await navigator.clipboard.writeText(txt); toast("Overzicht gekopieerd 📋"); }
+  catch(e){
+    var ta = document.createElement("textarea"); ta.value = txt; document.body.appendChild(ta);
+    ta.select(); try{ document.execCommand("copy"); toast("Overzicht gekopieerd 📋"); }catch(_){ toast("Kopiëren mislukt"); }
+    ta.remove();
+  }
+}
+
+/* =====================================================================
+   Events
+   ===================================================================== */
+document.addEventListener("click", function(e){
+  if(state.board) return;
+  var dt = e.target.closest("[data-deltask]");
+  if(dt){
+    if(dt.dataset.armed){ removeCustomTask(dt.dataset.deltask); }
+    else {
+      dt.dataset.armed = "1"; dt.textContent = "zeker?"; dt.style.fontSize = "12px";
+      setTimeout(function(){ if(dt.isConnected){ delete dt.dataset.armed; dt.textContent = "×"; dt.style.fontSize = ""; } }, 3000);
+    }
+    return;
+  }
+  var cyc = e.target.closest("[data-cyc]");
+  if(cyc){ cycleStatus(cyc.dataset.cyc); return; }
+  var un = e.target.closest("[data-un]");
+  if(un){ unassign(un.dataset.un, un.dataset.task); return; }
+  var pc = e.target.closest(".pcard[data-name]");
+  if(pc){ state.selected = (state.selected === pc.dataset.name) ? null : pc.dataset.name; render(); return; }
+  var tc = e.target.closest(".tcard[data-task]");
+  if(tc && state.selected){ assignName(state.selected, tc.dataset.task, null); return; }
+});
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape"){
+    if(state.selected){ state.selected = null; render(); }
+    else if(state.board){ setBoard(false); }
+    return;
+  }
+  if((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("pcard")){
+    e.preventDefault();
+    state.selected = (state.selected === e.target.dataset.name) ? null : e.target.dataset.name;
+    render();
+  }
+});
+document.addEventListener("dragstart", function(e){
+  /* naam verslepen: enkel op het invulblad */
+  var src = e.target.closest("[draggable][data-name]");
+  if(src && !state.board){
+    state.dragFrom = src.dataset.from || null;
+    e.dataTransfer.setData("text/plain", src.dataset.name);
+    e.dataTransfer.effectAllowed = "move";
+    return;
+  }
+  /* taakkaart verslepen: volgorde wijzigen, ook op het bord */
+  var tc = e.target.closest(".tcard[data-task]");
+  if(tc){
+    state.dragTask = tc.dataset.task;
+    e.dataTransfer.setData("text/plain", "task::" + tc.dataset.task);
+    e.dataTransfer.effectAllowed = "move";
+    return;
+  }
+  if(state.board) e.preventDefault();
+});
+document.addEventListener("dragend", function(){
+  state.dragFrom = null; state.dragTask = null;
+  if(!state.selected) document.querySelectorAll(".tcard.drop").forEach(function(x){ x.classList.remove("drop"); });
+});
+document.addEventListener("dragover", function(e){
+  var tc = e.target.closest(".tcard[data-task]");
+  if(tc){ e.preventDefault(); tc.classList.add("drop"); }
+});
+document.addEventListener("dragleave", function(e){
+  var tc = e.target.closest(".tcard[data-task]");
+  if(tc && !state.selected) tc.classList.remove("drop");
+});
+document.addEventListener("drop", function(e){
+  var tc = e.target.closest(".tcard[data-task]");
+  if(tc){
+    e.preventDefault();
+    var data = e.dataTransfer.getData("text/plain") || "";
+    if(state.dragTask || data.indexOf("task::") === 0){
+      reorderTask(state.dragTask || data.slice(6), tc.dataset.task);
+    } else if(!state.board && data){
+      assignName(data, tc.dataset.task, state.dragFrom);
+    }
+  }
+  state.dragFrom = null; state.dragTask = null;
+  if(!state.selected) document.querySelectorAll(".tcard.drop").forEach(function(x){ x.classList.remove("drop"); });
+});
+
+$("#linkBtn").addEventListener("click", pickAndLink);
+$("#syncBtn").addEventListener("click", syncLink);
+$("#reloadBtn").addEventListener("click", function(){
+  reloadFromHandle(true);
+  syncPerm(true).then(function(ok){ if(ok) syncRead(true); });
+});
+$("#fileInput").addEventListener("change", function(e){ if(e.target.files[0]) loadFile(e.target.files[0], false); });
+$("#addTaskBtn").addEventListener("click", function(){
+  var i = document.getElementById("newTaskName");
+  if(i){ i.scrollIntoView({behavior:"smooth", block:"center"}); i.focus(); }
+});
+
+window.addEventListener("dragover", function(e){
+  if(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, "Files") >= 0){
+    e.preventDefault(); document.body.classList.add("dragfile");
+  }
+});
+window.addEventListener("dragleave", function(e){ if(!e.relatedTarget) document.body.classList.remove("dragfile"); });
+window.addEventListener("drop", function(e){
+  if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
+    e.preventDefault(); document.body.classList.remove("dragfile");
+    loadFile(e.dataTransfer.files[0], false);
+  }
+});
+window.addEventListener("focus", function(){
+  if(state.handle && Date.now() - state.lastLoad > 60000) reloadFromHandle(false);
+});
+/* tweede tabblad (bv. bord) volgt wijzigingen van het invulblad én nieuwe taken */
+window.addEventListener("storage", function(e){
+  if(e.key && (e.key === stateKey() || e.key === "vp_hist" || e.key === "vp_tasks" || e.key === "vp_taskorder")){ loadDayState(); render(); }
+});
+
+$("#weekSel").addEventListener("change", function(e){ setSheet(e.target.value); });
+$("#daySel").addEventListener("change", function(e){ state.dayKey = e.target.value; loadDayState(); state.selected = null; render(); });
+$("#searchBox").addEventListener("input", function(e){ state.filter = norm(e.target.value); render(); });
+$("#boardBtn").addEventListener("click", function(){ setBoard(true); });
+$("#bExit").addEventListener("click", function(){ setBoard(false); });
+$("#bSwap").addEventListener("click", function(){ state.autoSwitch = false; updAutoBtn(); setWebView(!state.webview); });
+$("#bAuto").addEventListener("click", function(){ state.autoSwitch = !state.autoSwitch; updAutoBtn(); toast(state.autoSwitch ? "Auto-wissel aan (taken 07:00–07:10, daarna web)" : "Auto-wissel uit — manueel via 🌐/📋"); });
+$("#webSave").addEventListener("click", function(){
+  var u1 = $("#web1Url").value.trim(), u2 = $("#web2Url").value.trim();
+  if(u1) store.set("vp_web1", u1); else store.del("vp_web1");
+  if(u2) store.set("vp_web2", u2); else store.del("vp_web2");
+  if(webOpen()){ closeWebWins(); openWebWins(); }
+  toast("Webbord-URL's opgeslagen");
+});
+$("#copyBtn").addEventListener("click", copySummary);
+$("#resetBtn").addEventListener("click", function(){
+  var b = $("#resetBtn");
+  if(!b.dataset.armed){
+    b.dataset.armed = "1"; b.textContent = "Zeker? ↺"; b.style.borderColor = "var(--red)"; b.style.color = "var(--red)";
+    setTimeout(function(){ delete b.dataset.armed; b.textContent = "↺"; b.style.borderColor = ""; b.style.color = ""; }, 3000);
+    return;
+  }
+  delete b.dataset.armed; b.textContent = "↺"; b.style.borderColor = ""; b.style.color = "";
+  state.assign = {}; TASKS.forEach(function(t){ state.assign[t] = []; });
+  state.overrides = {}; state.selected = null;
+  saveDayState();
+  render(); toast("Dag gereset");
+});
+$("#setBtn").addEventListener("click", function(){
+  var p = $("#setPanel"); p.open = !p.open;
+  if(p.open) p.scrollIntoView({behavior:"smooth"});
+});
+$("#srcSave").addEventListener("click", function(){
+  var u = $("#srcUrl").value.trim();
+  if(!u){ toast("Geen URL ingevuld"); return; }
+  store.set("vp_url", u); loadFromUrl(u);
+});
+$("#srcClear").addEventListener("click", function(){ store.del("vp_url"); $("#srcUrl").value = ""; toast("Bron-URL gewist"); });
+
+/* =====================================================================
+   Init: gekoppeld bestand → bron-URL → leeg  (+ #bord voor het scherm)
+   ===================================================================== */
+(async function init(){
+  rebuildTasks();
+  TASKS.forEach(function(t){ state.assign[t] = []; });
+  var u = store.get("vp_url") || PLAN_URL; if(u) $("#srcUrl").value = u;
+  $("#web1Url").value = store.get("vp_web1") || DEF_WEB1;
+  $("#web2Url").value = store.get("vp_web2") || DEF_WEB2;
+  var hh = location.hash.toLowerCase();
+  if(hh === "#bord" || hh === "#web"){
+    state.board = true;
+    document.body.classList.add("board");
+    tickClock();
+    updAutoBtn();
+    if(hh === "#web") setWebView(true);
+  }
+  render();
+
+  try{
+    var sh = await idb.get("sh");
+    if(sh && sh.queryPermission){
+      sync.handle = sh;
+      updSyncBtn();
+      $("#reloadBtn").hidden = false;
+      syncRead(false);
+    }
+  }catch(e){}
+
+  try{
+    var h = await idb.get("fh");
+    if(h && h.queryPermission){
+      state.handle = h;
+      $("#reloadBtn").hidden = false;
+      var ok = await reloadFromHandle(false);
+      if(!ok){
+        $("#linkBtn").classList.add("linked");
+        $("#linkBtn").textContent = "📂 " + (h.name || "gekoppeld");
+        banner("warn", "Planning is gekoppeld — klik op <b>🔄</b> om ze in te lezen (eenmalige toestemming per sessie).");
+        return;
+      }
+      return;
+    }
+  }catch(e){}
+  if(u) loadFromUrl(u);
+})();
+</script>
+</body>
+</html>
