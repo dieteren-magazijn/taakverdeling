@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taakverdeling · Planning magazijn</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Google Fonts verwijderd om GDPR-redenen (geen IP's naar Google); systeemfonts via CSS-fallback -->
 <style>
 :root{
   --bg:#0a1424; --panel:#13233e; --panel2:#0f1d35; --inset:#0b1830;
@@ -135,6 +134,14 @@ body.dragfile .topbar{box-shadow:inset 0 0 0 2px var(--cyan)}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 3px var(--cyan-dim)}50%{box-shadow:0 0 0 6px rgba(45,212,238,.07)}}
 }
 .chip{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:7px 8px 7px 11px;font-size:13.5px;font-weight:600;cursor:grab}
+/* kleurmarkering: speciale opdracht binnen de taak */
+.chip.mk1{--mkc:var(--cyan)} .chip.mk2{--mkc:var(--yellow)} .chip.mk3{--mkc:var(--orange)}
+.chip.mk4{--mkc:var(--red)} .chip.mk5{--mkc:var(--violet)} .chip.mk6{--mkc:var(--green)}
+.chip.mk{border-color:var(--mkc);box-shadow:inset 3px 0 0 var(--mkc)}
+.chip .mdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mkc);margin-right:6px;flex:0 0 auto}
+.chip span[data-mark]{cursor:pointer}
+body.board .chip.mk{color:var(--mkc)}
+body.board .chip .mdot{width:.7vw;height:.7vw;margin-right:.3vw}
 .chip .cb{display:flex;gap:4px;margin-left:auto;align-items:center}
 .chip .x{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px 5px;border-radius:6px}
 .chip .x:hover{color:var(--red);background:rgba(255,107,107,.12)}
@@ -763,7 +770,7 @@ function reorderTask(from, to){
 var state = {
   wb:null, weeks:[], model:null,
   dayKey:null, selected:null,
-  overrides:{}, assign:{},
+  overrides:{}, assign:{}, marks:{},
   handle:null, fileInfo:"", lastLoad:0,
   filter:"", board:false, dragFrom:null, dragTask:null,
   webview:false, autoSwitch:true
@@ -930,10 +937,18 @@ function loadDayState(){
   eachMember(function(m){ valid[m.name] = true; });
   TASKS.forEach(function(t){ ((s.a || {})[t] || []).forEach(function(n){ if(valid[n] && state.assign[t].indexOf(n) < 0) state.assign[t].push(n); }); });
   state.overrides = s.o || {};
+  state.marks = s.m || {};
+  /* kleuren wissen van namen die niet meer op de taak staan */
+  Object.keys(state.marks).forEach(function(t){
+    Object.keys(state.marks[t]).forEach(function(n){
+      if(!state.assign[t] || state.assign[t].indexOf(n) < 0) delete state.marks[t][n];
+    });
+    if(!Object.keys(state.marks[t]).length) delete state.marks[t];
+  });
   prune();
 }
 function saveDayState(){
-  store.set(stateKey(), {a:state.assign, o:state.overrides});
+  store.set(stateKey(), {a:state.assign, o:state.overrides, m:state.marks});
   snapshotHist();
   scheduleSyncWrite();
 }
@@ -1211,7 +1226,8 @@ function render(){
     card.draggable = true;
     var body = "";
     vis.forEach(function(n){
-      body += '<div class="chip" draggable="true" data-name="' + esc(n) + '" data-from="' + esc(t) + '"><span>' + esc(n) + "</span>" +
+      var mk = (state.marks[t] || {})[n] || 0;
+      body += '<div class="chip' + (mk ? ' mk mk' + mk : '') + '" draggable="true" data-name="' + esc(n) + '" data-from="' + esc(t) + '"><span data-mark="' + esc(n) + '" data-mtask="' + esc(t) + '" title="Klik om een kleur te geven (speciale opdracht)">' + (mk ? '<i class="mdot"></i>' : '') + esc(n) + "</span>" +
               '<span class="cb">' + chipBadges(n) + "</span>" +
               '<button class="x" data-un="' + esc(n) + '" data-task="' + esc(t) + '" title="Verwijderen">×</button></div>';
     });
@@ -1360,8 +1376,8 @@ function banner(type, html){
    en het CLIPS-venster elke 10 s zelf verversen (mag, want het
    dashboard heeft het venster zelf geopend — geen extensie nodig).
    ===================================================================== */
-var DEF_WEB1 = "https://syncrosupply-vl.inform-cloud.io/gui/#/menu/Deliveries/CurrentDeliveries/dlg/12";
-var DEF_WEB2 = "https://dieteren-clips.operations.dynamics.com/?cmp=DISA&mi=CgkLicensePlateReceiving";
+var DEF_WEB1 = "";  /* webbord-URL 1 — vul in via ⚙ Instellingen (wordt lokaal bewaard, niet in deze publieke file) */
+var DEF_WEB2 = "";  /* webbord-URL 2 — idem */
 var webWins = [null, null];
 function webOpen(){ return webWins.some(function(w){ return w && !w.closed; }); }
 function openWebWins(){
@@ -1494,6 +1510,18 @@ async function copySummary(){
 /* =====================================================================
    Events
    ===================================================================== */
+/* kleur op een naam binnen een taak: klik op de naam cyclet
+   geen → cyaan → geel → oranje → rood → paars → groen → geen */
+var MARK_NAMES = ["", "cyaan", "geel", "oranje", "rood", "paars", "groen"];
+function cycleMark(n, t){
+  if(!state.marks[t]) state.marks[t] = {};
+  var v = ((state.marks[t][n] || 0) + 1) % 7;
+  if(v) state.marks[t][n] = v; else delete state.marks[t][n];
+  if(!Object.keys(state.marks[t]).length) delete state.marks[t];
+  saveDayState(); render();
+  toast(v ? n + " → " + MARK_NAMES[v] + " (blijf klikken voor andere kleur, of tot de kleur weg is)" : "Kleur van " + n + " gewist");
+}
+
 document.addEventListener("click", function(e){
   if(state.board) return;
   var dt = e.target.closest("[data-deltask]");
@@ -1509,6 +1537,8 @@ document.addEventListener("click", function(e){
   if(cyc){ cycleStatus(cyc.dataset.cyc); return; }
   var un = e.target.closest("[data-un]");
   if(un){ unassign(un.dataset.un, un.dataset.task); return; }
+  var mkEl = e.target.closest("[data-mark]");
+  if(mkEl && !state.selected){ cycleMark(mkEl.dataset.mark, mkEl.dataset.mtask); return; }
   var pc = e.target.closest(".pcard[data-name]");
   if(pc){ state.selected = (state.selected === pc.dataset.name) ? null : pc.dataset.name; render(); return; }
   var tc = e.target.closest(".tcard[data-task]");
