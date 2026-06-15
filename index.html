@@ -111,13 +111,10 @@ body.dragfile .topbar{box-shadow:inset 0 0 0 2px var(--cyan)}
 /* ---------- taken: volledige kaart in de taakkleur ---------- */
 .tasks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
 .tcard{
-  background:color-mix(in srgb, var(--hue,#2dd4ee) 13%, var(--panel2));
-  border:1px solid color-mix(in srgb, var(--hue,#2dd4ee) 40%, var(--line));
+  background:var(--panel2);
+  border:1px solid var(--hue,var(--line2));
   border-radius:var(--r);min-height:150px;display:flex;flex-direction:column;overflow:hidden;
   transition:border-color .12s ease, box-shadow .12s ease;
-}
-@supports not (background:color-mix(in srgb, red 10%, blue)){
-  .tcard{background:var(--panel2);border-color:var(--hue,var(--line2))}
 }
 .tcard header{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid rgba(10,20,36,.25);background:var(--hue,var(--cyan))}
 .tname{font-family:var(--fd);font-weight:700;font-size:19px;letter-spacing:.05em;text-transform:uppercase;flex:1;line-height:1.05;color:#0a1424}
@@ -265,8 +262,6 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
     <span class="bb-day" id="bDay"></span>
     <span class="sp"></span>
     <span class="bb-clock" id="bClock"></span>
-    <button class="btn" id="bSwap" title="Wissel tussen taakbord en webbord">🌐 Web</button>
-    <button class="btn" id="bAuto" title="Automatisch: taken 07:00–07:10, daarna webbord">AUTO ✓</button>
     <button class="btn" id="bExit" title="Terug naar invulblad">✏</button>
   </div>
 
@@ -324,17 +319,8 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
           <button class="btn primary" id="srcSave">Opslaan &amp; laden</button>
           <button class="btn" id="srcClear">Wissen</button>
         </div>
-        <p><b>Webbord:</b> klik in bordmodus op 🌐 — het dashboard opent de twee sites als vensters,
-        elk op een halve schermbreedte, en ververst het CLIPS-venster zelf elke 10 s (geen extensie nodig).
-        Met AUTO ✓ sluiten de vensters om 07:00 (taakbord zichtbaar) en gaan ze om 07:10 vanzelf weer open.
-        <b>Eenmalig:</b> bij de eerste klik op 🌐 pop-ups toestaan via het icoontje in de adresbalk — daarna loopt alles vanzelf.</p>
-        <div class="urlrow">
-          <input type="url" id="web1Url" placeholder="URL linkerpaneel (vrachtwagens)">
-          <input type="url" id="web2Url" placeholder="URL rechterpaneel (containers)">
-          <button class="btn primary" id="webSave">Webbord opslaan</button>
-        </div>
         <p>Tip voor het grote scherm: open deze pagina met <b>#bord</b> achter het adres
-        (bv. <i>…/index.html#bord</i>) — dan start ze meteen in bordmodus. Met <b>#web</b> start ze direct op het webbord.</p>
+        (bv. <i>…/index.html#bord</i>) — dan start ze meteen in bordmodus.</p>
 
         <p style="margin-top:18px"><b>🎨 Taakkleuren:</b> klik op een kleurvakje om de kleur van een taak aan te passen.
         De kleuren worden in deze browser bewaard.</p>
@@ -790,6 +776,15 @@ var state = {
 function $(s){ return document.querySelector(s); }
 function el(tag, cls, html){ var d = document.createElement(tag); if(cls) d.className = cls; if(html !== undefined) d.innerHTML = html; return d; }
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+/* kleurmix-helper (vervangt CSS color-mix, zodat de screenshot werkt) */
+var _mixCv = document.createElement("canvas"), _mixCx = _mixCv.getContext("2d");
+function _rgb(s){ try{ _mixCx.fillStyle = "#000"; _mixCx.fillStyle = s; var v = _mixCx.fillStyle;
+  var m = v.match(/^#([0-9a-f]{6})$/i); if(m){ var n = parseInt(m[1],16); return [(n>>16)&255,(n>>8)&255,n&255]; }
+  m = v.match(/(\d+),\s*(\d+),\s*(\d+)/); return m ? [+m[1],+m[2],+m[3]] : [0,0,0]; }catch(e){ return [0,0,0]; } }
+function mixColor(hex, pct, other){
+  var a = _rgb(hex), b = _rgb(other), p = pct/100;
+  return "rgb(" + Math.round(a[0]*p+b[0]*(1-p)) + "," + Math.round(a[1]*p+b[1]*(1-p)) + "," + Math.round(a[2]*p+b[2]*(1-p)) + ")";
+}
 function toast(msg){
   var t = $("#toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove("show"); }, 2200);
@@ -1233,7 +1228,12 @@ function render(){
     var list = state.assign[t] || [];
     var vis = list.filter(function(n){ return effective(n).status !== "afwezig"; });
     var card = el("div","tcard" + (state.selected ? " drop" : "") + (state.board && vis.length > 5 ? " dense" : ""));
-    card.style.setProperty("--hue", taskHue(t));
+    var _hue = taskHue(t);
+    card.style.setProperty("--hue", _hue);
+    var _p2 = getComputedStyle(document.body).getPropertyValue("--panel2").trim() || "#0f1d33";
+    var _ln = getComputedStyle(document.body).getPropertyValue("--line").trim() || "#1c2c47";
+    card.style.background = mixColor(_hue, 13, _p2);
+    card.style.borderColor = mixColor(_hue, 40, _ln);
     card.dataset.task = t;
     card.draggable = true;
     var body = "";
@@ -1392,39 +1392,10 @@ var DEF_WEB1 = "";  /* webbord-URL 1 — vul in via ⚙ Instellingen (wordt loka
 var DEF_WEB2 = "";  /* webbord-URL 2 — idem */
 var webWins = [null, null];
 function webOpen(){ return webWins.some(function(w){ return w && !w.closed; }); }
-function openWebWins(){
-  var u1 = store.get("vp_web1") || DEF_WEB1;
-  var u2 = store.get("vp_web2") || DEF_WEB2;
-  var W = (screen.availWidth || screen.width || 1920), H = (screen.availHeight || screen.height || 1080);
-  var half = Math.floor(W / 2);
-  if(!webWins[0] || webWins[0].closed)
-    webWins[0] = window.open(u1, "vpweb1", "left=0,top=0,width=" + half + ",height=" + H);
-  if(!webWins[1] || webWins[1].closed)
-    webWins[1] = window.open(u2, "vpweb2", "left=" + half + ",top=0,width=" + (W - half) + ",height=" + H);
-  if(!webWins[0] || !webWins[1]){
-    toast("Pop-ups geblokkeerd — sta ze één keer toe via het icoontje in de adresbalk en klik opnieuw op 🌐");
-    return false;
-  }
-  return true;
-}
-function closeWebWins(){
-  webWins.forEach(function(w){ try{ if(w && !w.closed) w.close(); }catch(e){} });
-  webWins = [null, null];
-}
-/* CLIPS elke 10 s verversen — het dashboard stuurt het venster zelf opnieuw naar de URL */
-setInterval(function(){
-  if(webWins[1] && !webWins[1].closed){
-    try{ webWins[1].location.replace(store.get("vp_web2") || DEF_WEB2); }catch(e){}
-  }
-}, 10000);
-function setWebView(on){
-  state.webview = !!on;
-  if(state.webview) state.webview = openWebWins();
-  else closeWebWins();
-  var b = $("#bSwap"); if(b) b.textContent = webOpen() ? "✕ Web sluiten" : "🌐 Web";
-}
-function updAutoBtn(){ $("#bAuto").textContent = "AUTO " + (state.autoSwitch ? "✓" : "✕"); }
-window.addEventListener("beforeunload", closeWebWins);
+function openWebWins(){ return false; }
+function closeWebWins(){}
+function setWebView(on){ state.webview = false; }
+function updAutoBtn(){}
 
 function setBoard(on){
   state.board = !!on;
@@ -1452,14 +1423,6 @@ setInterval(function(){
   tickClock();
   if(!state.board || !state.model || !state.weeks.length) return;
   var now = new Date();
-  /* schema: taakbord 07:00–07:10 (vensters dicht), daarna webvensters open (zolang AUTO ✓ staat) */
-  if(state.autoSwitch){
-    var mins = now.getHours() * 60 + now.getMinutes();
-    var wantWeb = !(mins >= 7 * 60 && mins < 7 * 60 + 10);
-    if(wantWeb && !webOpen()) setWebView(true);
-    if(!wantWeb && webOpen()) setWebView(false);
-  }
-  var bw = $("#bSwap"); if(bw) bw.textContent = webOpen() ? "✕ Web sluiten" : "🌐 Web";
   var wk = isoWeek(now);
   if(state.model.week !== null && state.model.week !== wk){
     var s = sheetForWeek(wk);
@@ -1651,15 +1614,6 @@ $("#daySel").addEventListener("change", function(e){ state.dayKey = e.target.val
 $("#searchBox").addEventListener("input", function(e){ state.filter = norm(e.target.value); render(); });
 $("#boardBtn").addEventListener("click", function(){ setBoard(true); });
 $("#bExit").addEventListener("click", function(){ setBoard(false); });
-$("#bSwap").addEventListener("click", function(){ state.autoSwitch = false; updAutoBtn(); setWebView(!state.webview); });
-$("#bAuto").addEventListener("click", function(){ state.autoSwitch = !state.autoSwitch; updAutoBtn(); toast(state.autoSwitch ? "Auto-wissel aan (taken 07:00–07:10, daarna web)" : "Auto-wissel uit — manueel via 🌐/📋"); });
-$("#webSave").addEventListener("click", function(){
-  var u1 = $("#web1Url").value.trim(), u2 = $("#web2Url").value.trim();
-  if(u1) store.set("vp_web1", u1); else store.del("vp_web1");
-  if(u2) store.set("vp_web2", u2); else store.del("vp_web2");
-  if(webOpen()){ closeWebWins(); openWebWins(); }
-  toast("Webbord-URL's opgeslagen");
-});
 $("#copyBtn").addEventListener("click", copySummary);
 $("#resetBtn").addEventListener("click", function(){
   var b = $("#resetBtn");
@@ -1693,54 +1647,34 @@ async function takeShot(){
   var wasBoard = state.board;
   if(!wasBoard){ setBoard(true); await new Promise(function(r){ setTimeout(r, 400); }); }
   toast("Screenshot maken…");
-  /* html2canvas 1.4.1 snapt color-mix() niet → tijdelijk de al-berekende
-     kleuren als inline-style zetten, en achteraf weer weghalen */
-  var patched = [];
-  document.querySelectorAll("*").forEach(function(elm){
-    var cs = getComputedStyle(elm);
-    if(cs.backgroundImage && cs.backgroundImage.indexOf("color-mix") >= 0 ||
-       cs.backgroundColor && cs.backgroundColor.indexOf("color-mix") >= 0 ||
-       elm.classList.contains("tcard") || elm.tagName === "HEADER" || elm.classList.contains("chip")){
-      patched.push([elm, elm.getAttribute("style") || ""]);
-      elm.style.backgroundColor = cs.backgroundColor;
-      elm.style.borderColor = cs.borderColor;
-      elm.style.color = cs.color;
-    }
-  });
-  function restore(){ patched.forEach(function(p){ if(p[1]) p[0].setAttribute("style", p[1]); else p[0].removeAttribute("style"); }); }
-  function stripMix(doc){
-    try{
-      [].forEach.call(doc.styleSheets, function(ss){
-        var rules; try{ rules = ss.cssRules; }catch(e){ return; }
-        [].forEach.call(rules || [], function(r){
-          if(r.style){
-            ["background","backgroundColor","border","borderColor"].forEach(function(p){
-              if(r.style[p] && r.style[p].indexOf("color-mix") >= 0) r.style[p] = "";
-            });
-          }
-        });
-      });
-    }catch(e){}
-  }
   try{
     await loadH2C();
     var bg = getComputedStyle(document.body).backgroundColor || "#0a1424";
-    var canvas = await window.html2canvas(document.body, {backgroundColor:bg, scale:2, useCORS:true, logging:false, onclone:function(doc){ stripMix(doc); }});
-    restore();
-    var m = state.model;
-    var d = new Date();
-    var stamp = m && m.monday ? ("week" + (m.week !== null ? m.week : m.sheet) + "_" + DAY_TOKENS[state.dayKey])
-                              : (d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2));
-    canvas.toBlob(function(blob){
-      var a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "taakverdeling_" + stamp + ".png";
-      a.click();
-      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
-      toast("📸 Screenshot opgeslagen — sleep hem nu in iObeya");
+    var canvas = await window.html2canvas(document.body, {backgroundColor:bg, scale:2, useCORS:true, logging:false});
+    canvas.toBlob(async function(blob){
+      var m2 = state.model, dd = new Date();
+      var stamp = m2 && m2.monday ? ("week" + (m2.week !== null ? m2.week : m2.sheet) + "_" + DAY_TOKENS[state.dayKey])
+                                  : (dd.getFullYear() + "-" + ("0"+(dd.getMonth()+1)).slice(-2) + "-" + ("0"+dd.getDate()).slice(-2));
+      /* eerst proberen naar het klembord → dan kan je in iObeya gewoon Ctrl+V doen */
+      var copied = false;
+      try{
+        if(navigator.clipboard && window.ClipboardItem){
+          await navigator.clipboard.write([new ClipboardItem({"image/png": blob})]);
+          copied = true;
+        }
+      }catch(e){ copied = false; }
+      if(copied){
+        toast("📋 Gekopieerd — plak met Ctrl+V in iObeya");
+      } else {
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "taakverdeling_" + stamp + ".png";
+        a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+        toast("📸 Klembord niet toegestaan — als PNG opgeslagen, sleep hem in iObeya");
+      }
     }, "image/png");
   }catch(err){
-    restore();
     toast("Screenshot mislukt: " + err.message);
   }
 }
@@ -1785,15 +1719,11 @@ $("#srcClear").addEventListener("click", function(){ store.del("vp_url"); $("#sr
   rebuildTasks();
   TASKS.forEach(function(t){ state.assign[t] = []; });
   var u = store.get("vp_url") || PLAN_URL; if(u) $("#srcUrl").value = u;
-  $("#web1Url").value = store.get("vp_web1") || DEF_WEB1;
-  $("#web2Url").value = store.get("vp_web2") || DEF_WEB2;
   var hh = location.hash.toLowerCase();
-  if(hh === "#bord" || hh === "#web"){
+  if(hh === "#bord"){
     state.board = true;
     document.body.classList.add("board");
     tickClock();
-    updAutoBtn();
-    if(hh === "#web") setWebView(true);
   }
   render();
 
