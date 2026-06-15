@@ -160,6 +160,15 @@ body.board .chip .mdot{width:.55vw;height:.55vw;margin-right:.25vw}
 .urlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .urlrow input{flex:1;min-width:240px}
 .tscroll{overflow-x:auto}
+.savedot{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;white-space:nowrap;border:1px solid var(--line2)}
+.savedot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.savedot.busy{color:var(--yellow);border-color:var(--yellow)}
+.savedot.busy::before{background:var(--yellow);animation:pulse 1s infinite}
+.savedot.ok{color:var(--green);border-color:var(--green)}
+.savedot.ok::before{background:var(--green)}
+.savedot.err{color:var(--red);border-color:var(--red)}
+.savedot.err::before{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .colorgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:10px}
 .colorrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:7px 10px}
 .colorrow .nm{flex:1;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -238,6 +247,7 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
   <div class="spacer"></div>
   <button class="btn" id="linkBtn" title="Eén keer je OneDrive-gesynchroniseerde planning kiezen; daarna onthoudt het dashboard het bestand">📂 Planning koppelen</button>
   <button class="btn" id="syncBtn" title="Gedeeld sync-bestand koppelen (taakverdeling.json in dezelfde OneDrive-map) — zo delen invul-PC en bord dezelfde toewijzingen, historiek en taken">🔗 Sync</button>
+  <span id="saveDot" class="savedot" hidden title="Opslagstatus van de gedeelde planning"></span>
   <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden>
   <button class="btn" id="reloadBtn" title="Gekoppelde planning opnieuw inlezen" hidden>🔄</button>
   <div class="ctrl" id="weekCtrl" hidden>
@@ -683,8 +693,22 @@ async function syncRead(force){
     render();
   }catch(e){ console.error("sync lezen:", e); }
 }
+function setSaveDot(state2, when){
+  var d = $("#saveDot"); if(!d) return;
+  d.hidden = false;
+  d.classList.remove("busy","ok","err");
+  if(state2 === "busy"){ d.classList.add("busy"); d.textContent = "Opslaan…"; }
+  else if(state2 === "ok"){
+    d.classList.add("ok");
+    var t = when ? new Date(when) : new Date();
+    d.textContent = "Opgeslagen " + ("0"+t.getHours()).slice(-2) + ":" + ("0"+t.getMinutes()).slice(-2);
+  }
+  else if(state2 === "err"){ d.classList.add("err"); d.textContent = "Niet opgeslagen!"; }
+}
 async function syncWrite(){
-  if(!sync.handle || !(await syncPerm(true))) return;
+  sync.timer = null;
+  if(!sync.handle || !(await syncPerm(true))){ setSaveDot("err"); return; }
+  setSaveDot("busy");
   try{
     var local = collectLocal();
     var doc = {v:1, updated:Date.now(), writer:CLIENT_ID, days:{}, hist:{}, tasks:local.tasks, order:local.order};
@@ -701,10 +725,12 @@ async function syncWrite(){
     await w.write(JSON.stringify(doc));
     await w.close();
     var f = await sync.handle.getFile(); sync.lastMod = f.lastModified;
-  }catch(e){ console.error("sync schrijven:", e); }
+    setSaveDot("ok", doc.updated);
+  }catch(e){ console.error("sync schrijven:", e); setSaveDot("err"); }
 }
 function scheduleSyncWrite(){
   if(!sync.handle) return;
+  setSaveDot("busy");
   clearTimeout(sync.timer);
   sync.timer = setTimeout(syncWrite, 1200);
 }
@@ -753,10 +779,20 @@ function updSyncBtn(){
     b.classList.add("linked");
     b.textContent = "🔗 sync actief";
     b.title = "Sync gekoppeld — klik om een ander bestand te kiezen";
+    var d = $("#saveDot"); if(d){ d.hidden = false; if(!d.className.match(/busy|ok|err/)){ d.classList.add("ok"); d.textContent = "Gekoppeld"; } }
   }
 }
 setInterval(function(){ syncRead(false); }, 30000);
 window.addEventListener("focus", function(){ syncRead(false); });
+/* bij sluiten: als er nog een schrijfactie in de wachtrij staat, meteen wegschrijven
+   en de gebruiker waarschuwen zodat de laatste wijziging niet verloren gaat */
+window.addEventListener("beforeunload", function(e){
+  if(sync.handle && sync.timer){
+    clearTimeout(sync.timer); sync.timer = null;
+    try{ syncWrite(); }catch(_){}
+    e.preventDefault(); e.returnValue = "";
+  }
+});
 
 /* eigen taken (＋ Taak) — bewaard over dagen en weken heen
    + bewaarde volgorde (verslepen) en vaste kleur per taaknaam */
