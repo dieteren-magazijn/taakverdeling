@@ -141,7 +141,7 @@ body.dragfile .topbar{box-shadow:inset 0 0 0 2px var(--cyan)}
 .chip .mdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--mkc);margin-right:6px;flex:0 0 auto}
 .chip span[data-mark]{cursor:pointer}
 body.board .chip.mk{color:var(--mkc)}
-body.board .chip .mdot{width:.7vw;height:.7vw;margin-right:.3vw}
+body.board .chip .mdot{width:.55vw;height:.55vw;margin-right:.25vw}
 .chip .cb{display:flex;gap:4px;margin-left:auto;align-items:center}
 .chip .x{background:transparent;border:0;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px 5px;border-radius:6px}
 .chip .x:hover{color:var(--red);background:rgba(255,107,107,.12)}
@@ -163,6 +163,10 @@ body.board .chip .mdot{width:.7vw;height:.7vw;margin-right:.3vw}
 .urlrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .urlrow input{flex:1;min-width:240px}
 .tscroll{overflow-x:auto}
+.colorgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:10px}
+.colorrow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:7px 10px}
+.colorrow .nm{flex:1;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.colorrow input[type=color]{width:34px;height:30px;border:1px solid var(--line2);border-radius:7px;background:transparent;cursor:pointer;padding:2px}
 table.prev{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
 table.prev th{font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
 table.prev td{padding:5px 8px;border-bottom:1px solid var(--line)}
@@ -186,28 +190,30 @@ body.board .layout{display:block}
 body.board #boardBar{
   display:flex;align-items:center;gap:1.4vw;padding:1vw 1.4vw .6vw;
 }
-#boardBar .bb-title{font-family:var(--fd);font-weight:700;font-size:2.3vw;letter-spacing:.05em;text-transform:uppercase;line-height:1}
+#boardBar .bb-title{font-family:var(--fd);font-weight:700;font-size:1.8vw;letter-spacing:.05em;text-transform:uppercase;line-height:1}
 #boardBar .bb-title b{color:var(--cyan)}
-#boardBar .bb-day{font-family:var(--fd);font-weight:600;font-size:1.7vw;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+#boardBar .bb-day{font-family:var(--fd);font-weight:600;font-size:1.35vw;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 #boardBar .sp{flex:1}
-#boardBar .bb-clock{font-family:var(--fd);font-weight:700;font-size:3vw;color:var(--cyan);line-height:1;font-variant-numeric:tabular-nums}
-#boardBar .btn{font-size:1vw;padding:.5vw .9vw;border-radius:.6vw}
+#boardBar .bb-clock{font-family:var(--fd);font-weight:700;font-size:2.2vw;color:var(--cyan);line-height:1;font-variant-numeric:tabular-nums}
+#boardBar .btn{font-size:.85vw;padding:.4vw .8vw;border-radius:.5vw}
 body.board .tasks{
-  grid-template-columns:repeat(4,1fr);grid-auto-rows:auto;gap:1vw;
+  grid-template-columns:repeat(4,1fr);grid-auto-rows:auto;gap:.8vw;
 }
+/* 9 of meer taken → 5 kolommen, zodat alles op één scherm past */
+body.board .tasks:has(> .tcard:nth-child(9)){grid-template-columns:repeat(5,1fr)}
 @media (max-width:1100px){ body.board .tasks{grid-template-columns:repeat(2,1fr)} }
-body.board .tcard{min-height:0;border-radius:1vw;overflow:visible}
-body.board .tcard header{padding:.8vw 1vw;border-radius:1vw 1vw 0 0;cursor:grab}
-body.board .tname{font-size:1.75vw}
-body.board .tcount{font-size:1.5vw;min-width:2.4vw;height:2.4vw;border-radius:.5vw}
-body.board .tbody{padding:.8vw;gap:.45vw;overflow:visible}
+body.board .tcard{min-height:0;border-radius:.8vw;overflow:visible}
+body.board .tcard header{padding:.5vw .8vw;border-radius:.8vw .8vw 0 0;cursor:grab}
+body.board .tname{font-size:1.3vw}
+body.board .tcount{font-size:1.1vw;min-width:1.8vw;height:1.8vw;border-radius:.4vw}
+body.board .tbody{padding:.6vw;gap:.3vw;overflow:visible}
 /* veel namen op één taak → automatisch 2 kolommen met kleinere letters */
 body.board .tcard.dense .tbody{display:grid;grid-template-columns:1fr 1fr;gap:.3vw .9vw;align-content:start}
-body.board .tcard.dense .chip{font-size:1.2vw}
+body.board .tcard.dense .chip{font-size:.95vw}
 body.board .tcard.dense .chip .bdg{font-size:.62vw;padding:.22vw .42vw}
-body.board .chip{border:0;background:transparent;padding:.15vw .2vw;font-size:1.55vw;font-weight:700;cursor:default;letter-spacing:.01em;color:var(--txt)}
+body.board .chip{border:0;background:transparent;padding:.1vw .15vw;font-size:1.15vw;font-weight:700;cursor:default;letter-spacing:.01em;color:var(--txt)}
 body.board .chip .x,body.board .thint,body.board .cycle,body.board .tdel,body.board .addtask{display:none}
-body.board .chip .bdg{font-size:.75vw;padding:.3vw .55vw}
+body.board .chip .bdg{font-size:.6vw;padding:.22vw .45vw}
 body.board .chip .tdot{display:none}
 
 /* compacte afwezigheidsrij op het bord (Verlof / Ziek / Tijdskrediet) */
@@ -247,6 +253,7 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
   </div>
   <button class="btn" id="addTaskBtn" title="Manueel een taak toevoegen (bv. BANDEN MSI)">＋ Taak</button>
   <button class="btn primary" id="boardBtn" title="Groot bord voor op het scherm (Esc om terug te keren)">📺 Bord</button>
+  <button class="btn" id="shotBtn" title="Maak een PNG-screenshot van het bord voor iObeya">📸</button>
   <button class="btn" id="copyBtn" title="Overzicht kopiëren">📋</button>
   <button class="btn" id="resetBtn" title="Toewijzingen van deze dag wissen">↺</button>
   <button class="btn" id="setBtn" title="Instellingen">⚙</button>
@@ -328,6 +335,11 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
         </div>
         <p>Tip voor het grote scherm: open deze pagina met <b>#bord</b> achter het adres
         (bv. <i>…/index.html#bord</i>) — dan start ze meteen in bordmodus. Met <b>#web</b> start ze direct op het webbord.</p>
+
+        <p style="margin-top:18px"><b>🎨 Taakkleuren:</b> klik op een kleurvakje om de kleur van een taak aan te passen.
+        De kleuren worden in deze browser bewaard.</p>
+        <div id="colorRows" class="colorgrid"></div>
+        <button class="btn" id="colorReset" style="margin-top:10px">↺ Standaardkleuren herstellen</button>
       </details>
 
       <details class="subpanel" id="prevPanel">
@@ -751,7 +763,7 @@ function rebuildTasks(){
   TASKS = ord.filter(function(t){ return all.indexOf(t) >= 0; })
              .concat(all.filter(function(t){ return ord.indexOf(t) < 0; }));
 }
-function taskHue(t){ return TASK_HUE_MAP[t] || TASK_HUES[0]; }
+function taskHue(t){ var c = (store.get("vp_taskcolors") || {})[t]; return c || TASK_HUE_MAP[t] || TASK_HUES[0]; }
 function isCustomTask(t){ return BASE_TASKS.indexOf(t) < 0; }
 function reorderTask(from, to){
   if(!from || from === to || TASKS.indexOf(from) < 0 || TASKS.indexOf(to) < 0) return;
@@ -1664,7 +1676,69 @@ $("#resetBtn").addEventListener("click", function(){
 });
 $("#setBtn").addEventListener("click", function(){
   var p = $("#setPanel"); p.open = !p.open;
-  if(p.open) p.scrollIntoView({behavior:"smooth"});
+  if(p.open){ buildColorRows(); p.scrollIntoView({behavior:"smooth"}); }
+});
+
+/* ---------- 📸 screenshot van het bord ---------- */
+function loadH2C(){
+  return new Promise(function(res, rej){
+    if(window.html2canvas) return res();
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+    s.onload = res; s.onerror = function(){ rej(new Error("html2canvas kon niet laden")); };
+    document.head.appendChild(s);
+  });
+}
+async function takeShot(){
+  var wasBoard = state.board;
+  if(!wasBoard){ setBoard(true); await new Promise(function(r){ setTimeout(r, 400); }); }
+  toast("Screenshot maken…");
+  try{
+    await loadH2C();
+    var bg = getComputedStyle(document.body).backgroundColor || "#0a1424";
+    var canvas = await window.html2canvas(document.body, {backgroundColor:bg, scale:2, useCORS:true, logging:false});
+    var m = state.model;
+    var d = new Date();
+    var stamp = m && m.monday ? ("week" + (m.week !== null ? m.week : m.sheet) + "_" + DAY_TOKENS[state.dayKey])
+                              : (d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2));
+    canvas.toBlob(function(blob){
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "taakverdeling_" + stamp + ".png";
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+      toast("📸 Screenshot opgeslagen — sleep hem nu in iObeya");
+    }, "image/png");
+  }catch(err){
+    toast("Screenshot mislukt: " + err.message);
+  }
+}
+$("#shotBtn").addEventListener("click", takeShot);
+
+/* ---------- 🎨 taakkleuren ---------- */
+function buildColorRows(){
+  var wrap = $("#colorRows"); if(!wrap) return;
+  var custom = store.get("vp_taskcolors") || {};
+  wrap.innerHTML = "";
+  TASKS.forEach(function(t){
+    var row = el("div","colorrow");
+    var hex = custom[t] || TASK_HUE_MAP[t] || TASK_HUES[0];
+    row.innerHTML = '<span class="nm">' + esc(t) + '</span><input type="color" value="' + hex + '" data-ct="' + esc(t) + '">';
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll("input[type=color]").forEach(function(inp){
+    inp.addEventListener("input", function(){
+      var cols = store.get("vp_taskcolors") || {};
+      cols[inp.dataset.ct] = inp.value;
+      store.set("vp_taskcolors", cols);
+      render();
+    });
+  });
+}
+$("#colorReset").addEventListener("click", function(){
+  store.del("vp_taskcolors");
+  buildColorRows(); render();
+  toast("Standaardkleuren hersteld");
 });
 $("#srcSave").addEventListener("click", function(){
   var u = $("#srcUrl").value.trim();
