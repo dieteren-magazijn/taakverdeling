@@ -709,20 +709,43 @@ function scheduleSyncWrite(){
   sync.timer = setTimeout(syncWrite, 1200);
 }
 async function syncLink(){
-  if(!window.showSaveFilePicker){ toast("Deze browser ondersteunt bestandskoppeling niet — gebruik Edge of Chrome"); return; }
+  if(!window.showOpenFilePicker && !window.showSaveFilePicker){ toast("Deze browser ondersteunt bestandskoppeling niet — gebruik Edge of Chrome"); return; }
+  /* standaard: bestaand taakverdeling.json OPENEN (geen save-dialoog).
+     Enkel als er nog geen bestaat, kan je er een aanmaken. */
+  var maakNieuw = false;
+  if(window.showOpenFilePicker){
+    try{
+      var hs = await window.showOpenFilePicker({
+        types:[{description:"Taakverdeling-sync", accept:{"application/json":[".json"]}}],
+        multiple:false
+      });
+      sync.handle = hs[0];
+    }catch(e){
+      /* gebruiker annuleerde of wil een nieuw bestand → vraag het */
+      if(e && e.name === "AbortError"){
+        if(!confirm("Geen bestaand taakverdeling.json gekozen.\n\nWil je op deze PC een NIEUW sync-bestand aanmaken? (Alleen doen op de éérste PC — de andere PC's moeten het bestaande bestand kiezen.)")) return;
+        maakNieuw = true;
+      } else { toast("Koppelen mislukt: " + (e.message || e.name)); return; }
+    }
+  } else { maakNieuw = true; }
+
+  if(maakNieuw){
+    try{
+      sync.handle = await window.showSaveFilePicker({
+        suggestedName:"taakverdeling.json",
+        types:[{description:"Taakverdeling-sync", accept:{"application/json":[".json"]}}]
+      });
+    }catch(e){ return; }
+  }
+
   try{
-    var h = await window.showSaveFilePicker({
-      suggestedName:"taakverdeling.json",
-      types:[{description:"Taakverdeling-sync", accept:{"application/json":[".json"]}}]
-    });
-    sync.handle = h;
-    await idb.set("sh", h);
+    await idb.set("sh", sync.handle);
     $("#reloadBtn").hidden = false;
-    var f = await h.getFile();
-    if(f.size > 5){ await syncRead(true); toast("Sync gekoppeld — gedeelde gegevens ingeladen"); }
-    else { await syncWrite(); toast("Sync-bestand aangemaakt in de gekozen map"); }
+    var f = await sync.handle.getFile();
+    if(f.size > 5){ await syncRead(true); toast("✅ Sync gekoppeld — gedeelde planning ingeladen"); }
+    else { await syncWrite(); toast("✅ Nieuw sync-bestand aangemaakt"); }
     updSyncBtn();
-  }catch(e){ /* geannuleerd */ }
+  }catch(e){ toast("Koppelen mislukt: " + (e.message || e.name)); }
 }
 function updSyncBtn(){
   var b = $("#syncBtn");
