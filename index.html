@@ -1693,10 +1693,40 @@ async function takeShot(){
   var wasBoard = state.board;
   if(!wasBoard){ setBoard(true); await new Promise(function(r){ setTimeout(r, 400); }); }
   toast("Screenshot maken…");
+  /* html2canvas 1.4.1 snapt color-mix() niet → tijdelijk de al-berekende
+     kleuren als inline-style zetten, en achteraf weer weghalen */
+  var patched = [];
+  document.querySelectorAll("*").forEach(function(elm){
+    var cs = getComputedStyle(elm);
+    if(cs.backgroundImage && cs.backgroundImage.indexOf("color-mix") >= 0 ||
+       cs.backgroundColor && cs.backgroundColor.indexOf("color-mix") >= 0 ||
+       elm.classList.contains("tcard") || elm.tagName === "HEADER" || elm.classList.contains("chip")){
+      patched.push([elm, elm.getAttribute("style") || ""]);
+      elm.style.backgroundColor = cs.backgroundColor;
+      elm.style.borderColor = cs.borderColor;
+      elm.style.color = cs.color;
+    }
+  });
+  function restore(){ patched.forEach(function(p){ if(p[1]) p[0].setAttribute("style", p[1]); else p[0].removeAttribute("style"); }); }
+  function stripMix(doc){
+    try{
+      [].forEach.call(doc.styleSheets, function(ss){
+        var rules; try{ rules = ss.cssRules; }catch(e){ return; }
+        [].forEach.call(rules || [], function(r){
+          if(r.style){
+            ["background","backgroundColor","border","borderColor"].forEach(function(p){
+              if(r.style[p] && r.style[p].indexOf("color-mix") >= 0) r.style[p] = "";
+            });
+          }
+        });
+      });
+    }catch(e){}
+  }
   try{
     await loadH2C();
     var bg = getComputedStyle(document.body).backgroundColor || "#0a1424";
-    var canvas = await window.html2canvas(document.body, {backgroundColor:bg, scale:2, useCORS:true, logging:false});
+    var canvas = await window.html2canvas(document.body, {backgroundColor:bg, scale:2, useCORS:true, logging:false, onclone:function(doc){ stripMix(doc); }});
+    restore();
     var m = state.model;
     var d = new Date();
     var stamp = m && m.monday ? ("week" + (m.week !== null ? m.week : m.sheet) + "_" + DAY_TOKENS[state.dayKey])
@@ -1710,6 +1740,7 @@ async function takeShot(){
       toast("📸 Screenshot opgeslagen — sleep hem nu in iObeya");
     }, "image/png");
   }catch(err){
+    restore();
     toast("Screenshot mislukt: " + err.message);
   }
 }
