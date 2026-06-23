@@ -2089,23 +2089,46 @@ function avondActief(){
 }
 function siForDay(){
   if(!siWb || !state.model || state.model.week==null) return [];
-  var sheet="KW"+state.model.week;
-  if(siWb.SheetNames.indexOf(sheet)<0) return [];
-  var ws=siWb.Sheets[sheet];
-  var dc=SI_DAYCOL[state.dayKey]; if(!dc) return [];
+  /* tolerante bladnaam: KW26, "KW 26", "WEEK 26", "26" */
+  var wk = state.model.week, sheet = null, NN = siWb.SheetNames;
+  for(var si=0; si<NN.length; si++){
+    var nn = (""+NN[si]).replace(/\s+/g,"").toUpperCase();
+    if(nn === "KW"+wk || nn === "WEEK"+wk || nn === ""+wk){ sheet = NN[si]; break; }
+  }
+  if(!sheet) return [];
+  var ws = siWb.Sheets[sheet], ref = ws["!ref"]; if(!ref) return [];
+  function cN(s){ var n=0; for(var i=0;i<s.length;i++){ var ch=s.charCodeAt(i); if(ch<65||ch>90) break; n=n*26+(ch-64); } return n-1; }
+  function cS(n){ n++; var s=""; while(n>0){ var m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+  function pc(a){ var m=a.match(/^([A-Z]+)(\d+)$/); return {c:cN(m[1]), r:parseInt(m[2],10)-1}; }
+  var pr = ref.split(":"), S = pc(pr[0]), Ec = pc(pr[pr.length-1]);
+  function cell(c,r){ var v=ws[cS(c)+(r+1)]; return (v && v.v!=null) ? (""+v.v) : ""; }
+  /* zoek kop-rij ("NAAM") + detecteer dag-/rooster-kolommen dynamisch */
+  var hdrRow=-1, nameCol=1, rosCol=2, dayCol={};
+  for(var r=S.r; r<=Math.min(S.r+25,Ec.r) && hdrRow<0; r++){
+    for(var c=S.c; c<=Ec.c; c++){ if(cell(c,r).trim().toLowerCase()==="naam"){ hdrRow=r; nameCol=c; break; } }
+  }
+  if(hdrRow>=0){
+    for(var c2=S.c; c2<=Ec.c; c2++){
+      var h=cell(c2,hdrRow).trim().toLowerCase();
+      var dm=h.match(/^(ma|di|wo|do|vr)\b/);
+      if(dm) dayCol[dm[1].toUpperCase()]=c2;
+      if(h==="rooster") rosCol=c2;
+    }
+  } else { hdrRow=11; nameCol=1; rosCol=2; }
+  var dk=(state.dayKey||"").toUpperCase();
+  var dc = (dayCol[dk]!=null) ? dayCol[dk] : ({MA:5,DI:6,WO:7,DO:8,VR:9})[dk];
+  if(dc==null) return [];
   var out=[], group=null, header="";
-  for(var r=13;r<=80;r++){
-    var b=ws["B"+r]; if(!b || b.v==null) continue;
-    var t=(""+b.v).trim(); if(!t) continue;
+  for(var rr=hdrRow+1; rr<=Math.min(Ec.r,hdrRow+80); rr++){
+    var t=cell(nameCol,rr).trim(); if(!t) continue;
     var up=t.toUpperCase();
     if(up.indexOf("STUDENT")>=0){ group="student"; header=t; continue; }
     if(up.indexOf("INTERIM")>=0){ group="interim"; header=t; continue; }
     if(/CAPACITEIT|LEGENDE|ROOSTER|TOTAAL|GEPREST|NAAM|WEEK/i.test(up)) continue;
     if(!group) continue;
-    var hv=ws[dc+r];
-    var hours=(hv && hv.v!=null) ? parseFloat((""+hv.v).replace(",",".")) : NaN;
-    if(isNaN(hours) || hours<=0) continue;     // enkel wie die dag uren heeft
-    var roo=ws["C"+r]; var code=(roo && roo.v!=null) ? (""+roo.v).trim() : "";
+    var hours=parseFloat(cell(dc,rr).replace(",","."));
+    if(isNaN(hours) || hours<=0) continue;
+    var code=cell(rosCol,rr).trim();
     var agency=header.replace(/^STUDENTEN?\s*/i,"").replace(/^INTERIM\s*/i,"").trim();
     out.push({name:t, kind:group, hours:hours, agency:agency, rooster:code});
   }
