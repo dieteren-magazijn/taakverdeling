@@ -2698,5 +2698,129 @@ if(store.get("vp_view")==="outbound") switchView("outbound");
   if(u) loadFromUrl(u);
 })();
 </script>
+<!-- ===================================================================
+     WIE-IS-BEZIG  ·  presence-indicator  (v1)
+     Plak dit blok in index.html, vlak VOOR de afsluitende </body>.
+     Verwijderen = dit hele blok weghalen. Raakt de planning niet aan.
+     ==================================================================== -->
+<script>
+(function(){
+  "use strict";
+  var FRESH_MS = 90000;   // iemand telt als "bezig" als zijn hartslag < 90 s oud is
+  var BEAT_MS  = 25000;   // eigen hartslag wegschrijven om de ~25 s
+  var TICK_MS  = 8000;    // lijst van anderen verversen om de ~8 s
+  var PRES_KEY = "presence";
+  var lastBeat = 0;
+  var _db = null, _handle = null;
+
+  /* --- eigen PC-code: hergebruik dezelfde sleutel als de app (vp_client) --- */
+  function clientId(){
+    try{ var v = localStorage.getItem("vp_client"); if(v) return JSON.parse(v); }catch(e){}
+    return "pc-onbekend";
+  }
+  var CID = clientId();
+
+  /* --- label van deze PC (eenmalig instelbaar, klik op de balk) --- */
+  function getLabel(){
+    try{ var v = localStorage.getItem("vp_pc_label"); if(v) return JSON.parse(v); }catch(e){}
+    return "PC " + CID;
+  }
+  function setLabel(){
+    var cur = ""; try{ var v=localStorage.getItem("vp_pc_label"); if(v) cur=JSON.parse(v); }catch(e){}
+    var l = prompt("Naam van deze PC (zien je collega's bij 'wie is bezig'):", cur || "");
+    if(l != null){ l = String(l).trim().slice(0,40); try{ localStorage.setItem("vp_pc_label", JSON.stringify(l)); }catch(e){} lastBeat = 0; beat(); }
+  }
+  function viewMode(){ return document.body.classList.contains("board") ? "bord" : "invul"; }
+
+  /* --- IndexedDB: haal hetzelfde sync-bestand-handle op dat de app bewaarde --- */
+  function openDb(){
+    return new Promise(function(res,rej){
+      try{ var r = indexedDB.open("vpdash",1);
+        r.onupgradeneeded = function(){ try{ r.result.createObjectStore("kv"); }catch(e){} };
+        r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); };
+      }catch(e){ rej(e); }
+    });
+  }
+  function getHandle(){
+    return (_db ? Promise.resolve(_db) : openDb().then(function(d){ _db=d; return d; }))
+      .then(function(db){ return new Promise(function(res){
+        try{ var t = db.transaction("kv","readonly").objectStore("kv").get("sh");
+          t.onsuccess=function(){ res(t.result||null); }; t.onerror=function(){ res(null); };
+        }catch(e){ res(null); }
+      });});
+  }
+
+  /* --- UI: balk linksonder --- */
+  function esc(s){ return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+  function bar(){
+    var el = document.getElementById("presBar");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "presBar";
+      el.title = "Klik om de naam van deze PC in te stellen";
+      el.style.cssText = "position:fixed;left:10px;bottom:10px;z-index:9998;display:none;flex-wrap:wrap;gap:6px;align-items:center;max-width:48vw;cursor:pointer;font:600 12px/1 var(--fb,system-ui,sans-serif);color:var(--txt,#e9f1ff);background:rgba(10,20,36,.92);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:12px;padding:8px 11px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 6px 20px rgba(0,0,0,.4)";
+      el.addEventListener("click", setLabel);
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  function render(pres){
+    var el = bar(); var now = Date.now();
+    var live = Object.keys(pres||{}).map(function(k){ return pres[k]; })
+      .filter(function(p){ return p && (now-(p.ts||0)) < FRESH_MS; })
+      .sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    if(!live.length){ el.style.display = "none"; return; }
+    el.style.display = "flex";
+    var html = '<span style="color:var(--muted,#8fa6c9);text-transform:uppercase;letter-spacing:.08em;font-size:10px">Nu bezig</span>';
+    live.forEach(function(p){
+      var mine = p.id === CID;
+      var col = p.view === "bord" ? "var(--violet,#a78bfa)" : "var(--green,#3ddc97)";
+      var ic  = p.view === "bord" ? "📺" : "✏";
+      html += '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--inset,#0b1830);border:1px solid '+col+';border-radius:999px;padding:4px 9px'+(mine?";opacity:.72":"")+'">'
+        + '<span style="width:7px;height:7px;border-radius:50%;background:'+col+';box-shadow:0 0 6px '+col+'"></span>'
+        + ic + ' ' + esc(p.label || "?") + (mine ? " (jij)" : "") + '</span>';
+    });
+    el.innerHTML = html;
+  }
+
+  /* --- hartslag + lezen van anderen --- */
+  async function beat(){
+    try{
+      if(!_handle){ _handle = await getHandle(); if(!_handle) return; }
+      if(document.visibilityState !== "visible") return;          // verborgen tab = niet bezig
+      var perm = await _handle.queryPermission({mode:"readwrite"});
+      if(perm !== "granted") return;                              // app heeft toestemming nog niet (of read-only)
+      var f = await _handle.getFile();
+      var txt = await f.text(); if(!txt || txt.length < 5) return;
+      var doc = JSON.parse(txt);
+      var pres = doc[PRES_KEY] || {};
+      render(pres);                                               // toon altijd de actuele lijst
+
+      var now = Date.now();
+      if(now - lastBeat < BEAT_MS - 2000) return;                 // nog niet tijd voor eigen schrijfbeurt
+      pres[CID] = { id:CID, label:getLabel(), view:viewMode(), ts:now };
+      Object.keys(pres).forEach(function(k){ if(now-(pres[k].ts||0) > FRESH_MS*3) delete pres[k]; });
+      doc[PRES_KEY] = pres;
+
+      // optimistische check: schreef iemand net? dan deze beat overslaan (geen clobber)
+      var f2 = await _handle.getFile();
+      if(f2.lastModified !== f.lastModified){ render(pres); return; }
+
+      var w = await _handle.createWritable();
+      await w.write(JSON.stringify(doc));
+      await w.close();
+      lastBeat = now;
+      render(pres);
+    }catch(e){ /* stil — presence mag nooit de app storen */ }
+  }
+
+  /* start zodra de pagina staat */
+  function start(){ beat(); setInterval(beat, TICK_MS); }
+  if(document.readyState === "complete" || document.readyState === "interactive") setTimeout(start, 1500);
+  else window.addEventListener("DOMContentLoaded", function(){ setTimeout(start, 1500); });
+  window.addEventListener("focus", beat);
+})();
+</script>
+
 </body>
 </html>
