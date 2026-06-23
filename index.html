@@ -2288,7 +2288,7 @@ function obFromExcel(){
   return roster;
 }
 /* datamodel: obRoster = iedereen vandaag (uit Excel) ; obDepts = afdelingen met toegewezen namen */
-var OB_DEFAULT_DEPTS=["E.S.","SECTOR H & L","SCHAEFER","LIFTEN","SECTO M + P","COLISAGE","BRIG","D.S.","SECTOR W + K10"];
+var OB_DEFAULT_DEPTS=["E.S.","SECTOR H & L","SCHAEFER","LIFTEN","SECTOR M + P","COLISAGE","BRIG","D.S.","SECTOR W + K10"];
 var obRoster=[], obDepts=null, obEdit=false, obDragName=null, obSel=null;
 function obDeptsInit(){
   var saved=store.get("vp_ob_template");
