@@ -185,6 +185,19 @@ table.prev td.num{text-align:center;font-weight:600}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
+/* ---------- touch-/muis-slepen (pointer events) ---------- */
+.pdrag-ghost{
+  position:fixed;left:0;top:0;z-index:9999;pointer-events:none;
+  transform:translate(-50%,-130%);
+  background:var(--cyan);color:#06121f;font-weight:700;font-size:14px;
+  padding:7px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.45);
+  max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.pd-over{border-color:var(--cyan)!important;box-shadow:0 0 0 3px var(--cyan-dim),0 6px 18px rgba(45,212,238,.18)!important}
+body.pdragging{-webkit-user-select:none;user-select:none;cursor:grabbing}
+body.pdragging .pcard,body.pdragging .chip,body.pdragging .tcard{cursor:grabbing}
+body.board .pdrag-ghost{font-size:1.1vw;padding:.5vw .9vw}
+
 /* =====================================================================
    BORDMODUS — groot scherm (100"): taakkaarten + afwezigheidsblokken
    ===================================================================== */
@@ -234,7 +247,68 @@ body.board #absGrid .tcount{font-size:1vw;min-width:1.8vw;height:1.8vw;border-ra
 body.board #absGrid .tbody{flex-direction:row;flex-wrap:wrap;align-items:center;gap:.4vw;padding:.55vw .8vw;overflow:visible}
 body.board #absGrid .chip{display:inline-flex;background:var(--panel);border:1px solid var(--line2);border-radius:.5vw;padding:.3vw .65vw;font-size:1vw;font-weight:600;color:var(--txt)}
 body.board #absGrid .chip .bdg{font-size:.65vw;padding:.2vw .45vw}
-body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
+/* ===== view-tabs ===== */
+.viewtabs{display:flex;gap:4px;padding:8px 18px 0;background:var(--bg);position:sticky;top:0;z-index:40}
+.vtab{font-family:var(--fd);font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase;padding:9px 18px;border:1px solid var(--line2);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel2);color:var(--muted);cursor:pointer}
+.vtab.active{background:var(--panel);color:var(--txt);border-color:var(--cyan);box-shadow:inset 0 2px 0 var(--cyan)}
+
+/* ===== outbound: hergebruikt inbound .tcard/.chip volledig ===== */
+.ob-wrap{padding-top:10px}
+.ob-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.ob-legend{display:flex;gap:12px;flex-wrap:wrap}
+.ob-leg{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted)}
+.ob-sw{width:13px;height:13px;border-radius:4px;background:var(--c);border:1px solid rgba(255,255,255,.15);flex:0 0 auto}
+.ob-counts{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.ob-pip{width:8px;height:8px;border-radius:50%;background:var(--p);flex:0 0 auto}
+.chip.sel{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-dim), 0 6px 18px rgba(45,212,238,.15)}
+.chip.ob-afw{background:#5a3a12;border-color:#f6a800}
+.chip.ob-dim{opacity:.4;filter:grayscale(.6)}
+.ob-statusbar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.ob-tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 14px;position:relative;overflow:hidden;min-height:74px}
+.ob-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac,var(--cyan))}
+.ob-th{color:var(--muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ob-tn{font-family:var(--fd);font-weight:700;font-size:32px;color:var(--txt);line-height:1.15}
+.ob-scan{position:absolute;top:0;bottom:0;width:42px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ac,var(--cyan)) 28%,transparent),transparent);transform:translateX(-60px);pointer-events:none}
+@media (prefers-reduced-motion:no-preference){.ob-scan{animation:ob-scan 5s linear infinite}}
+@keyframes ob-scan{0%{transform:translateX(-60px)}55%,100%{transform:translateX(440px)}}
+.ob-names-wrap{height:46px;overflow:hidden;position:relative}
+.ob-names{position:absolute;left:0;right:0;top:0;will-change:transform}
+.ob-nrow{font-family:var(--fd);font-weight:700;font-size:17px;color:var(--txt);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:23px}
+.ob-nrow b{color:var(--ac,var(--orange));font-weight:700}
+body.board .ob-statusbar{gap:.8vw;margin-bottom:1vw}
+body.board .ob-tile{min-height:0;border-radius:.8vw;padding:.7vw 1vw}
+body.board .ob-th{font-size:.85vw}
+body.board .ob-tn{font-size:2.6vw}
+body.board .ob-names-wrap{height:3.8vw}
+body.board .ob-nrow{font-size:1.3vw;line-height:1.9vw}
+body.board .ob-scan{width:3.2vw}
+
+.chip.ob-afw .ob-tag{background:#f6a800;color:#1a1205}
+body.board #outboundView .chip.ob-afw{background:#5a3a12;border-color:#f6a800}
+.ob-st{font-size:10px;font-weight:800;letter-spacing:.02em;color:#fff;background:var(--s);border-radius:4px;padding:2px 6px;flex:0 0 auto;min-width:30px;text-align:center}
+.ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+.ob-tag{font-size:10px;font-weight:800;background:var(--cyan);color:#06121f;border-radius:4px;padding:1px 5px;flex:0 0 auto}
+.ob-ddel{cursor:pointer;color:#0a1424;font-weight:800;opacity:.6}.ob-ddel:hover{opacity:1}
+.ob-colpick{width:22px;height:22px;border:1px solid rgba(10,20,36,.45);border-radius:5px;background:transparent;cursor:pointer;padding:0;flex:0 0 auto;margin-left:4px}
+.ob-colpick::-webkit-color-swatch-wrapper{padding:0}.ob-colpick::-webkit-color-swatch{border:none;border-radius:4px}
+.chip .x{cursor:pointer;opacity:.5;font-weight:800;color:var(--red);margin-left:auto}.chip .x:hover{opacity:1}
+.ob-clock{cursor:pointer;opacity:.7;font-size:12px}.ob-clock:hover{opacity:1}
+.chip .ob-clock{display:none}
+body.ob-edit .chip .ob-clock{display:inline}
+/* bordmodus: inbound .tcard-bordregels gelden automatisch ook hier;
+   chip-badges meeschalen */
+body.board .ob-bar{display:none}
+body.board .viewtabs{display:none}
+body.board .ob-st{font-size:.7vw;min-width:1.8vw;padding:.1vw .35vw}
+body.board .ob-pip{width:.55vw;height:.55vw}
+body.board .ob-tag{font-size:.62vw;padding:0 .35vw}
+body.board #outboundView .chip{display:flex;gap:.4vw;background:var(--panel);border:1px solid var(--line2);border-radius:.5vw;padding:.25vw .5vw;font-size:.95vw}
+
+.dlogo{background-image:url(data:image/png;base64,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);background-repeat:no-repeat;background-position:center;background-size:contain}
+.brand-logo{width:118px;height:24px;opacity:.92;margin-left:14px;align-self:center;flex:0 0 auto}
+#boardLogo{display:none}
+body.board #boardLogo{display:block;position:fixed;right:1.4vw;bottom:1.1vw;width:11vw;height:2.4vw;opacity:.6;z-index:60;pointer-events:none}
+@media (max-width:560px){.brand-logo{display:none}}
 </style>
 </head>
 <body>
@@ -244,8 +318,10 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
     <h1>Taak<b>verdeling</b></h1>
     <span>Planning magazijn · per dag</span>
   </div>
+  <div class="dlogo brand-logo" role="img" aria-label="D'Ieteren"></div>
   <div class="spacer"></div>
   <button class="btn" id="linkBtn" title="Eén keer je OneDrive-gesynchroniseerde planning kiezen; daarna onthoudt het dashboard het bestand">📂 Planning koppelen</button>
+  <button class="btn" id="linkSiBtn" title="Studenten/interim-planning koppelen (Planning_interims_en_studenten_2026.xlsx) — voor de avondploeg na 18u">👷 Studenten/interims</button>
   <button class="btn" id="syncBtn" title="Gedeeld sync-bestand koppelen (taakverdeling.json in dezelfde OneDrive-map) — zo delen invul-PC en bord dezelfde toewijzingen, historiek en taken">🔗 Sync</button>
   <span id="saveDot" class="savedot" hidden title="Opslagstatus van de gedeelde planning"></span>
   <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden>
@@ -266,7 +342,12 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
   <button class="btn" id="setBtn" title="Instellingen">⚙</button>
 </div></header>
 
-<div class="wrap">
+<div class="viewtabs">
+  <button class="vtab active" data-view="inbound">📥 Inbound</button>
+  <button class="vtab" data-view="outbound">📤 Outbound</button>
+</div>
+
+<div class="wrap" id="inboundView">
   <div id="boardBar">
     <span class="bb-title">Taak<b>verdeling</b></span>
     <span class="bb-day" id="bDay"></span>
@@ -360,6 +441,60 @@ body.board #absGrid .thint{display:block;border:0;padding:.2vw;font-size:.95vw}
   </main>
 </div>
 
+<div class="wrap ob-wrap" id="outboundView" hidden>
+  <div class="ob-bar">
+    <div class="ob-legend">
+      <span class="ob-leg"><i class="ob-sw" style="--c:#b8332a"></i>A Ploeg</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#1f6fa8"></i>B Ploeg</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#23262b"></i>Vaste Late</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#7d3c98"></i>Tijdskrediet</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#d35400"></i>Afwezig</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#e67e22"></i>Leidinggevende</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#27ae60"></i>Vroege shift</span>
+      <span class="ob-leg"><i class="ob-sw" style="--c:#16a085"></i>🌙 Avondstudent</span>
+    </div>
+    <span class="ob-counts" id="obCounts"></span>
+    <span class="sp"></span>
+    <button class="btn" id="obTplSave" title="Huidige indeling als standaard sjabloon bewaren">📌 Sjabloon</button>
+    <button class="btn" id="obTplMode" title="Template-bouwmodus: toon ook afwezigen in de pool zodat je iedereen in zijn vaste sector kunt zetten. Zet daarna uit.">🧩 Template-modus</button>
+    <button class="btn" id="obTplLoad" title="Opgeslagen sjabloon terugzetten">↩ Herstel</button>
+    <button class="btn" id="obSync" title="Opnieuw uit de planning laden">🔄 Uit planning</button>
+    <button class="btn" id="obHoursToggle" title="Uren-automatiek aan/uit — aan = mensen verschijnen/verdwijnen op hun ploeguren (voor het TV-bord); uit = iedereen beschikbaar (om te plannen)">⏰ Uren: uit</button>
+    <span class="ob-counts" id="obClock" title="Huidige tijd (of testtijd)">🕐 --:--</span>
+    <label class="btn" title="Testtijd instellen om het verdwijnen-op-uren te testen — leeg laten = echte klok">🕐 Test <input type="time" id="obTestTime" style="background:transparent;border:0;color:inherit;font:inherit;width:62px"></label>
+    <button class="btn" id="siLink" title="Tweede Excel koppelen: avondstudenten &amp; interims (Planning_interims_en_studenten_2026.xlsx)">👷 Studenten/interims</button>
+    <button class="btn" id="obAvond" title="Avondploeg (studenten/interims): auto = automatisch ná 18u (vr 16u) · aan = altijd tonen · uit = verbergen">🌙 Avond: auto</button>
+    <span class="ob-counts" id="obSiStatus" style="color:var(--cyan)"></span>
+    <input type="file" id="siFileInput" accept=".xlsx,.xlsm,.xls" hidden>
+    <button class="btn" id="obAddName">＋ Naam</button>
+    <button class="btn" id="obAddDept">＋ Afdeling</button>
+    <button class="btn" id="obEdit" title="Bewerkmodus (verslepen/verwijderen)">✎ Bewerken</button>
+    <button class="btn primary" id="obBoardBtn" title="Groot bord">📺 Bord</button>
+    <button class="btn" id="obShot" title="Screenshot voor iObeya">📸</button>
+  </div>
+  <div class="ob-statusbar" id="obStatusbar"></div>
+  <section class="stats">
+    <div class="stat av"><b id="obStFree">0</b><span>Vrij</span></div>
+    <div class="stat pl"><b id="obStPlan">0</b><span>Ingepland</span></div>
+    <div class="stat ab"><b id="obStAbs">0</b><span>Afwezig</span></div>
+  </section>
+  <main class="layout">
+    <aside class="pool">
+      <h2>Klik naam, daarna een afdeling — of sleep</h2>
+      <input type="text" class="search" id="obSearch" placeholder="Zoek naam…" autocomplete="off">
+      <div id="obPool"></div>
+      <div class="absent">
+        <h2>Niet beschikbaar</h2>
+        <div id="obAbsent"></div>
+      </div>
+    </aside>
+    <section>
+      <div class="ob-board" id="obBoard"></div>
+    </section>
+  </main>
+</div>
+
+<div class="dlogo" id="boardLogo" role="img" aria-label="D'Ieteren"></div>
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -665,7 +800,7 @@ function collectLocal(){
       }
     }
   }catch(e){}
-  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || []};
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null};
 }
 async function syncPerm(ask){
   if(!sync.handle) return false;
@@ -688,6 +823,10 @@ async function syncRead(force){
     if(doc.hist)  store.set("vp_hist", doc.hist);
     if(doc.tasks) store.set("vp_tasks", doc.tasks);
     if(doc.order) store.set("vp_taskorder", doc.order);
+    if(doc.obPlace){ store.set("vp_ob_place", doc.obPlace); if(typeof obDepts !== "undefined" && doc.obPlace.depts){ obDepts = doc.obPlace.depts; if(typeof obSyncRosterToDepts==="function") obSyncRosterToDepts(); if(!document.getElementById("outboundView").hidden) obRender(); } }
+    if(doc.obTpl){ store.set("vp_ob_template", doc.obTpl); }
+    if(doc.obHours){ store.set("vp_ob_hours", doc.obHours); }
+    if(doc.obColors){ store.set("vp_ob_deptcolors", doc.obColors); }
     rebuildTasks();
     if(state.model) loadDayState();
     render();
@@ -711,7 +850,7 @@ async function syncWrite(){
   setSaveDot("busy");
   try{
     var local = collectLocal();
-    var doc = {v:1, updated:Date.now(), writer:CLIENT_ID, days:{}, hist:{}, tasks:local.tasks, order:local.order};
+    var doc = {v:1, updated:Date.now(), writer:CLIENT_ID, days:{}, hist:{}, tasks:local.tasks, order:local.order, obPlace:local.obPlace, obTpl:local.obTpl, obHours:local.obHours, obColors:local.obColors};
     /* dagen en historiek van andere schrijvers behouden (per-dag samenvoegen) */
     try{
       var f0 = await sync.handle.getFile();
@@ -783,6 +922,13 @@ function updSyncBtn(){
   }
 }
 setInterval(function(){ syncRead(false); }, 30000);
+/* elke minuut: outbound uren-vensters herevalueren zodat mensen automatisch
+   uit/in de planning gaan op hun ingestelde tijd */
+setInterval(function(){
+  if(typeof obRefreshFromExcel==="function" && !document.getElementById("outboundView").hidden){
+    obRefreshFromExcel();
+  }
+}, 60000);
 window.addEventListener("focus", function(){ syncRead(false); });
 /* bij sluiten: als er nog een schrijfactie in de wachtrij staat, meteen wegschrijven
    en de gebruiker waarschuwen zodat de laatste wijziging niet verloren gaat */
@@ -830,7 +976,7 @@ var state = {
   overrides:{}, assign:{}, marks:{},
   handle:null, fileInfo:"", lastLoad:0,
   filter:"", board:false, dragFrom:null, dragTask:null,
-  webview:false, autoSwitch:true
+  webview:false, autoSwitch:true, manualNav:false, shooting:false
 };
 function $(s){ return document.querySelector(s); }
 function el(tag, cls, html){ var d = document.createElement(tag); if(cls) d.className = cls; if(html !== undefined) d.innerHTML = html; return d; }
@@ -915,12 +1061,13 @@ function setSheet(name){
   buildBlockChips();
   loadDayState();
   render();
+  if(typeof obRefreshFromExcel === "function") obRefreshFromExcel();
 }
 
 async function loadFile(file, viaHandle){
   try{
     var buf = await file.arrayBuffer();
-    var wb = XLSX.read(buf, {type:"array"});
+    var wb = XLSX.read(buf, {type:"array", bookFiles:true, cellStyles:true});
     ingestWorkbook(wb, file.name + (file.lastModified ? " · " + fmtDT(file.lastModified) : ""));
     toast("Planning ingelezen" + (viaHandle ? " (gekoppeld bestand)" : ""));
   }catch(e){ console.error(e); banner("err", "Kon dit bestand niet lezen als Excel."); }
@@ -972,7 +1119,7 @@ async function loadFromUrl(url){
     var res = await fetch(odDirect(url));
     if(!res.ok) throw new Error("HTTP " + res.status);
     var buf = await res.arrayBuffer();
-    var wb = XLSX.read(buf, {type:"array"});
+    var wb = XLSX.read(buf, {type:"array", bookFiles:true, cellStyles:true});
     ingestWorkbook(wb, "via URL · " + fmtDT(Date.now()));
     toast("Planning geladen via URL");
     return true;
@@ -1249,7 +1396,7 @@ function render(){
           '<div class="pbadges">' + taskDots(m.name) + badgesHtml(m.name, false) + "</div></div>" +
           '<button class="cycle" data-cyc="' + esc(m.name) + '" title="Status manueel wijzigen">✎</button>');
         c.style.setProperty("--bclr", clr);
-        c.dataset.name = m.name; c.draggable = true; c.tabIndex = 0; c.setAttribute("role","button");
+        c.dataset.name = m.name; c.tabIndex = 0; c.setAttribute("role","button");
         c.title = histTitle(m.name);
         frag.appendChild(c); shown++;
         if(!planned[m.name]){ freeCnt++; availCnt++; }
@@ -1294,11 +1441,10 @@ function render(){
     card.style.background = mixColor(_hue, 13, _p2);
     card.style.borderColor = mixColor(_hue, 40, _ln);
     card.dataset.task = t;
-    card.draggable = true;
     var body = "";
     vis.forEach(function(n){
       var mk = (state.marks[t] || {})[n] || 0;
-      body += '<div class="chip' + (mk ? ' mk mk' + mk : '') + '" draggable="true" data-name="' + esc(n) + '" data-from="' + esc(t) + '"><span data-mark="' + esc(n) + '" data-mtask="' + esc(t) + '" title="Klik om een kleur te geven (speciale opdracht)">' + (mk ? '<i class="mdot"></i>' : '') + esc(n) + "</span>" +
+      body += '<div class="chip' + (mk ? ' mk mk' + mk : '') + '" data-name="' + esc(n) + '" data-from="' + esc(t) + '"><span data-mark="' + esc(n) + '" data-mtask="' + esc(t) + '" title="Klik om een kleur te geven (speciale opdracht)">' + (mk ? '<i class="mdot"></i>' : '') + esc(n) + "</span>" +
               '<span class="cb">' + chipBadges(n) + "</span>" +
               '<button class="x" data-un="' + esc(n) + '" data-task="' + esc(t) + '" title="Verwijderen">×</button></div>';
     });
@@ -1472,15 +1618,18 @@ function setBoard(on){
   }
   state.selected = null;
   render();
+  if(typeof obData !== "undefined" && !document.getElementById("outboundView").hidden) obRender();
 }
 function tickClock(){
   var d = new Date();
   $("#bClock").textContent = ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2);
 }
-/* op het bord automatisch meeschuiven naar de juiste dag/week */
+/* op het bord automatisch meeschuiven naar de juiste dag/week
+   — behalve als de gebruiker handmatig vooruit/terug heeft gekozen */
 setInterval(function(){
   tickClock();
   if(!state.board || !state.model || !state.weeks.length) return;
+  if(state.manualNav || state.shooting) return;   /* handmatig gekozen dag of snip bezig → niet terugspringen */
   var now = new Date();
   var wk = isoWeek(now);
   if(state.model.week !== null && state.model.week !== wk){
@@ -1590,51 +1739,130 @@ document.addEventListener("keydown", function(e){
     render();
   }
 });
-document.addEventListener("dragstart", function(e){
-  /* naam verslepen: enkel op het invulblad */
-  var src = e.target.closest("[draggable][data-name]");
-  if(src && !state.board){
-    state.dragFrom = src.dataset.from || null;
-    e.dataTransfer.setData("text/plain", src.dataset.name);
-    e.dataTransfer.effectAllowed = "move";
-    return;
-  }
-  /* taakkaart verslepen: volgorde wijzigen, ook op het bord */
-  var tc = e.target.closest(".tcard[data-task]");
-  if(tc){
-    state.dragTask = tc.dataset.task;
-    e.dataTransfer.setData("text/plain", "task::" + tc.dataset.task);
-    e.dataTransfer.effectAllowed = "move";
-    return;
-  }
-  if(state.board) e.preventDefault();
-});
-document.addEventListener("dragend", function(){
-  state.dragFrom = null; state.dragTask = null;
-  if(!state.selected) document.querySelectorAll(".tcard.drop").forEach(function(x){ x.classList.remove("drop"); });
-});
-document.addEventListener("dragover", function(e){
-  var tc = e.target.closest(".tcard[data-task]");
-  if(tc){ e.preventDefault(); tc.classList.add("drop"); }
-});
-document.addEventListener("dragleave", function(e){
-  var tc = e.target.closest(".tcard[data-task]");
-  if(tc && !state.selected) tc.classList.remove("drop");
-});
-document.addEventListener("drop", function(e){
-  var tc = e.target.closest(".tcard[data-task]");
-  if(tc){
-    e.preventDefault();
-    var data = e.dataTransfer.getData("text/plain") || "";
-    if(state.dragTask || data.indexOf("task::") === 0){
-      reorderTask(state.dragTask || data.slice(6), tc.dataset.task);
-    } else if(!state.board && data){
-      assignName(data, tc.dataset.task, state.dragFrom);
+/* =====================================================================
+   Verslepen — touch- én muisvriendelijk via Pointer Events
+   Eén gedeelde laag voor inbound (namen, taakvolgorde) én outbound
+   (namen → afdeling, afdelingen herordenen). Op touch begint het slepen
+   met een korte ingedrukte vinger (long-press ~200 ms); beweegt de vinger
+   meteen, dan scrollt de lijst gewoon. Tikken blijft selecteren.
+   ===================================================================== */
+var pdrag = {id:null, kind:null, name:null, from:null, task:null, di:null,
+             sx:0, sy:0, ghost:null, started:false, longTimer:null, srcEl:null, isTouch:false};
+var pdSuppress = false;
+function pdSuppressClick(){ pdSuppress = true; setTimeout(function(){ pdSuppress = false; }, 350); }
+function pdClearHi(){ document.querySelectorAll(".pd-over").forEach(function(n){ n.classList.remove("pd-over"); }); }
+function pdEnd(){
+  if(pdrag.ghost) pdrag.ghost.remove();
+  clearTimeout(pdrag.longTimer);
+  document.body.classList.remove("pdragging");
+  pdClearHi();
+  pdrag.id = null; pdrag.kind = null; pdrag.name = null; pdrag.from = null;
+  pdrag.task = null; pdrag.di = null; pdrag.ghost = null; pdrag.started = false;
+  pdrag.srcEl = null; pdrag.longTimer = null;
+}
+/* wat zit er onder de pointer bij het neerleggen? */
+function pdSource(t){
+  if(t.closest("button, .x, .ob-clock, .ob-ddel, input, select, .cycle, .tdel")) return null;
+  var outb = !document.getElementById("outboundView").hidden;
+  if(outb){
+    var chip = t.closest("#obPool .chip[data-name], #obBoard .chip[data-name]");
+    if(chip) return {kind:"obname", name:chip.dataset.name, srcEl:chip};
+    if(obEdit){
+      var oc = t.closest("#obBoard .tcard[data-di]");
+      if(oc && !t.closest(".chip")) return {kind:"obdept", di:+oc.dataset.di, srcEl:oc};
     }
+    return null;
   }
-  state.dragFrom = null; state.dragTask = null;
-  if(!state.selected) document.querySelectorAll(".tcard.drop").forEach(function(x){ x.classList.remove("drop"); });
+  var nchip = t.closest(".tcard[data-task] .chip[data-name]");
+  if(nchip && !state.board) return {kind:"name", name:nchip.dataset.name, from:nchip.dataset.from || null, srcEl:nchip};
+  var pc = t.closest(".pcard[data-name]");
+  if(pc && !state.board) return {kind:"name", name:pc.dataset.name, from:null, srcEl:pc};
+  var tc = t.closest(".tcard[data-task]");
+  if(tc) return {kind:"task", task:tc.dataset.task, srcEl:tc};
+  return null;
+}
+function pdTargetAt(x, y){
+  var el = document.elementFromPoint(x, y); if(!el) return null;
+  if(!document.getElementById("outboundView").hidden){
+    if(pdrag.kind === "obname"){
+      var c = el.closest("#obBoard .tcard[data-di]");
+      if(c) return {type:"obdept", di:+c.dataset.di, el:c};
+    } else if(pdrag.kind === "obdept"){
+      var c2 = el.closest("#obBoard .tcard[data-di]");
+      if(c2) return {type:"obdeptreorder", di:+c2.dataset.di, el:c2};
+    }
+    return null;
+  }
+  var tcd = el.closest(".tcard[data-task]");
+  if(tcd) return {type:"task", task:tcd.dataset.task, el:tcd};
+  return null;
+}
+function pdMoveGhost(x, y){ if(pdrag.ghost){ pdrag.ghost.style.left = x + "px"; pdrag.ghost.style.top = y + "px"; } }
+function pdStart(){
+  if(pdrag.started || !pdrag.kind) return;
+  pdrag.started = true;
+  document.body.classList.add("pdragging");
+  try{ if(pdrag.srcEl && pdrag.srcEl.setPointerCapture && pdrag.id != null) pdrag.srcEl.setPointerCapture(pdrag.id); }catch(_){}
+  var label = pdrag.name || (pdrag.kind === "task" ? pdrag.task
+            : (pdrag.kind === "obdept" ? (obDepts[pdrag.di] && obDepts[pdrag.di].label) : "")) || "";
+  var g = document.createElement("div"); g.className = "pdrag-ghost"; g.textContent = label;
+  document.body.appendChild(g); pdrag.ghost = g;
+  pdMoveGhost(pdrag.sx, pdrag.sy);
+  if(navigator.vibrate){ try{ navigator.vibrate(15); }catch(_){} }
+}
+function pdHighlight(x, y){
+  pdClearHi();
+  var tgt = pdTargetAt(x, y);
+  if(tgt && tgt.el) tgt.el.classList.add("pd-over");
+}
+document.addEventListener("pointerdown", function(e){
+  if(e.button && e.button !== 0) return;
+  var src = pdSource(e.target);
+  if(!src) return;
+  pdrag.id = e.pointerId; pdrag.kind = src.kind; pdrag.name = src.name || null;
+  pdrag.from = src.from || null; pdrag.task = src.task || null;
+  pdrag.di = (src.di == null ? null : src.di); pdrag.srcEl = src.srcEl;
+  pdrag.sx = e.clientX; pdrag.sy = e.clientY; pdrag.started = false;
+  pdrag.isTouch = (e.pointerType === "touch" || e.pointerType === "pen");
+  if(pdrag.isTouch) pdrag.longTimer = setTimeout(pdStart, 200);
 });
+document.addEventListener("pointermove", function(e){
+  if(pdrag.id == null || e.pointerId !== pdrag.id) return;
+  var dx = e.clientX - pdrag.sx, dy = e.clientY - pdrag.sy;
+  if(!pdrag.started){
+    if(pdrag.isTouch){
+      if(Math.abs(dx) > 10 || Math.abs(dy) > 10){ clearTimeout(pdrag.longTimer); pdEnd(); } /* vinger beweegt → scroll */
+      return;
+    }
+    if(Math.abs(dx) > 6 || Math.abs(dy) > 6) pdStart(); else return;
+  }
+  e.preventDefault();
+  pdMoveGhost(e.clientX, e.clientY);
+  pdHighlight(e.clientX, e.clientY);
+}, {passive:false});
+document.addEventListener("pointerup", function(e){
+  if(pdrag.id == null || e.pointerId !== pdrag.id) return;
+  clearTimeout(pdrag.longTimer);
+  if(!pdrag.started){ pdEnd(); return; }   /* was een tik → laat de klik selecteren */
+  var tgt = pdTargetAt(e.clientX, e.clientY);
+  var k = pdrag.kind, nm = pdrag.name, from = pdrag.from, tk = pdrag.task, di = pdrag.di;
+  pdEnd();
+  pdSuppressClick();
+  if(!tgt) return;
+  if(k === "name" && tgt.type === "task") assignName(nm, tgt.task, from);
+  else if(k === "task" && tgt.type === "task") reorderTask(tk, tgt.task);
+  else if(k === "obname" && tgt.type === "obdept") obPlace(nm, tgt.di);
+  else if(k === "obdept" && tgt.type === "obdeptreorder" && tgt.di !== di){
+    var m = obDepts.splice(di, 1)[0]; obDepts.splice(tgt.di, 0, m); obSave();
+  }
+});
+document.addEventListener("pointercancel", function(e){
+  if(pdrag.id != null && e.pointerId === pdrag.id){ clearTimeout(pdrag.longTimer); pdEnd(); }
+});
+/* een klik die ná een sleep komt, niet als selectie/plaatsing laten tellen */
+document.addEventListener("click", function(e){
+  if(pdSuppress){ e.stopPropagation(); e.preventDefault(); }
+}, true);
 
 $("#linkBtn").addEventListener("click", pickAndLink);
 $("#syncBtn").addEventListener("click", syncLink);
@@ -1668,11 +1896,16 @@ window.addEventListener("storage", function(e){
   if(e.key && (e.key === stateKey() || e.key === "vp_hist" || e.key === "vp_tasks" || e.key === "vp_taskorder")){ loadDayState(); render(); }
 });
 
-$("#weekSel").addEventListener("change", function(e){ setSheet(e.target.value); });
-$("#daySel").addEventListener("change", function(e){ state.dayKey = e.target.value; loadDayState(); state.selected = null; render(); });
+$("#weekSel").addEventListener("change", function(e){ state.manualNav = true; setSheet(e.target.value); if(typeof flashLoaded==="function") flashLoaded(); });
+function flashLoaded(){
+  var d=$("#daySel"); if(!d) return;
+  d.style.transition="box-shadow .15s"; d.style.boxShadow="0 0 0 3px var(--green)";
+  setTimeout(function(){ d.style.boxShadow=""; }, 450);
+}
+$("#daySel").addEventListener("change", function(e){ state.dayKey = e.target.value; state.manualNav = true; loadDayState(); state.selected = null; render(); if(typeof obRefreshFromExcel==="function" && !document.getElementById("outboundView").hidden) obRefreshFromExcel(); flashLoaded(); });
 $("#searchBox").addEventListener("input", function(e){ state.filter = norm(e.target.value); render(); });
 $("#boardBtn").addEventListener("click", function(){ setBoard(true); });
-$("#bExit").addEventListener("click", function(){ setBoard(false); });
+$("#bExit").addEventListener("click", function(){ state.manualNav = false; setBoard(false); });
 $("#copyBtn").addEventListener("click", copySummary);
 $("#resetBtn").addEventListener("click", function(){
   var b = $("#resetBtn");
@@ -1704,6 +1937,7 @@ function loadH2C(){
 }
 async function takeShot(){
   var wasBoard = state.board;
+  state.shooting = true;
   if(!wasBoard){ setBoard(true); await new Promise(function(r){ setTimeout(r, 400); }); }
   toast("Screenshot maken…");
   try{
@@ -1736,6 +1970,7 @@ async function takeShot(){
   }catch(err){
     toast("Screenshot mislukt: " + err.message);
   }
+  setTimeout(function(){ state.shooting = false; }, 1500);
 }
 $("#shotBtn").addEventListener("click", takeShot);
 
@@ -1774,6 +2009,646 @@ $("#srcClear").addEventListener("click", function(){ store.del("vp_url"); $("#sr
 /* =====================================================================
    Init: gekoppeld bestand → bron-URL → leeg  (+ #bord voor het scherm)
    ===================================================================== */
+
+/* ===================================================================
+   OUTBOUND — volledig uit de Excel gevoed
+   Kolommen: AFDELING | A PLOEG | B PLOEG | VERLOF | TIJDSKREDIET | AFWEZIG
+   Plaatsing per gekozen dag uit de dagcellen:
+     X -> Verlof | TK -> Tijdskrediet | Z -> Afwezig
+     IP -> blijft in ploeg (badge "IP") | -1/-2/.. -> ploeg (uren-badge)
+     leeg -> aanwezig in ploeg
+   Rol uit naam-celkleur: oranje=leider | groen=vroege shift | zwart=vaste late
+   =================================================================== */
+var OB_IDXPAL={8:"000000",9:"FFFFFF",10:"FF0000",11:"00FF00",12:"0000FF",13:"FFFF00",14:"FF00FF",15:"00FFFF",16:"800000",17:"008000",18:"000080",19:"808000",20:"800080",21:"008080",22:"C0C0C0",23:"808080",24:"9999FF",25:"993366",26:"FFFFCC",27:"CCFFFF",28:"660066",29:"FF8080",30:"0066CC",31:"CCCCFF",32:"000080",33:"FF00FF",34:"FFFF00",35:"00FFFF",36:"800080",37:"800000",38:"008080",39:"0000FF",40:"00CCFF",41:"CCFFFF",42:"CCFFCC",43:"FFFF99",44:"99CCFF",45:"FF99CC",46:"CC99FF",47:"FFCC99",48:"3366FF",49:"33CCCC",50:"99CC00",51:"FFCC00",52:"FF9900",53:"FF6600",54:"666699",55:"969696",56:"003366",57:"339966",58:"003300",59:"333300",60:"993300",61:"993366",62:"333399",63:"333333",64:"000000"};
+function obTint(hex,t){var r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+  if(t<0){r=Math.round(r*(1+t));g=Math.round(g*(1+t));b=Math.round(b*(1+t));}else{r=Math.round(r+(255-r)*t);g=Math.round(g+(255-g)*t);b=Math.round(b+(255-b)*t);}
+  var x=function(n){return ("0"+Math.max(0,Math.min(255,n)).toString(16)).slice(-2).toUpperCase();};return x(r)+x(g)+x(b);}
+function obReadText(wb,path){var f=wb.files&&wb.files[path];if(!f)return"";var c=f.content;if(typeof c==="string")return c;try{return new TextDecoder("utf-8").decode(c);}catch(e){var s="";for(var i=0;i<c.length;i++)s+=String.fromCharCode(c[i]);return s;}}
+function obBuildColorMap(wb){
+  var theme=obReadText(wb,"xl/theme/theme1.xml");
+  var order=["lt1","dk1","lt2","dk2","accent1","accent2","accent3","accent4","accent5","accent6"];
+  var sc=(theme.match(/<a:clrScheme[\s\S]*?<\/a:clrScheme>/)||[""])[0]; var tm={};
+  order.forEach(function(nm,i){var re=new RegExp("<a:"+nm+">[\\s\\S]*?(?:srgbClr val=\"([0-9A-Fa-f]{6})\"|sysClr val=\"\\w+\" lastClr=\"([0-9A-Fa-f]{6})\")");var m=sc.match(re);tm[i]=m?(m[1]||m[2]):"000000";});
+  var styles=obReadText(wb,"xl/styles.xml");
+  var fb=(styles.match(/<fills[^>]*>([\s\S]*?)<\/fills>/)||["",""])[1];
+  var fills=(fb.match(/<fill>[\s\S]*?<\/fill>/g)||[]).map(function(f){
+    var fg=f.match(/<fgColor([^/]*)\/>/);if(!fg)return null;var a=fg[1];
+    var rgb=a.match(/rgb="([0-9A-Fa-f]{6,8})"/);if(rgb)return rgb[1].slice(-6);
+    var th=a.match(/theme="(\d+)"/);if(th){var ti=a.match(/tint="([-0-9.]+)"/);return obTint(tm[+th[1]]||"000000",ti?+ti[1]:0);}
+    var ix=a.match(/indexed="(\d+)"/);if(ix)return OB_IDXPAL[+ix[1]]||null;
+    return null;});
+  var xb=(styles.match(/<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/)||["",""])[1];
+  var xfs=(xb.match(/<xf[^>]*\/?>/g)||[]).map(function(x){var f=x.match(/fillId="(\d+)"/);return f?+f[1]:0;});
+  return {xfs:xfs,fills:fills};
+}
+function obRole(hex){if(!hex)return"gewoon";var r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+  if(r>200&&g>110&&g<200&&b<100)return"leider";if(g>r&&g>b&&g>120)return"vroeg";if(r<70&&g<70&&b<70)return"late";return"gewoon";}
+/* dagkolommen: ploeg A start D(4), ploeg B start P(16); per dag 2 kolommen */
+var OB_DAYIDX={MA:0,DI:1,WO:2,DO:3,VR:4};
+function obColLetter(n){var s="";n++;while(n>0){var m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+/* classificeer een dagwaarde-paar (VM,NM) -> {kol, badge} */
+function obClassify(vm,nm){
+  function up(x){return x==null?"":(""+x).trim().toUpperCase();}
+  var a=up(vm), b=up(nm);
+  var both=[a,b];
+  // hele dag verlof/ziek/tk indien beide cellen die code hebben
+  function isAll(code){return a===code&&b===code;}
+  if(isAll("X")) return {kol:"verlof"};
+  if(isAll("Z")) return {kol:"afwezig", badge:"ziek"};
+  if(isAll("TK")) return {kol:"tk"};
+  if(a==="TK"||b==="TK") return {kol:"tk"};            // halve dag TK -> tijdskrediet
+  if(a==="X"||b==="X")   return {kol:"verlof"};         // halve dag verlof
+  if(a==="Z"||b==="Z")   return {kol:"afwezig", badge:"ziek"};
+  // training/syndicaal = afwezig
+  if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("HT")>=0) return {kol:"afwezig"};
+  // IP = werktaak, blijft in ploeg met badge
+  var ipB = (both.indexOf("IP")>=0) ? "IP" : null;
+  // uren-aftrek (-1/-2/...) -> blijft in ploeg met uren-badge
+  var ur=null;
+  [vm,nm].forEach(function(v){ if(v!=null){ var n=parseFloat((""+v).replace(",",".")); if(!isNaN(n)&&n<0) ur=(""+n).replace(".0",""); } });
+  var bd = ipB || (ur!=null?ur+"u":null);
+  return {kol:"ploeg", badge:bd};
+}
+/* =====================================================================
+   AVOND — tweede Excel (Planning_interims_en_studenten_2026.xlsx)
+   Avondstudenten (4u-pool) + interims (8u → bij vaste late).
+   Sheets heten KW{weeknr}; dagkolommen F..J = ma..vr met UREN.
+   Verschijnt automatisch ná 18u (vr 16u), of via de 🌙-knop.
+   ===================================================================== */
+var siWb=null, siHandle=null;
+var SI_DAYCOL={MA:"F",DI:"G",WO:"H",DO:"I",VR:"J"};
+function avondMode(){ var f=store.get("vp_ob_avond"); return (f==="aan"||f==="uit") ? f : "auto"; }
+function avondActief(){
+  var m=avondMode();
+  if(m==="aan") return true;
+  if(m==="uit") return false;
+  var n=new Date(), dow=n.getDay(), min=obNowMin();
+  if(dow===0||dow===6) return false;          // weekend
+  if(dow===5) return min>=16*60;              // vrijdag vanaf 16u
+  return min>=18*60;                          // ma–do vanaf 18u
+}
+function siForDay(){
+  if(!siWb || !state.model || state.model.week==null) return [];
+  var sheet="KW"+state.model.week;
+  if(siWb.SheetNames.indexOf(sheet)<0) return [];
+  var ws=siWb.Sheets[sheet];
+  var dc=SI_DAYCOL[state.dayKey]; if(!dc) return [];
+  var out=[], group=null, header="";
+  for(var r=13;r<=80;r++){
+    var b=ws["B"+r]; if(!b || b.v==null) continue;
+    var t=(""+b.v).trim(); if(!t) continue;
+    var up=t.toUpperCase();
+    if(up.indexOf("STUDENT")>=0){ group="student"; header=t; continue; }
+    if(up.indexOf("INTERIM")>=0){ group="interim"; header=t; continue; }
+    if(/CAPACITEIT|LEGENDE|ROOSTER|TOTAAL|GEPREST|NAAM|WEEK/i.test(up)) continue;
+    if(!group) continue;
+    var hv=ws[dc+r];
+    var hours=(hv && hv.v!=null) ? parseFloat((""+hv.v).replace(",",".")) : NaN;
+    if(isNaN(hours) || hours<=0) continue;     // enkel wie die dag uren heeft
+    var roo=ws["C"+r]; var code=(roo && roo.v!=null) ? (""+roo.v).trim() : "";
+    var agency=header.replace(/^STUDENTEN?\s*/i,"").replace(/^INTERIM\s*/i,"").trim();
+    out.push({name:t, kind:group, hours:hours, agency:agency, rooster:code});
+  }
+  return out;
+}
+/* avondmensen als roster-entries (zelfde vorm als obFromExcel) */
+function siRosterEntries(){
+  return siForDay().map(function(s){
+    return {name:s.name, ploeg:"A", rol:(s.kind==="interim"?"late":"gewoon"),
+            status:"aanwezig", badge:(Math.round(s.hours*100)/100)+"u",
+            _avond:true, _kind:s.kind, _agency:s.agency, _rooster:s.rooster, hours:s.hours};
+  });
+}
+/* basis-roster (dagploeg) + eventueel avondmensen samenvoegen */
+function obComposeRoster(){
+  var base=obFromExcel()||[];
+  if(avondActief()){
+    var have={}; base.forEach(function(p){ have[p.name]=1; });
+    siRosterEntries().forEach(function(s){ if(!have[s.name]) base.push(s); });
+  }
+  return base;
+}
+/* ---- tweede Excel koppelen / inlezen ---- */
+async function siLoadFile(file){
+  try{
+    var buf=await file.arrayBuffer();
+    siWb=XLSX.read(buf,{type:"array",bookFiles:true,cellStyles:true});
+    updSiBtn();
+    obRefreshFromExcel();
+    var lijst=siForDay();
+    var nS=lijst.filter(function(x){return x.kind==="student";}).length;
+    var nI=lijst.filter(function(x){return x.kind==="interim";}).length;
+    var dag=(typeof DAY_TOKENS!=="undefined" && state.dayKey)?DAY_TOKENS[state.dayKey]:"";
+    var msg="👷 Ingelezen: "+nS+" avondstudent(en), "+nI+" interim(s) voor "+dag;
+    if(!siWb.SheetNames.length || (state.model && state.model.week!=null && siWb.SheetNames.indexOf("KW"+state.model.week)<0))
+      msg="👷 Ingelezen, maar geen blad KW"+(state.model?state.model.week:"?")+" gevonden in dit bestand";
+    else if(!avondActief())
+      msg+=" · zet 🌙 Avond op ‘aan’ om ze te tonen";
+    toast(msg);
+  }catch(e){ console.error(e); toast("Kon de studenten/interim-Excel niet lezen"); }
+}
+async function siPickAndLink(ev){
+  var inp=document.getElementById("siFileInput");
+  var preferClassic = !!(window.top !== window.self) || /iObeya/i.test(navigator.userAgent||"");
+  if(preferClassic && inp){
+    inp.value="";
+    inp.click();
+    return;
+  }
+  if(window.showOpenFilePicker){
+    try{
+      var hs=await window.showOpenFilePicker({
+        types:[{description:"Excel-bestand", accept:{"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":[".xlsx",".xlsm",".xls"]}}],
+        excludeAcceptAllOption:false, multiple:false
+      });
+      siHandle=hs[0];
+      try{ await idb.set("fh_si", siHandle); }catch(_){}
+      var f=await siHandle.getFile();
+      await siLoadFile(f);
+      updSiBtn();
+      return;
+    }catch(e){
+      if(e && e.name==="AbortError"){
+        if(inp){ inp.value=""; inp.click(); return; }
+        return;
+      }
+      console.error("studenten/interims koppelen:", e);
+      toast("Moderne bestandskiezer lukte niet — ik open de gewone keuze");
+    }
+  }
+  if(inp){ inp.value=""; inp.click(); }
+  else toast("Bestandskeuze niet beschikbaar in deze browser");
+}
+async function siReloadFromHandle(askPerm){
+  if(!siHandle) return false;
+  try{
+    var p=await siHandle.queryPermission({mode:"read"});
+    if(p!=="granted"){ if(!askPerm) return false; p=await siHandle.requestPermission({mode:"read"}); if(p!=="granted") return false; }
+    var f=await siHandle.getFile();
+    await siLoadFile(f);
+    return true;
+  }catch(e){ console.error(e); return false; }
+}
+function updSiBtn(){
+  [document.getElementById("siLink"), document.getElementById("linkSiBtn")].forEach(function(b){
+    if(!b) return;
+    if(siWb){
+      b.classList.add("linked");
+      b.textContent="👷 gekoppeld";
+      b.title="Studenten/interim-Excel gekoppeld — klik om een ander bestand te kiezen";
+    }else{
+      b.classList.remove("linked");
+      b.textContent="👷 Studenten/interims";
+      b.title="Tweede Excel koppelen: avondstudenten & interims (Planning_interims_en_studenten_2026.xlsx)";
+    }
+  });
+}
+function updAvondBtn(){
+  var b=document.getElementById("obAvond"); if(!b) return;
+  var m=avondMode();
+  b.textContent="🌙 Avond: "+(m==="aan"?"aan":m==="uit"?"uit":"auto");
+  b.classList.toggle("primary", avondActief());
+  updSiStatus();
+}
+function updSiStatus(){
+  var el2=document.getElementById("obSiStatus"); if(!el2) return;
+  if(!siWb){ el2.textContent=""; el2.title=""; return; }
+  var wk=(state.model && state.model.week!=null) ? state.model.week : null;
+  var sheet=(wk!=null)?"KW"+wk:null;
+  if(sheet && siWb.SheetNames.indexOf(sheet)<0){
+    el2.textContent="👷 geen blad "+sheet;
+    el2.title="In de studenten/interim-Excel bestaat er geen blad "+sheet+" voor deze week.";
+    return;
+  }
+  var lijst=siForDay();
+  var nS=lijst.filter(function(x){return x.kind==="student";}).length;
+  var nI=lijst.filter(function(x){return x.kind==="interim";}).length;
+  var dag=(typeof DAY_TOKENS!=="undefined" && state.dayKey)?DAY_TOKENS[state.dayKey]:"";
+  var act=avondActief();
+  el2.textContent="👷 "+(sheet||"")+": "+nS+" stud / "+nI+" int — 🌙 "+(act?"zichtbaar":"verborgen");
+  el2.title = act
+    ? ("Avondstudenten/interims worden getoond ("+dag+"). "+(nS+nI===0?"Maar deze dag heeft niemand uren.":""))
+    : "Studenten/interims zijn ingelezen maar verborgen. Zet 🌙 Avond op ‘aan’ om ze te tonen.";
+}
+
+function obFromExcel(){
+  if(!state.wb || !state.model) return null;
+  var wb=state.wb, sheetName=state.model.sheet;
+  var cm=obBuildColorMap(wb);
+  var sx=obReadText(wb,"xl/worksheets/sheet"+(wb.SheetNames.indexOf(sheetName)+1)+".xml");
+  var sIdx={}, re=/<c r="([A-Z]+\d+)"(?:[^>]*?\ss="(\d+)")?[^>]*?(?:\/>|>)/g, mm;
+  while((mm=re.exec(sx))){ if(mm[2]!=null) sIdx[mm[1]]=+mm[2]; }
+  function colorAt(ref){var s=sIdx[ref];if(s==null)return null;var fid=cm.xfs[s];return fid!=null?cm.fills[fid]:null;}
+  var ws=wb.Sheets[sheetName];
+  var SKIP={"VERLOF":1,"ZIEK":1,"TRAINING":1,"SYNDICALE ACTIVITEIT":1,"- UREN":1,"Geprest Uren":1,"verlof /!\\":1};
+  var STOPAFD=/BEREKENING|LOOP|DASHBOARD|CAPACITEIT|TOTAAL/i;
+  var di=OB_DAYIDX[state.dayKey]; if(di==null) di=0;
+  var roster=[];
+  [["C","B","A",3],["O","N","B",15]].forEach(function(cfg){
+    var nameCol=cfg[0], afdCol=cfg[1], ploeg=cfg[2], dayStart=cfg[3], afd=null;
+    for(var r=4;r<=56;r++){
+      var av=ws[afdCol+r];
+      if(av && av.v!=null && (""+av.v).trim()){ var a=(""+av.v).trim(); if(STOPAFD.test(a)) break; afd=a; }
+      var nv=ws[nameCol+r];
+      if(!nv || nv.v==null || !(""+nv.v).trim()) continue;
+      var nm=(""+nv.v).trim();
+      if(SKIP[nm]) continue;
+      if(/^(Capaciteit|Niet inbegrepen|Geprest|BEREKENING|undefined)/i.test(nm)) continue;
+      if(!afd) continue;
+      var rol=obRole(colorAt(nameCol+r));
+      var vmCol=obColLetter(dayStart + di*2), nmCol=obColLetter(dayStart + di*2 + 1);
+      var cls=obClassify(ws[vmCol+r]?ws[vmCol+r].v:null, ws[nmCol+r]?ws[nmCol+r].v:null);
+      var status = cls.kol==="ploeg" ? "aanwezig" : cls.kol;  // verlof/tk/afwezig
+      roster.push({name:nm, ploeg:ploeg, rol:rol, status:status, badge:cls.badge||null, herkomst:afd});
+    }
+  });
+  return roster;
+}
+/* datamodel: obRoster = iedereen vandaag (uit Excel) ; obDepts = afdelingen met toegewezen namen */
+var OB_DEFAULT_DEPTS=["E.S.","SECTOR H & L","SCHAEFER","LIFTEN","SECTO M + P","COLISAGE","BRIG","D.S.","SECTOR W + K10"];
+var obRoster=[], obDepts=null, obEdit=false, obDragName=null, obSel=null;
+function obDeptsInit(){
+  var saved=store.get("vp_ob_template");
+  if(saved && saved.length){ obDepts=JSON.parse(JSON.stringify(saved)); }
+  else { obDepts=OB_DEFAULT_DEPTS.map(function(l){return {label:l, names:[]};}); }
+}
+function obLoad(){
+  obRoster=obComposeRoster();
+  if(!obDepts) obDeptsInit();
+  // laad bewaarde dagindeling (welke naam in welke afdeling)
+  var place=store.get("vp_ob_place");
+  if(place && place.depts){ obDepts=place.depts; }
+  obSyncRosterToDepts();
+}
+/* zorg dat namen die in afdelingen staan maar niet meer in roster zitten verdwijnen,
+   en namen in roster die afwezig zijn nooit in een afdeling staan */
+function obSyncRosterToDepts(){
+  obApplyHours();
+  var byName={}; obRoster.forEach(function(p){ byName[p.name]=p; });
+  obDepts.forEach(function(d){ d.names=d.names.filter(function(n){
+    var p=byName[n];
+    if(!p) return false;                       // niet meer in roster → weg
+    if(obTplMode) return true;                 // template-bouwmodus → iedereen behouden (ook afwezig)
+    if(p._buitenUren) return true;             // alleen tijdelijk buiten uren → in afdeling houden
+    return p.status==="aanwezig";              // echte afwezigheid (verlof/ziek/TK) → uit afdeling
+  }); });
+}
+/* per persoon een vast van–tot venster; buiten dat venster → afwezig ("buiten uren") */
+function obHoursMap(){ return store.get("vp_ob_hours") || {}; }
+/* leest het beginuur van een ploeg uit de kolomtitel van het huidige weekblad
+   (C3 = "Ploeg A 13:00", O3 = "Ploeg B 10:00") — wisselt per week */
+function obPloegStart(ploeg){
+  try{
+    var ws=state.wb.Sheets[state.model.sheet];
+    var cell = ws[(ploeg==="A"?"C3":"O3")];
+    var m = cell && cell.v ? (""+cell.v).match(/(\d{1,2}):(\d{2})/) : null;
+    if(m) return (+m[1])*60 + (+m[2]);
+  }catch(e){}
+  return ploeg==="A" ? 13*60 : 10*60;  /* fallback */
+}
+/* standaard ploeguren: start uit Excel + 8u werkdag; vrijdag 2u korter */
+function obDefaultHours(p){
+  var startMin = obPloegStart(p.ploeg);
+  var vrij = (state.dayKey==="VR");
+  var dur = vrij ? 6*60 : 8*60;
+  var endMin = startMin + dur;
+  function hm(min){ return ("0"+Math.floor(min/60)).slice(-2)+":"+("0"+(min%60)).slice(-2); }
+  return {van:hm(startMin), tot:hm(endMin)};
+}
+/* effectief venster: handmatig (indien ingesteld) anders ploeg-standaard */
+function obWindowFor(p){
+  var hm=obHoursMap();
+  if(hm[p.name]) return {van:hm[p.name].van, tot:hm[p.name].tot, eigen:true};
+  var def=obDefaultHours(p);
+  /* uren-aftrek (-X) uit de Excel: deze persoon stopt X uur VROEGER.
+     We schuiven het einduur op (start + werkduur - X), zodat de
+     uren-automatiek hem na zijn echte einduur als 'buiten uren' beschouwt
+     (en op het TV-bord verdwijnt) — net zoals een X/verlof-persoon. */
+  var b = p && (p._origBadge || p.badge);
+  var m = b ? (""+b).match(/^-(\d+(?:[.,]\d+)?)/) : null;
+  if(m){
+    var endMin = obParseHM(def.tot);
+    if(endMin!=null){
+      endMin -= Math.round(parseFloat(m[1].replace(",","."))*60);
+      def.tot = ("0"+Math.floor(endMin/60)).slice(-2)+":"+("0"+(endMin%60)).slice(-2);
+      def.aftrek = true;
+    }
+  }
+  return def;
+}
+function obSetHours(name){
+  var hm=obHoursMap(); var cur=hm[name]||{};
+  var p=obRoster.find(function(x){return x.name===name;});
+  var def=p?obDefaultHours(p):{van:"",tot:""};
+  var info="Standaard voor ploeg "+(p?p.ploeg:"?")+": "+def.van+"–"+def.tot+"\\n(leeg laten = standaard gebruiken)";
+  var van=prompt("Aanwezig VANAF (uu:mm) voor "+name+"\\n"+info, cur.van||"");
+  if(van===null) return;
+  var tot=prompt("Aanwezig TOT (uu:mm) voor "+name, cur.tot||"");
+  if(tot===null) return;
+  van=van.trim(); tot=tot.trim();
+  if(!van && !tot){ delete hm[name]; toast("Terug naar ploeg-standaard voor "+name); }
+  else { hm[name]={van:van,tot:tot}; toast("⏰ "+name+": "+(van||"…")+"–"+(tot||"…")); }
+  store.set("vp_ob_hours", hm); scheduleSyncWrite();
+  obRefreshFromExcel();
+}
+function obParseHM(s){ var m=(s||"").match(/^(\d{1,2}):(\d{2})$/); return m?(+m[1]*60+ +m[2]):null; }
+/* zet status op 'afwezig' (buiten uren) als de huidige tijd buiten het venster valt */
+function obHoursOn(){ return store.get("vp_ob_hourson") ? true : false; }
+function obApplyHours(){
+  var d=curDateISO(); var n=new Date();
+  var vandaag=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2);
+  var isVandaag=(d===vandaag);
+  var actief=obHoursOn();   /* knop bepaalt of mensen echt verschuiven */
+  var nowMin=obNowMin();
+  obRoster.forEach(function(p){
+    if(p._avond) return;   /* avondstudenten/interims: eigen uren-badge, geen ploeg-venster */
+    if(p._buitenUren){ p.status="aanwezig"; p.badge=p._origBadge||null; delete p._buitenUren; }
+    var h=obWindowFor(p); if(!h) return;
+    p._origBadge=p.badge;
+    var van=obParseHM(h.van), tot=obParseHM(h.tot);
+    var binnen = isVandaag ? (( van==null || nowMin>=van ) && ( tot==null || nowMin<tot )) : true;
+    if(p.status==="aanwezig"){
+      var win=(h.van||"")+(h.van&&h.tot?"–":"")+(h.tot||"");
+      var aftrek=(p._origBadge && /^-\d/.test(p._origBadge)) ? p._origBadge : "";
+      p.badge = aftrek ? (win+" "+aftrek) : win;
+      if(actief && isVandaag && !binnen){ p.status="afwezig"; p._buitenUren=true; p.badge="buiten uren ("+(h.van||"")+"–"+(h.tot||"")+")"; }
+    }
+    // afwijking van normale ploeguren: eigen venster OF uren-aftrek (-x uit Excel)
+    p._afwijking = (h.eigen===true) || (p._origBadge && /^-\d/.test(p._origBadge));
+  });
+}
+function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
+function obSavePlace(){ store.set("vp_ob_place",{depts:obDepts}); scheduleSyncWrite(); }
+function obSave(){ obSavePlace(); obRender(); }
+function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
+var obTplMode=false;
+function obSaveTemplate(){ store.set("vp_ob_template", JSON.parse(JSON.stringify(obDepts))); scheduleSyncWrite(); toast("📌 Sjabloon opgeslagen — dit is nu de standaardindeling"); }
+function obLoadTemplate(){ var t=store.get("vp_ob_template"); if(!t){ toast("Nog geen sjabloon opgeslagen"); return; } obDepts=JSON.parse(JSON.stringify(t)); obSyncRosterToDepts(); obSave(); toast("↩ Sjabloon hersteld"); }
+
+function obRolePip(rol){
+  if(rol==="leider") return '<i class="ob-pip" style="--p:#e67e22" title="Leidinggevende / sectoroverste"></i>';
+  if(rol==="vroeg")  return '<i class="ob-pip" style="--p:#27ae60" title="Vroege shift"></i>';
+  if(rol==="late")   return '<i class="ob-pip" style="--p:#23262b;box-shadow:0 0 0 1px #999" title="Vaste late ploeg"></i>';
+  return "";
+}
+var OB_STATUS={"aanwezig-A":["A","#b8332a"],"aanwezig-B":["B","#1f6fa8"],"verlof":["VL","#1e8449"],"tk":["TK","#7d3c98"],"afwezig":["AFW","#d35400"],"student":["STU","#16a085"],"intlate":["LATE","#23262b"]};
+function obStatKey(p){ if(p._avond) return p._kind==="interim"?"intlate":"student"; return p.status==="aanwezig" ? ("aanwezig-"+p.ploeg) : p.status; }
+function obChipHTML(p, ctx){
+  var s=OB_STATUS[obStatKey(p)]||["?","#888"];
+  var selCls=(obSel===p.name)?" sel":"";
+  var afwCls=p._afwijking?" ob-afw":"";
+  var dimCls=p._buitenUren?" ob-dim":"";
+  var avPip=(p._avond && p._kind==="student") ? '<i class="ob-pip" style="--p:#16a085" title="Avondstudent'+(p._agency?" · "+esc(p._agency):"")+'"></i>' : "";
+  return '<div class="chip'+selCls+afwCls+dimCls+'" data-name="'+esc(p.name)+'"'+(p._agency?' title="'+esc(p._agency)+'"':'')+'>'+
+    avPip+obRolePip(p.rol)+
+    '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
+    '<span class="ob-nm">'+esc(p.name)+'</span>'+
+    (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+
+    (obEdit?'<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>':'')+
+    (ctx==="dept"?'<span class="x" data-name="'+esc(p.name)+'">×</span>':'')+'</div>';
+}
+var OB_HUES=["#2dd4ee","#6fc3ff","#a78bfa","#3ddc97","#f6c945","#ff9f43","#ff7eb6","#34d4b8","#9ed36a","#ffd56b"];
+function obDeptColors(){ return store.get("vp_ob_deptcolors") || {}; }
+function obDeptColor(label, di){ var c=obDeptColors()[label]; return c || OB_HUES[di % OB_HUES.length]; }
+function obSetDeptColor(label, hex){ var c=obDeptColors(); c[label]=hex; store.set("vp_ob_deptcolors", c); scheduleSyncWrite(); obRender(); }
+/* scrollende statusbanner: late ploeg / vroege ploeg op standaard ploeg-einduur,
+   wie daarvan afwijkt apart als 'stopt vroeger' met naam + uur, plus afwezigen */
+var obNamesTimer=null;
+/* per afwijker: einduur tonen indien bekend, anders de aftrek (zoals badge) */
+function obFmtAfwijker(p,h){
+  if(h && h.eigen===true && h.tot) return {name:p.name, lab:"tot "+h.tot};
+  var m=(""+(p._origBadge||"")).match(/^-(\d+(?:[.,]\d+)?)/);
+  if(m){
+    var aft=parseFloat(m[1].replace(",",".")), defEnd=obParseHM(obDefaultHours(p).tot);
+    if(defEnd!=null && !isNaN(aft)){
+      var e=defEnd-Math.round(aft*60);
+      return {name:p.name, lab:"tot "+("0"+Math.floor(e/60)).slice(-2)+":"+("0"+(e%60)).slice(-2)};
+    }
+    return {name:p.name, lab:(p._origBadge||"")};
+  }
+  return {name:p.name, lab:(p._origBadge||"")};
+}
+function obTile(ac,head,inner){
+  return '<div class="ob-tile" style="--ac:'+ac+'"><div class="ob-th">'+esc(head)+'</div>'+inner+'<div class="ob-scan"></div></div>';
+}
+function obBuildTicker(){
+  var bar=document.getElementById("obStatusbar"); if(!bar) return;
+  if(obNamesTimer){ clearInterval(obNamesTimer); obNamesTimer=null; }
+  var eindA=obDefaultHours({ploeg:"A"}).tot, eindB=obDefaultHours({ploeg:"B"}).tot;
+  var laatEind = (obParseHM(eindA)||0) >= (obParseHM(eindB)||0) ? eindA : eindB;
+  var vroegEind = laatEind===eindA ? eindB : eindA;
+  var nLaat=0, nVroeg=0, nAfw=0, nAvond=0, early=[];
+  obRoster.forEach(function(p){
+    if(p._avond){ nAvond++; return; }   /* avondstudenten/interims apart */
+    if(p.status!=="aanwezig" && !p._buitenUren){ nAfw++; return; }
+    var h=obWindowFor(p); var tot=h&&h.tot?h.tot:null;
+    if(p._afwijking){ early.push(obFmtAfwijker(p,h)); }
+    else if(tot===laatEind){ nLaat++; }
+    else { nVroeg++; }
+  });
+  var namesRows=early.map(function(e){ return '<div class="ob-nrow">'+esc(e.name)+' <b>'+esc(e.lab)+'</b></div>'; }).join("");
+  var earlyCell = early.length
+    ? '<div class="ob-names-wrap"><div class="ob-names" id="obEarlyNames">'+namesRows+'</div></div>'
+    : '<div class="ob-tn">0</div>';
+  var tiles=[
+    obTile("#ff6b6b","Late · "+laatEind, '<div class="ob-tn">'+nLaat+'</div>'),
+    obTile("#3ddc97","Vroege · "+vroegEind, '<div class="ob-tn">'+nVroeg+'</div>'),
+    obTile("#ff9f43","Stopt vroeger · "+early.length, earlyCell),
+    obTile("#ff7eb6","Afwezig", '<div class="ob-tn">'+nAfw+'</div>')
+  ];
+  if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
+  bar.style.gridTemplateColumns="repeat("+tiles.length+",1fr)";
+  bar.innerHTML=tiles.join("");
+  /* verticaal laten doorlopen wanneer de namen niet in de tegel passen */
+  if(early.length){
+    var wrap=bar.querySelector(".ob-names-wrap"), inner=bar.querySelector("#obEarlyNames");
+    if(wrap && inner && inner.scrollHeight > wrap.clientHeight+2){
+      inner.innerHTML=namesRows+namesRows;
+      var half=inner.scrollHeight/2, y=0;
+      obNamesTimer=setInterval(function(){ y-=0.3; if(Math.abs(y)>=half) y=0; inner.style.transform="translateY("+y+"px)"; },30);
+    }
+  }
+}
+function obRender(){
+  var board=document.getElementById("obBoard"); if(!board) return;
+  var byName={}; obRoster.forEach(function(p){ byName[p.name]=p; });
+  var placed=obPlacedSet();
+  // POOL links: aanwezigen die nog niet geplaatst zijn
+  var pool=document.getElementById("obPool"), absent=document.getElementById("obAbsent");
+  var q=(document.getElementById("obSearch").value||"").toLowerCase();
+  var poolHTML="", absHTML="", nPool=0, nAbs=0;
+  var studHTML="", intHTML="";
+  obRoster.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+    if(q && p.name.toLowerCase().indexOf(q)<0) return;
+    if(placed[p.name]) return;            // in een afdeling (ook tijdelijk buiten uren) → niet in pool/afwezig
+    if(p._avond){
+      if(p._kind==="interim") intHTML+=obChipHTML(p,"pool"); else studHTML+=obChipHTML(p,"pool");
+      return;
+    }
+    if(p.status!=="aanwezig"){ if(obTplMode){ poolHTML+=obChipHTML(p,"pool"); nPool++; } else { absHTML+=obChipHTML(p,"absent"); nAbs++; } return; }
+    poolHTML+=obChipHTML(p,"pool"); nPool++;
+  });
+  var poolOut = poolHTML || (studHTML||intHTML ? "" : '<div class="thint">Iedereen geplaatst 🎉</div>');
+  if(studHTML) poolOut += '<div class="sub-h">🌙 Avondstudenten</div>' + studHTML;
+  if(intHTML)  poolOut += '<div class="sub-h">Vaste late (interim)</div>' + intHTML;
+  pool.innerHTML = poolOut || '<div class="thint">Iedereen geplaatst 🎉</div>';
+  absent.innerHTML = absHTML || '<div class="thint">Niemand afwezig</div>';
+  // BORD rechts: afdelingen
+  board.className="tasks";
+  var html="";
+  obDepts.forEach(function(d, di){
+    var hue=obDeptColor(d.label, di);
+    var dropCls = obSel ? " drop" : "";
+    /* op het TV-bord (bordmodus): mensen die buiten hun uren vallen worden
+       verborgen zodat het scherm de actuele bezetting toont. Ze blijven WEL
+       in de data (d.names), dus in bewerkmodus zie je ze nog gedimd staan en
+       gaat de planning niet verloren. */
+    var hideOff = !!state.board;
+    var visNames = d.names.filter(function(n){ var p=byName[n]; return p && !(hideOff && p._buitenUren); });
+    html+='<div class="tcard'+dropCls+'" data-di="'+di+'" style="--hue:'+hue+'">'+
+      '<header><span class="tname" data-di="'+di+'">'+esc(d.label)+'</span>'+
+      '<span class="tcount">'+visNames.length+'</span>'+
+      (obEdit?'<input type="color" class="ob-colpick" data-label="'+esc(d.label)+'" value="'+esc(hue)+'" title="Kleur van deze afdeling">':'')+
+      (obEdit?'<span class="ob-ddel" data-di="'+di+'" title="Afdeling verwijderen">×</span>':'')+'</header>'+
+      '<div class="tbody" data-di="'+di+'">';
+    if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
+    else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
+    d.names.forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren) return; html+=obChipHTML(p,"dept"); });
+    html+='</div></div>';
+  });
+  board.innerHTML=html;
+  var lg=document.getElementById("obCounts");
+  if(lg){ var cA=0,cB=0,cV=0,cT=0,cAf=0,cAv=0; obRoster.forEach(function(p){ if(p._avond){cAv++;return;} if(p.status==="verlof")cV++; else if(p.status==="tk")cT++; else if(p.status==="afwezig")cAf++; else if(p.ploeg==="A")cA++; else cB++; });
+    lg.textContent="A:"+cA+"  B:"+cB+"  Verlof:"+cV+"  TK:"+cT+"  Afwezig:"+cAf+(cAv?"  Avond:"+cAv:""); }
+  // 3 tellers bovenaan: Vrij / Ingepland / Afwezig
+  var nAanwezig=0, nAfw=0; obRoster.forEach(function(p){ if(p.status==="aanwezig") nAanwezig++; else nAfw++; });
+  var nPlaced=Object.keys(placed).length;
+  var stF=document.getElementById("obStFree"), stP=document.getElementById("obStPlan"), stA=document.getElementById("obStAbs");
+  if(stF) stF.textContent=nAanwezig-nPlaced;
+  if(stP) stP.textContent=nPlaced;
+  if(stA) stA.textContent=nAfw;
+  obBuildTicker();
+  obWire(board);
+  updSiStatus();
+}
+function obWire(board){
+  // pool + bord chips: enkel klik-acties (verslepen draait via de pointer-laag)
+  document.querySelectorAll("#obPool .chip, #obBoard .chip").forEach(function(b){
+    b.addEventListener("click",function(e){
+      if(e.target.classList.contains("x")) return;
+      if(e.target.classList.contains("ob-clock")){ e.stopPropagation(); obSetHours(b.dataset.name); return; }
+      obSel=(obSel===b.dataset.name)?null:b.dataset.name; obRender();
+    });
+  });
+  // verwijderen uit afdeling (×) → terug naar pool
+  document.querySelectorAll("#obBoard .chip .x").forEach(function(x){ x.addEventListener("click",function(e){ e.stopPropagation();
+    obDepts.forEach(function(d){ var i=d.names.indexOf(x.dataset.name); if(i>=0) d.names.splice(i,1); }); obSel=null; obSave();
+  }); });
+  document.querySelectorAll(".ob-colpick").forEach(function(inp){
+    inp.addEventListener("click",function(e){ e.stopPropagation(); });
+    inp.addEventListener("change",function(e){ e.stopPropagation(); obSetDeptColor(inp.dataset.label, inp.value); });
+  });
+  document.querySelectorAll(".ob-ddel").forEach(function(x){ x.addEventListener("click",function(e){ e.stopPropagation(); if(confirm("Afdeling '"+obDepts[+x.dataset.di].label+"' verwijderen?")){ obDepts.splice(+x.dataset.di,1); obSave(); } }); });
+  document.querySelectorAll(".tname").forEach(function(x){ x.addEventListener("dblclick",function(){ var n=prompt("Afdeling hernoemen:",obDepts[+x.dataset.di].label); if(n&&n.trim()){ obDepts[+x.dataset.di].label=n.trim(); obSave(); } }); });
+  // klik op afdeling terwijl naam geselecteerd → plaatsen
+  document.querySelectorAll("#obBoard .tcard").forEach(function(card){
+    card.addEventListener("click",function(e){
+      if(!obSel) return;
+      if(e.target.closest(".chip")||e.target.classList.contains("ob-ddel")||e.target.classList.contains("tname")||e.target.classList.contains("ob-colpick")) return;
+      obPlace(obSel, +card.dataset.di);
+    });
+  });
+}
+var obCardDrag=null;
+function obPlace(name, di){
+  // haal uit eventuele andere afdeling, zet in deze
+  obDepts.forEach(function(d){ var i=d.names.indexOf(name); if(i>=0) d.names.splice(i,1); });
+  if(obDepts[di] && obDepts[di].names.indexOf(name)<0) obDepts[di].names.push(name);
+  obSel=null; obSave();
+}
+function obAddDept(){ var n=prompt("Naam van de nieuwe afdeling:"); if(n&&n.trim()){ obDepts.push({label:n.trim().toUpperCase(),names:[]}); obSave(); } }
+function obAddName(){
+  var name=prompt("Volledige naam (zoals in Excel):"); if(!name||!name.trim())return;
+  name=name.trim();
+  if(!obRoster.some(function(p){return p.name===name;})) obRoster.push({name:name,ploeg:"A",rol:"gewoon",status:"aanwezig",badge:null});
+  obSel=name; obRender(); toast("Naam toegevoegd — klik nu een afdeling");
+}
+
+function switchView(v){
+  var inb=v==="inbound";
+  document.getElementById("inboundView").hidden=!inb;
+  document.getElementById("outboundView").hidden=inb;
+  document.querySelectorAll(".vtab").forEach(function(t){ t.classList.toggle("active", t.dataset.view===v); });
+  store.set("vp_view",v);
+  if(!inb){ obRefreshFromExcel(); }
+}
+document.querySelectorAll(".vtab").forEach(function(t){ t.addEventListener("click",function(){ switchView(t.dataset.view); }); });
+document.getElementById("obAddName").addEventListener("click",obAddName);
+document.getElementById("obAddDept").addEventListener("click",obAddDept);
+document.getElementById("obEdit").addEventListener("click",function(){ obEdit=!obEdit; document.body.classList.toggle("ob-edit",obEdit); this.classList.toggle("primary",obEdit); obRender(); });
+document.getElementById("obBoardBtn").addEventListener("click",function(){ setBoard(true); });
+document.getElementById("obShot").addEventListener("click",takeShot);
+document.getElementById("obTplSave").addEventListener("click",obSaveTemplate);
+document.getElementById("obTplMode").addEventListener("click",function(){
+  obTplMode=!obTplMode;
+  this.classList.toggle("primary",obTplMode);
+  obRefreshFromExcel();
+  toast(obTplMode?"🧩 Template-modus AAN — ook afwezigen staan nu in de pool; plaats iedereen en klik 📌 Sjabloon":"🧩 Template-modus UIT — afwezigen verdwijnen weer van het bord");
+});
+document.getElementById("obTplLoad").addEventListener("click",obLoadTemplate);
+document.getElementById("obSync").addEventListener("click",function(){ obRefreshFromExcel(); toast("🔄 Opnieuw uit de planning geladen"); });
+document.getElementById("obSearch").addEventListener("input",function(){ obRender(); });
+function obUpdHoursBtn(){ var b=document.getElementById("obHoursToggle"); if(!b)return; var on=obHoursOn(); b.textContent="⏰ Uren: "+(on?"aan":"uit"); b.classList.toggle("primary",on); }
+document.getElementById("obHoursToggle").addEventListener("click",function(){
+  store.set("vp_ob_hourson", obHoursOn()?0:1);
+  obUpdHoursBtn(); obRefreshFromExcel();
+  toast(obHoursOn()?"⏰ Uren-automatiek AAN — mensen verschuiven op hun uren":"⏰ Uren-automatiek UIT — iedereen beschikbaar om te plannen");
+});
+obUpdHoursBtn();
+/* --- testtijd + live klok: simuleer een tijdstip om het verdwijnen-op-uren te testen --- */
+var obTestMin=null;
+function obNowMin(){ if(obTestMin!=null) return obTestMin; var n=new Date(); return n.getHours()*60+n.getMinutes(); }
+function obFmtMin(m){ return ("0"+Math.floor(m/60)).slice(-2)+":"+("0"+(m%60)).slice(-2); }
+(function(){
+  var ti=document.getElementById("obTestTime");
+  if(ti) ti.addEventListener("change",function(){
+    var v=(ti.value||"").match(/^(\d{1,2}):(\d{2})$/);
+    obTestMin = v ? (+v[1]*60 + +v[2]) : null;
+    if(typeof obRefreshFromExcel==="function") obRefreshFromExcel();
+    if(typeof updAvondBtn==="function") updAvondBtn();
+    toast(obTestMin!=null ? "🕐 Testtijd: "+obFmtMin(obTestMin)+" — leeg maken = echte klok" : "🕐 Terug naar de echte klok");
+  });
+  function tick(){
+    var c=document.getElementById("obClock"); if(!c) return;
+    if(obTestMin!=null){ c.textContent="🕐 TEST "+obFmtMin(obTestMin); c.style.color="#f6a800"; }
+    else { var n=new Date(); c.textContent="🕐 "+("0"+n.getHours()).slice(-2)+":"+("0"+n.getMinutes()).slice(-2)+":"+("0"+n.getSeconds()).slice(-2); c.style.color=""; }
+  }
+  tick(); setInterval(tick,1000);
+})();
+
+/* ---- avond: studenten/interims ---- */
+document.getElementById("siLink").addEventListener("click", siPickAndLink);
+document.getElementById("linkSiBtn") && document.getElementById("linkSiBtn").addEventListener("click", siPickAndLink);
+document.getElementById("siFileInput").addEventListener("change", async function(e){
+  if(!e.target.files[0]) return;
+  await siLoadFile(e.target.files[0]);
+  siHandle = null;
+  try{ await idb.set("fh_si", null); }catch(_){}
+  updSiBtn();
+});
+document.getElementById("obAvond").addEventListener("click", function(){
+  var seq={auto:"aan", aan:"uit", uit:"auto"}, m=seq[avondMode()];
+  store.set("vp_ob_avond", m);
+  updAvondBtn(); obRefreshFromExcel();
+  toast("🌙 Avond: "+(m==="aan"?"altijd tonen":m==="uit"?"verborgen":"automatisch (na 18u / vr 16u)"));
+});
+updAvondBtn();
+/* elke minuut de avond-knop-status verversen (auto-overgang om 18u/16u zichtbaar maken) */
+setInterval(updAvondBtn, 60000);
+
+obLoad();
+if(store.get("vp_view")==="outbound") switchView("outbound");
+
 (async function init(){
   rebuildTasks();
   TASKS.forEach(function(t){ state.assign[t] = []; });
@@ -1793,6 +2668,15 @@ $("#srcClear").addEventListener("click", function(){ store.del("vp_url"); $("#sr
       updSyncBtn();
       $("#reloadBtn").hidden = false;
       syncRead(false);
+    }
+  }catch(e){}
+
+  try{
+    var shSi = await idb.get("fh_si");
+    if(shSi && shSi.queryPermission){
+      siHandle = shSi;
+      updSiBtn();
+      siReloadFromHandle(false);
     }
   }catch(e){}
 
