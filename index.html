@@ -2935,11 +2935,18 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v9 - 23/06";
+  var APP_VERSION="v10 - 23/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
 })();
 </script>
+﻿<!-- ============ BETA hoekband ============ -->
+<style>
+#betaRibbon{position:fixed;top:0;left:0;z-index:99990;width:108px;height:108px;overflow:hidden;pointer-events:none}
+#betaRibbon span{position:absolute;display:block;width:150px;left:-42px;top:24px;transform:rotate(-45deg);padding:5px 0;text-align:center;background:linear-gradient(90deg,#2dd4ee,#a78bfa);color:#06121f;font:800 11px/1 var(--fb,system-ui,sans-serif);letter-spacing:.2em;text-transform:uppercase;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+body.board #betaRibbon{display:none}
+</style>
+<div id="betaRibbon"><span>Beta</span></div>
 </body>
 </html>
