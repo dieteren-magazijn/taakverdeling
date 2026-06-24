@@ -2935,7 +2935,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v14 - 23/06";
+  var APP_VERSION="v15 - 23/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -2970,29 +2970,34 @@ body.board #betaRibbon{display:none}
   if(document.readyState!=="loading") setTimeout(schedule,1200); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(schedule,1200); });
 })();
 </script>
-﻿<!-- ============ capaciteitsteller per sector ============ -->
+﻿﻿<!-- ============ capaciteitsteller per sector ============ -->
 <style>
 .cap-line{font:600 11px/1.25 var(--fb,system-ui,sans-serif);padding:5px 10px;border-bottom:1px solid rgba(255,255,255,.06);color:var(--muted,#8fa6c9);cursor:pointer}
 .cap-line b{font-weight:800}
 .cap-line.ok{color:#3ddc97}.cap-line.warn{color:#f6c945}.cap-line.bad{color:#ff6b6b}.cap-line.empty{opacity:.65}
 body.board .cap-line{font-size:.8vw;padding:.28vw .6vw}
 body.wl-ro .cap-line{cursor:default}
+#capTotal{margin:0 0 12px;padding:9px 14px;border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:12px;background:var(--panel2,#0f1d35);font:700 14px/1.2 var(--fb,system-ui,sans-serif);color:var(--txt,#e9f1ff);display:none}
+#capTotal small{color:var(--muted,#8fa6c9);font-weight:600}
+#capTotal .ok{color:#3ddc97}#capTotal .warn{color:#f6c945}#capTotal .bad{color:#ff6b6b}
+body.board #capTotal{font-size:1.1vw;padding:.5vw 1vw;margin-bottom:.8vw}
 </style>
 <script>
 (function(){
   "use strict";
-  var obs=null, t=null;
+  var obs=null,t=null;
   function HM(m){ m=Math.round(m); var h=Math.floor(m/60)%24, mm=((m%60)+60)%60; return ("0"+h).slice(-2)+":"+("0"+mm).slice(-2); }
+  function tsHM(ms){ var d=new Date(ms); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
   function nowMin(){ var d=new Date(); return d.getHours()*60+d.getMinutes(); }
   function calc(di){
-    if(typeof obDepts==="undefined" || !obDepts || !obDepts[di]) return null;
+    if(typeof obDepts==="undefined"||!obDepts||!obDepts[di]) return null;
     var d=obDepts[di];
     var work=parseFloat(d.work)||0, tempo=parseFloat(d.tempo)||0;
     var nm=nowMin(), ends=[];
     var ros=(typeof obRoster!=="undefined"&&obRoster)?obRoster:[];
     (d.names||[]).forEach(function(name){
       var p=ros.filter(function(x){return x.name===name;})[0];
-      if(!p || p.status==="afwezig") return;
+      if(!p||p.status==="afwezig") return;
       var w=(typeof obWindowFor==="function")?obWindowFor(p):null;
       var e=(typeof obParseHM==="function")?obParseHM(w&&w.tot):null;
       if(e==null||e<=nm) return;
@@ -3002,35 +3007,55 @@ body.wl-ro .cap-line{cursor:default}
     var produced=0,tt=nm,finish=null;
     for(var i=0;i<ends.length;i++){
       var n=ends.length-i, seg=ends[i]-tt, rate=n*tempo/60;
-      if(work>0 && rate>0 && produced+rate*seg>=work){ finish=tt+(work-produced)/rate; break; }
+      if(work>0&&rate>0&&produced+rate*seg>=work){ finish=tt+(work-produced)/rate; break; }
       produced+=rate*seg; tt=ends[i];
     }
     var manuren=0; ends.forEach(function(e){manuren+=(e-nm)/60;});
     var capacity=manuren*tempo, deadline=ends.length?ends[ends.length-1]:null, extra=0;
-    if(finish==null && deadline){ var leftover=work-capacity, hrs=(deadline-nm)/60; if(leftover>0&&hrs>0) extra=Math.ceil(leftover/(tempo*hrs)); }
-    return {work:work,tempo:tempo,present:ends.length,finish:finish,deadline:deadline,extra:extra};
+    if(finish==null&&deadline){ var leftover=work-capacity, hrs=(deadline-nm)/60; if(leftover>0&&hrs>0) extra=Math.ceil(leftover/(tempo*hrs)); }
+    return {work:work,tempo:tempo,present:ends.length,finish:finish,deadline:deadline,extra:extra,work_ts:d.work_ts||0};
   }
   function lineFor(di){
     var c=calc(di); if(!c) return null;
-    var DOT=" \u00b7 ";
-    var _n=new Date(), nm=_n.getHours()*60+_n.getMinutes(), CUT=17*60, pre=(nm<CUT);
-    if(!(c.tempo>0)) return {cls:"empty", html:"\uD83D\uDCCB tempo instellen"};
-    if(!(c.work>0)) return {cls:"empty", html: pre ? "\uD83D\uDCE5 instroom tot 17:00"+DOT+"zet lijnen om 17:00" : "\uD83D\uDCCB zet nog te picken"};
-    if(c.present===0) return {cls:"bad", html:"nog <b>"+c.work+"</b>"+DOT+"geen bezetting"};
+    var DOT=" · ";
+    var nm=nowMin(), CUT=17*60, pre=(nm<CUT);
+    if(!(c.tempo>0)) return {cls:"empty", html:"📋 tempo instellen"};
+    if(!(c.work>0)) return {cls:"empty", html: pre ? "📥 instroom tot 17:00"+DOT+"zet lijnen om 17:00" : "📋 zet nog te picken"};
+    var upd = c.work_ts ? (DOT+"bijgewerkt "+tsHM(c.work_ts)) : "";
+    if(c.present===0) return {cls:"bad", html:"nog <b>"+c.work+"</b>"+DOT+"geen bezetting"+upd};
     var tag = pre ? " (instroom loopt)" : "";
-    if(c.finish!=null) return {cls: pre?"warn":"ok", html:"nog <b>"+c.work+"</b>"+DOT+c.present+"p"+DOT+"klaar ~"+HM(c.finish)+tag};
-    return {cls:"bad", html:"nog <b>"+c.work+"</b>"+DOT+c.present+"p"+DOT+"\u26a0 +"+c.extra+"p voor "+(c.deadline!=null?HM(c.deadline):"einde")+tag};
+    if(c.finish!=null) return {cls: pre?"warn":"ok", html:"nog <b>"+c.work+"</b>"+DOT+c.present+"p"+DOT+"klaar ~"+HM(c.finish)+tag+upd};
+    return {cls:"bad", html:"nog <b>"+c.work+"</b>"+DOT+c.present+"p"+DOT+"⚠ +"+c.extra+"p voor "+(c.deadline!=null?HM(c.deadline):"einde")+tag+upd};
   }
   function setWork(di){
-    if(window.WL_blockWrite && window.WL_blockWrite()){ if(window.toast) window.toast("Lees-modus — klik eerst Bewerken"); return; }
+    if(window.WL_blockWrite&&window.WL_blockWrite()){ if(window.toast) window.toast("Lees-modus — klik eerst Bewerken"); return; }
     if(typeof obDepts==="undefined"||!obDepts[di]) return;
     var d=obDepts[di];
     var w=prompt("Aantal lijnen te doen voor "+(d.label||"sector")+":", (d.work!=null?d.work:"")); if(w===null) return;
     var tp=prompt("Tempo (lijnen per persoon per uur):", (d.tempo!=null?d.tempo:"40")); if(tp===null) return;
     d.work=(""+w).trim()===""?0:(parseFloat((""+w).replace(",","."))||0);
     d.tempo=(""+tp).trim()===""?0:(parseFloat((""+tp).replace(",","."))||0);
+    d.work_ts=Date.now();
     if(typeof obSavePlace==="function") obSavePlace();
     paint();
+  }
+  function paintTotal(view){
+    var bar=document.getElementById("capTotal");
+    if(typeof obDepts==="undefined"||!obDepts){ if(bar) bar.style.display="none"; return; }
+    var tw=0,tp=0,tekort=0,texa=0,worst=null,any=false;
+    for(var i=0;i<obDepts.length;i++){
+      var c=calc(i); if(!c) continue;
+      if(c.work>0){ any=true; tw+=c.work; }
+      tp+=c.present;
+      if(c.work>0&&c.finish==null){ tekort++; texa+=c.extra; }
+      if(c.finish!=null&&(worst==null||c.finish>worst)) worst=c.finish;
+    }
+    if(!any){ if(bar) bar.style.display="none"; return; }
+    if(!bar){ bar=document.createElement("div"); bar.id="capTotal"; view.insertBefore(bar, view.firstChild); }
+    var DOT=" · ";
+    var status = tekort>0 ? ('<span class="bad">⚠ '+tekort+' sector(en) tekort (+'+texa+'p)</span>') : (worst!=null ? ('<span class="ok">laatste klaar ~'+HM(worst)+'</span>') : '<span class="warn">—</span>');
+    bar.style.display="block";
+    bar.innerHTML="TOTAAL"+DOT+"<small>nog</small> "+tw+" <small>lijnen</small>"+DOT+tp+" <small>mensen</small>"+DOT+status;
   }
   function paint(){
     var view=document.getElementById("outboundView"); if(!view) return;
@@ -3042,6 +3067,7 @@ body.wl-ro .cap-line{cursor:default}
         if(!el){ el=document.createElement("div"); el.className="cap-line"; el.addEventListener("click",function(ev){ ev.stopPropagation(); setWork(+card.dataset.di); }); if(hdr&&hdr.nextSibling) card.insertBefore(el,hdr.nextSibling); else card.appendChild(el); }
         el.className="cap-line "+info.cls; el.innerHTML=info.html;
       });
+      paintTotal(view);
     }catch(e){}
     if(obs) obs.observe(view,{childList:true,subtree:true});
   }
