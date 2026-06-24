@@ -2935,7 +2935,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v13 - 23/06";
+  var APP_VERSION="v14 - 23/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3020,6 +3020,7 @@ body.wl-ro .cap-line{cursor:default}
     var tag = pre ? " (instroom loopt)" : "";
     if(c.finish!=null) return {cls: pre?"warn":"ok", html:"nog <b>"+c.work+"</b>"+DOT+c.present+"p"+DOT+"klaar ~"+HM(c.finish)+tag};
     return {cls:"bad", html:"nog <b>"+c.work+"</b>"+DOT+c.present+"p"+DOT+"\u26a0 +"+c.extra+"p voor "+(c.deadline!=null?HM(c.deadline):"einde")+tag};
+  }
   function setWork(di){
     if(window.WL_blockWrite && window.WL_blockWrite()){ if(window.toast) window.toast("Lees-modus — klik eerst Bewerken"); return; }
     if(typeof obDepts==="undefined"||!obDepts[di]) return;
