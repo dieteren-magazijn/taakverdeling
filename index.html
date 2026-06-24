@@ -736,7 +736,7 @@ var store = (function(){
   try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); ok = true; }catch(e){}
   return {
     get:function(k){ if(ok){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){} } return (k in mem) ? mem[k] : null; },
-    set:function(k,v){ mem[k] = v; if(ok){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } },
+    set:function(k,v){ mem[k] = v; if(ok){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } try{ if(typeof onVpStoreSet==="function") onVpStoreSet(k); }catch(e){} },
     del:function(k){ delete mem[k]; if(ok){ try{ localStorage.removeItem(k); }catch(e){} } }
   };
 })();
@@ -790,6 +790,22 @@ var CLIENT_ID = (function(){
   if(!c){ c = Math.random().toString(36).slice(2, 10); store.set("vp_client", c); }
   return c;
 })();
+﻿/* ---- concurrency + diagnostiek (alleen eigen wijzigingen wegschrijven) ---- */
+var SYNC_DIRTY = {fields:{}, days:{}};
+var _applyingRemote = false;
+var SYNC_LAST_READ = 0, SYNC_LAST_WRITE = 0;
+function onVpStoreSet(k){
+  if(_applyingRemote || !k) return;
+  if(k==="vp_hist") SYNC_DIRTY.fields.hist=1;
+  else if(k==="vp_tasks") SYNC_DIRTY.fields.tasks=1;
+  else if(k==="vp_taskorder") SYNC_DIRTY.fields.order=1;
+  else if(k==="vp_ob_place") SYNC_DIRTY.fields.obPlace=1;
+  else if(k==="vp_ob_template") SYNC_DIRTY.fields.obTpl=1;
+  else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1;
+  else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
+  else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
+}
+function updateSyncTitle(){ try{ var d=document.getElementById("saveDot"); if(!d) return; function hm(t){ if(!t) return "-"; var x=new Date(t); return ("0"+x.getHours()).slice(-2)+":"+("0"+x.getMinutes()).slice(-2); } d.title="Sync - laatst gelezen "+hm(SYNC_LAST_READ)+" - laatst geschreven "+hm(SYNC_LAST_WRITE); }catch(e){} }
 function collectLocal(){
   var days = {};
   try{
@@ -818,7 +834,9 @@ async function syncRead(force){
     sync.lastMod = f.lastModified;
     var txt = await f.text(); if(!txt || txt.length < 5) return;
     var doc = JSON.parse(txt);
+    if(!doc||typeof doc!=="object"||(doc.days===undefined&&doc.obPlace===undefined&&doc.tasks===undefined&&doc.hist===undefined)) return;
     if(!force && doc.writer === CLIENT_ID && doc.updated === sync.lastWrite) return; /* eigen schrijfactie */
+    _applyingRemote = true;
     Object.keys(doc.days || {}).forEach(function(k){ store.set("vp_" + k, doc.days[k]); });
     if(doc.hist)  store.set("vp_hist", doc.hist);
     if(doc.tasks) store.set("vp_tasks", doc.tasks);
@@ -830,7 +848,8 @@ async function syncRead(force){
     rebuildTasks();
     if(state.model) loadDayState();
     render();
-  }catch(e){ console.error("sync lezen:", e); }
+    _applyingRemote = false; SYNC_LAST_READ = Date.now(); updateSyncTitle();
+  }catch(e){ _applyingRemote = false; console.error("sync lezen:", e); }
 }
 function setSaveDot(state2, when){
   var d = $("#saveDot"); if(!d) return;
@@ -849,21 +868,37 @@ async function syncWrite(){
   if(!sync.handle || !(await syncPerm(true))){ setSaveDot("err"); return; }
   setSaveDot("busy");
   try{
-    var local = collectLocal();
-    var doc = {v:1, updated:Date.now(), writer:CLIENT_ID, days:{}, hist:{}, tasks:local.tasks, order:local.order, obPlace:local.obPlace, obTpl:local.obTpl, obHours:local.obHours, obColors:local.obColors};
-    /* dagen en historiek van andere schrijvers behouden (per-dag samenvoegen) */
+    ﻿var local = collectLocal();
+    var old = {}, t0 = "";
     try{
       var f0 = await sync.handle.getFile();
-      var t0 = await f0.text();
-      if(t0 && t0.length > 5){ var old = JSON.parse(t0); doc.days = old.days || {}; doc.hist = old.hist || {}; }
+      t0 = await f0.text();
+      if(t0 && t0.length > 5) old = JSON.parse(t0) || {};
     }catch(e){}
-    Object.keys(local.days).forEach(function(k){ doc.days[k] = local.days[k]; });
-    Object.keys(local.hist).forEach(function(d){ doc.hist[d] = local.hist[d]; });
+    var D = SYNC_DIRTY || {fields:{},days:{}};
+    function pick(k){ return D.fields[k] ? local[k] : (old[k]!==undefined ? old[k] : local[k]); }
+    var doc = {
+      v:1, updated:Date.now(), writer:CLIENT_ID,
+      days:(old.days && typeof old.days==="object") ? old.days : {},
+      hist:(old.hist && typeof old.hist==="object") ? old.hist : {},
+      tasks:pick("tasks"), order:pick("order"), obPlace:pick("obPlace"),
+      obTpl:pick("obTpl"), obHours:pick("obHours"), obColors:pick("obColors")
+    };
+    if(old.presence) doc.presence = old.presence;
+    Object.keys(D.days||{}).forEach(function(k){ if(local.days[k]!==undefined) doc.days[k]=local.days[k]; });
+    if(D.fields.hist){ Object.keys(local.hist||{}).forEach(function(d){ doc.hist[d]=local.hist[d]; }); }
+    if(t0 && t0.length>5){ try{ var baks=(await idb.get("vp_baks"))||[]; baks.push({ts:Date.now(),txt:t0}); while(baks.length>5) baks.shift(); await idb.set("vp_baks",baks); }catch(e){} }
     sync.lastWrite = doc.updated;
     var w = await sync.handle.createWritable();
     await w.write(JSON.stringify(doc));
     await w.close();
-    var f = await sync.handle.getFile(); sync.lastMod = f.lastModified;
+    var f = await sync.handle.getFile();
+    var back = await f.text();
+    try{ var chk = JSON.parse(back); if(!chk || typeof chk!=="object") throw 0; }
+    catch(e){ console.error("sync verify faalde"); setSaveDot("err"); return; }
+    sync.lastMod = f.lastModified;
+    SYNC_DIRTY = {fields:{},days:{}};
+    SYNC_LAST_WRITE = doc.updated; updateSyncTitle();
     setSaveDot("ok", doc.updated);
   }catch(e){ console.error("sync schrijven:", e); setSaveDot("err"); }
 }
