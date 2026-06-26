@@ -489,11 +489,23 @@ body.board #boardLogo{display:block;position:fixed;right:1.4vw;bottom:1.1vw;widt
       </div>
     </aside>
     <section>
+      <div id="obLater" class="ob-later" hidden></div>
       <div class="ob-board" id="obBoard"></div>
     </section>
   </main>
 </div>
 
+<style>
+.ob-later{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:0 0 12px;padding:9px 13px;border:1px solid rgba(141,178,255,.18);border-radius:12px;background:rgba(141,178,255,.05)}
+.obl-grp{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.obl-grp.obl-weg{opacity:.55}
+.obl-h{font:700 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+.obl-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(141,178,255,.22);box-shadow:inset 3px 0 0 var(--hue);cursor:pointer;font:600 12px/1 var(--fb,system-ui,sans-serif)}
+.obl-chip:hover{background:rgba(255,255,255,.1)}
+.obl-nm{color:#e8f0ff}
+.obl-sec{color:var(--hue);font-weight:700;font-size:10px}
+.obl-t{color:var(--muted,#8fa6c9);font-size:10px;background:rgba(0,0,0,.25);padding:2px 6px;border-radius:6px}
+</style>
 <div class="dlogo" id="boardLogo" role="img" aria-label="D'Ieteren"></div>
 <div id="toast"></div>
 
@@ -2528,6 +2540,28 @@ function obBuildTicker(){
     }
   }
 }
+function obRenderLater(list){
+  var box=document.getElementById("obLater"); if(!box) return;
+  if(!list || !list.length){ box.hidden=true; box.innerHTML=""; return; }
+  var now=obNowMin();
+  function vanMin(it){ var h=obWindowFor(it.p); return obParseHM(h&&h.van)||0; }
+  var later=[], weg=[];
+  list.forEach(function(it){ var h=obWindowFor(it.p); var van=obParseHM(h&&h.van); if(van!=null && now<van) later.push(it); else weg.push(it); });
+  later.sort(function(a,b){return vanMin(a)-vanMin(b);});
+  weg.sort(function(a,b){return a.label.localeCompare(b.label);});
+  function cell(it){
+    var h=obWindowFor(it.p); var van=h&&h.van?h.van:"";
+    return '<div class="obl-chip" data-name="'+esc(it.p.name)+'" style="--hue:'+it.hue+'">'+
+      '<span class="obl-nm">'+esc(it.p.name)+'</span>'+
+      '<span class="obl-sec">'+esc(it.label)+'</span>'+
+      (van?'<span class="obl-t">'+esc(van)+'</span>':'')+'</div>';
+  }
+  var html="";
+  if(later.length) html+='<div class="obl-grp"><span class="obl-h">\u23f3 Komt later</span>'+later.map(cell).join("")+'</div>';
+  if(weg.length) html+='<div class="obl-grp obl-weg"><span class="obl-h">\u2713 Klaar / weg</span>'+weg.map(cell).join("")+'</div>';
+  box.innerHTML=html; box.hidden=false;
+  box.querySelectorAll(".obl-chip").forEach(function(c){ c.addEventListener("click",function(){ obSel=(obSel===c.dataset.name)?null:c.dataset.name; obRender(); }); });
+}
 function obRender(){
   var board=document.getElementById("obBoard"); if(!board) return;
   var byName={}; obRoster.forEach(function(p){ byName[p.name]=p; });
@@ -2555,6 +2589,7 @@ function obRender(){
   // BORD rechts: afdelingen
   board.className="tasks";
   var html="";
+  var laterOn=obHoursOn(); var laterList=[];
   obDepts.forEach(function(d, di){
     var hue=obDeptColor(d.label, di);
     var dropCls = obSel ? " drop" : "";
@@ -2562,7 +2597,7 @@ function obRender(){
        verborgen zodat het scherm de actuele bezetting toont. Ze blijven WEL
        in de data (d.names), dus in bewerkmodus zie je ze nog gedimd staan en
        gaat de planning niet verloren. */
-    var hideOff = !!state.board;
+    var hideOff = !!state.board || laterOn;
     var visNames = d.names.filter(function(n){ var p=byName[n]; return p && !(hideOff && p._buitenUren); });
     html+='<div class="tcard'+dropCls+'" data-di="'+di+'" style="--hue:'+hue+'">'+
       '<header><span class="tname" data-di="'+di+'">'+esc(d.label)+'</span>'+
@@ -2572,10 +2607,11 @@ function obRender(){
       '<div class="tbody" data-di="'+di+'">';
     if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
     else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
-    d.names.forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren) return; html+=obChipHTML(p,"dept"); });
+    d.names.forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
     html+='</div></div>';
   });
   board.innerHTML=html;
+  obRenderLater(laterList);
   var lg=document.getElementById("obCounts");
   if(lg){ var cA=0,cB=0,cV=0,cT=0,cAf=0,cAv=0; obRoster.forEach(function(p){ if(p._avond){cAv++;return;} if(p.status==="verlof")cV++; else if(p.status==="tk")cT++; else if(p.status==="afwezig")cAf++; else if(p.ploeg==="A")cA++; else cB++; });
     lg.textContent="A:"+cA+"  B:"+cB+"  Verlof:"+cV+"  TK:"+cT+"  Afwezig:"+cAf+(cAv?"  Avond:"+cAv:""); }
@@ -2935,7 +2971,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v18 - 23/06";
+  var APP_VERSION="v19 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
