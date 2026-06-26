@@ -2105,7 +2105,13 @@ function obClassify(vm,nm){
   if(isAll("Z")) return {kol:"afwezig", badge:"ziek"};
   if(isAll("TK")) return {kol:"tk"};
   if(a==="TK"||b==="TK") return {kol:"tk"};            // halve dag TK -> tijdskrediet
-  if(a==="X"||b==="X")   return {kol:"verlof"};         // halve dag verlof
+  // halve dag verlof: één helft X, andere helft werkt -> blijf in ploeg (halve dag)
+  if(a==="X"||b==="X"){
+    var _o = (a==="X") ? b : a;
+    var _ABS={X:1,Z:1,TR:1,SYN:1,HT:1};
+    if(!_ABS[_o]) return {kol:"ploeg", halfFree:(a==="X"?"VM":"NM")};
+    return {kol:"verlof"};
+  }
   if(a==="Z"||b==="Z")   return {kol:"afwezig", badge:"ziek"};
   // training/syndicaal = afwezig
   if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("HT")>=0) return {kol:"afwezig"};
@@ -2330,7 +2336,7 @@ function obFromExcel(){
       var vmCol=obColLetter(dayStart + di*2), nmCol=obColLetter(dayStart + di*2 + 1);
       var cls=obClassify(ws[vmCol+r]?ws[vmCol+r].v:null, ws[nmCol+r]?ws[nmCol+r].v:null);
       var status = cls.kol==="ploeg" ? "aanwezig" : cls.kol;  // verlof/tk/afwezig
-      roster.push({name:nm, ploeg:ploeg, rol:rol, status:status, badge:cls.badge||null, herkomst:afd});
+      roster.push({name:nm, ploeg:ploeg, rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, herkomst:afd});
     }
   });
   return roster;
@@ -2386,10 +2392,21 @@ function obDefaultHours(p){
   function hm(min){ return ("0"+Math.floor(min/60)).slice(-2)+":"+("0"+(min%60)).slice(-2); }
   return {van:hm(startMin), tot:hm(endMin)};
 }
+/* halve-dag-venster: helft van het ploegvenster van die week.
+   NM vrij -> werkt voormiddag (van..midden); VM vrij -> werkt namiddag (midden..tot). */
+function obHalfWindow(p){
+  if(!p || !p._halfFree) return null;
+  var def=obDefaultHours(p); var van=obParseHM(def.van), tot=obParseHM(def.tot);
+  if(van==null||tot==null) return null;
+  var mid=Math.round((van+tot)/2);
+  function hm(m){ return ("0"+Math.floor(m/60)).slice(-2)+":"+("0"+(m%60)).slice(-2); }
+  return p._halfFree==="NM" ? {van:def.van, tot:hm(mid), half:true} : {van:hm(mid), tot:def.tot, half:true};
+}
 /* effectief venster: handmatig (indien ingesteld) anders ploeg-standaard */
 function obWindowFor(p){
   var hm=obHoursMap();
   if(hm[p.name]){ var _ov={van:hm[p.name].van, tot:hm[p.name].tot, eigen:true}; if(state.dayKey==="VR" && _ov.tot){ var _em=obParseHM(_ov.tot); if(_em!=null){ _em-=120; _ov.tot=("0"+Math.floor(_em/60)).slice(-2)+":"+("0"+(_em%60)).slice(-2); } } return _ov; }
+  var _hw=obHalfWindow(p); if(_hw) return _hw;
   var def=obDefaultHours(p);
   /* uren-aftrek (-X) uit de Excel: deze persoon stopt X uur VROEGER.
      We schuiven het einduur op (start + werkduur - X), zodat de
@@ -2442,6 +2459,7 @@ function obApplyHours(){
       var win=(h.van||"")+(h.van&&h.tot?"–":"")+(h.tot||"");
       var aftrek=(p._origBadge && /^-\d/.test(p._origBadge)) ? p._origBadge : "";
       p.badge = aftrek ? (win+" "+aftrek) : win;
+      if(p._halfFree) p.badge="\u00bd "+p.badge;
       if(actief && isVandaag && !binnen){ p.status="afwezig"; p._buitenUren=true; p.badge="buiten uren ("+(h.van||"")+"–"+(h.tot||"")+")"; }
     }
     // afwijking van normale ploeguren: eigen venster OF uren-aftrek (-x uit Excel)
@@ -2971,7 +2989,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v19 - 26/06";
+  var APP_VERSION="v20 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
