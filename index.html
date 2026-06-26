@@ -2377,7 +2377,7 @@ function obDefaultHours(p){
 /* effectief venster: handmatig (indien ingesteld) anders ploeg-standaard */
 function obWindowFor(p){
   var hm=obHoursMap();
-  if(hm[p.name]) return {van:hm[p.name].van, tot:hm[p.name].tot, eigen:true};
+  if(hm[p.name]){ var _ov={van:hm[p.name].van, tot:hm[p.name].tot, eigen:true}; if(state.dayKey==="VR" && _ov.tot){ var _em=obParseHM(_ov.tot); if(_em!=null){ _em-=120; _ov.tot=("0"+Math.floor(_em/60)).slice(-2)+":"+("0"+(_em%60)).slice(-2); } } return _ov; }
   var def=obDefaultHours(p);
   /* uren-aftrek (-X) uit de Excel: deze persoon stopt X uur VROEGER.
      We schuiven het einduur op (start + werkduur - X), zodat de
@@ -2433,7 +2433,7 @@ function obApplyHours(){
       if(actief && isVandaag && !binnen){ p.status="afwezig"; p._buitenUren=true; p.badge="buiten uren ("+(h.van||"")+"–"+(h.tot||"")+")"; }
     }
     // afwijking van normale ploeguren: eigen venster OF uren-aftrek (-x uit Excel)
-    p._afwijking = (h.eigen===true) || (p._origBadge && /^-\d/.test(p._origBadge));
+    p._afwijking = (p._origBadge && /^-\d/.test(p._origBadge));
   });
 }
 function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
@@ -2935,7 +2935,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v17 - 23/06";
+  var APP_VERSION="v18 - 23/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
