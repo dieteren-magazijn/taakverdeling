@@ -2581,10 +2581,10 @@ function obRender(){
     lg.textContent="A:"+cA+"  B:"+cB+"  Verlof:"+cV+"  TK:"+cT+"  Afwezig:"+cAf+(cAv?"  Avond:"+cAv:""); }
   // 3 tellers bovenaan: Vrij / Ingepland / Afwezig
   var nAanwezig=0, nAfw=0; obRoster.forEach(function(p){ if(p.status==="aanwezig") nAanwezig++; else nAfw++; });
-  var nPlaced=Object.keys(placed).length;
+  var nPlacedPresent=0; obRoster.forEach(function(p){ if(p.status==="aanwezig" && placed[p.name]) nPlacedPresent++; });
   var stF=document.getElementById("obStFree"), stP=document.getElementById("obStPlan"), stA=document.getElementById("obStAbs");
-  if(stF) stF.textContent=nAanwezig-nPlaced;
-  if(stP) stP.textContent=nPlaced;
+  if(stF) stF.textContent=Math.max(0, nAanwezig-nPlacedPresent);
+  if(stP) stP.textContent=nPlacedPresent;
   if(stA) stA.textContent=nAfw;
   obBuildTicker();
   obWire(board);
@@ -2935,7 +2935,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v15 - 23/06";
+  var APP_VERSION="v16 - 23/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
