@@ -2507,7 +2507,7 @@ function obChipHTML(p, ctx){
     avPip+obRolePip(p.rol)+
     '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
     '<span class="ob-nm">'+esc(p.name)+'</span>'+
-    (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+
+    (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
     (obEdit?'<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>':'')+
     (ctx==="dept"?'<span class="x" data-name="'+esc(p.name)+'">×</span>':'')+'</div>';
 }
@@ -2959,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v26 - 26/06";
+  var APP_VERSION="v27 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v26 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v27 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
