@@ -3003,7 +3003,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v22 - 26/06";
+  var APP_VERSION="v23 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3181,7 +3181,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL="v22 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v23 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3203,6 +3203,50 @@ body.board #moreWrap{display:none}
     }).catch(function(){});
   }
   setTimeout(check,5000); setInterval(check,180000); window.addEventListener("focus",check);
+})();
+</script>
+﻿<!-- ============ koppel-lampjes (Plan / Interim / Sync) ============ -->
+<style>
+#linkLamps{display:inline-flex;gap:11px;align-items:center;align-self:center;margin-left:8px}
+#linkLamps .lamp{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font:600 10px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);text-transform:uppercase;letter-spacing:.06em}
+#linkLamps .lamp .d{width:9px;height:9px;border-radius:50%;background:#5a6473;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+#linkLamps .lamp.on .d{background:#3ddc97;box-shadow:0 0 7px #3ddc97}
+#linkLamps .lamp.warn .d{background:#f6c945;box-shadow:0 0 7px #f6c945}
+body.board #linkLamps{display:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  var defs=[
+    {key:"plan",label:"Plan",btn:"linkBtn",mode:"read",get:function(){ try{ return (typeof state!=="undefined"&&state)?state.handle:null; }catch(e){ return null; } }},
+    {key:"int", label:"Interim",btn:"linkSiBtn",mode:"read",get:function(){ try{ return (typeof siHandle!=="undefined")?siHandle:null; }catch(e){ return null; } }},
+    {key:"sync",label:"Sync",btn:"syncBtn",mode:"readwrite",get:function(){ try{ return (typeof sync!=="undefined"&&sync)?sync.handle:null; }catch(e){ return null; } }}
+  ];
+  function build(){
+    var bar=document.querySelector(".topbar-in"); if(!bar||document.getElementById("linkLamps")) return false;
+    var wrap=document.createElement("div"); wrap.id="linkLamps";
+    defs.forEach(function(def){
+      var el=document.createElement("span"); el.className="lamp"; el.id="lamp_"+def.key;
+      el.innerHTML='<span class="d"></span>'+def.label;
+      el.addEventListener("click",function(){ var b=document.getElementById(def.btn); if(b) b.click(); });
+      wrap.appendChild(el);
+    });
+    bar.appendChild(wrap); return true;
+  }
+  function upd(){
+    defs.forEach(function(def){
+      var el=document.getElementById("lamp_"+def.key); if(!el) return;
+      var h=def.get();
+      if(!h){ el.className="lamp"; el.title=def.label+": niet gekoppeld - klik om te koppelen"; return; }
+      if(typeof h.queryPermission!=="function"){ el.className="lamp on"; el.title=def.label+": gekoppeld"; return; }
+      h.queryPermission({mode:def.mode}).then(function(p){
+        if(p==="granted"){ el.className="lamp on"; el.title=def.label+": gekoppeld"; }
+        else { el.className="lamp warn"; el.title=def.label+": gekoppeld maar geen toestemming - klik"; }
+      }).catch(function(){ el.className="lamp on"; el.title=def.label+": gekoppeld"; });
+    });
+  }
+  function start(){ if(!build()){ setTimeout(start,800); return; } upd(); setInterval(upd,3000); window.addEventListener("focus",upd); }
+  if(document.readyState!=="loading") setTimeout(start,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1500); });
 })();
 </script>
 </body>
