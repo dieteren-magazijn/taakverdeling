@@ -2959,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v30 - 26/06";
+  var APP_VERSION="v31 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v30 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v31 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3239,11 +3239,12 @@ body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
   if(document.readyState!=="loading") setTimeout(go,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(go,1700); });
 })();
 </script>
-﻿<!-- ============ terug-op-datum bij afwezigen ============ -->
+﻿﻿<!-- ============ terug-op-datum bij afwezigen ============ -->
 <style>
 .ob-return{cursor:pointer;font-size:10px;background:rgba(141,178,255,.12);border:1px solid rgba(141,178,255,.3);color:#8fa6c9;border-radius:5px;padding:1px 6px;margin-left:6px;white-space:nowrap}
 .ob-return:hover{border-color:#3ddc97;color:#3ddc97}
 .ob-return.set{border-color:#3ddc97;color:#3ddc97}
+.ob-return.auto{border-color:#6fc3ff;color:#6fc3ff}
 body.wl-ro .ob-return{cursor:default}
 </style>
 <script>
@@ -3253,10 +3254,36 @@ body.wl-ro .ob-return{cursor:default}
   function hoursMap(){ try{ return (typeof store!=="undefined"&&store.get)?(store.get("vp_ob_hours")||{}):{}; }catch(e){ return {}; } }
   function isAbsent(p){ return p && p.status && p.status!=="aanwezig"; }
   function findP(name){ var r=roster(); for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; return null; }
+  function fmtDate(ms){ var d=new Date(ms); var dn=["zo","ma","di","wo","do","vr","za"][d.getDay()]; return dn+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
+  function autoReturn(name){
+    try{
+      if(typeof state==="undefined"||!state||!state.model||!state.model.monday||!state.wb) return null;
+      if(typeof obClassify!=="function"||typeof obColLetter!=="function") return null;
+      var curW=parseInt(state.model.sheet,10); if(isNaN(curW)) return null;
+      var dk=state.model.dayKeys||[]; var curDi=dk.indexOf(state.dayKey); if(curDi<0) curDi=0;
+      var monMs=state.model.monday.getTime(), UP=(""+name).trim().toUpperCase();
+      for(var w=curW; w<=curW+4; w++){
+        var sh=state.wb.Sheets[String(w)]; if(!sh) continue;
+        var found=null, cfgs=[["C",3],["O",15]];
+        for(var ci=0; ci<cfgs.length && !found; ci++){
+          var col=cfgs[ci][0], ds=cfgs[ci][1];
+          for(var r=4;r<=56;r++){ var c=sh[col+r]; if(c&&c.v!=null && (""+c.v).trim().toUpperCase()===UP){ found={r:r,ds:ds}; break; } }
+        }
+        if(!found) continue;
+        var startDi=(w===curW)?curDi+1:0;
+        for(var di=startDi; di<=4; di++){
+          var vm=sh[obColLetter(found.ds+di*2)+found.r], nm=sh[obColLetter(found.ds+di*2+1)+found.r];
+          var cls=obClassify(vm?vm.v:null, nm?nm.v:null);
+          if(cls && cls.kol==="ploeg"){ return monMs + ((w-curW)*7 + di)*86400000; }
+        }
+      }
+    }catch(e){}
+    return null;
+  }
   window.obSetReturn=function(name){
     if(window.WL_blockWrite && window.WL_blockWrite()){ if(window.toast) window.toast("Klik eerst op Bewerken"); return; }
     var hm=hoursMap(); var cur=(hm[name]||{}).terug||"";
-    var v=prompt("Eerste werkdag terug voor "+name+"\n(bv. ma 30/06 - leeg = wissen):", cur);
+    var v=prompt("Eerste werkdag terug voor "+name+"\n(leeg = automatisch uit planning):", cur);
     if(v===null) return; v=(""+v).trim();
     var o=hm[name]||{}; if(v){ o.terug=v; } else { delete o.terug; }
     if(!o.terug && !o.van && !o.tot){ delete hm[name]; } else { hm[name]=o; }
@@ -3274,11 +3301,12 @@ body.wl-ro .ob-return{cursor:default}
         var name=chip.getAttribute("data-name"); var p=findP(name);
         var el=chip.querySelector(":scope > .ob-return");
         if(!isAbsent(p)){ if(el) el.remove(); return; }
-        var ret=(hm[name]||{}).terug||"";
+        var manual=(hm[name]||{}).terug||"";
+        var auto=manual?null:autoReturn(name);
         if(!el){ el=document.createElement("span"); el.setAttribute("data-name",name); chip.appendChild(el); }
-        el.className="ob-return"+(ret?" set":"");
-        el.title="Eerste werkdag terug - klik om in te stellen";
-        el.textContent= ret ? ("↩ "+ret) : "terug?";
+        if(manual){ el.className="ob-return set"; el.textContent="↩ "+manual; el.title="Handmatig - klik om te wijzigen"; }
+        else if(auto){ el.className="ob-return auto"; el.textContent="↩ "+fmtDate(auto); el.title="Automatisch uit planning - klik om te overschrijven"; }
+        else { el.className="ob-return"; el.textContent="terug?"; el.title="Eerste werkdag terug - klik om in te stellen"; }
       });
     }catch(e){}
     if(obs) obs.observe(view,{childList:true,subtree:true});
@@ -3288,7 +3316,7 @@ body.wl-ro .ob-return{cursor:default}
     var r=(e.target&&e.target.closest)?e.target.closest(".ob-return"):null;
     if(!r) return; e.stopPropagation(); e.preventDefault(); window.obSetReturn(r.getAttribute("data-name"));
   }, true);
-  function init(){ var v=document.getElementById("outboundView"); obs=new MutationObserver(schedule); if(v) obs.observe(v,{childList:true,subtree:true}); schedule(); setInterval(function(){ var vv=document.getElementById("outboundView"); if(vv&&(vv.offsetParent!==null||!vv.hidden)) schedule(); },5000); }
+  function init(){ var v=document.getElementById("outboundView"); obs=new MutationObserver(schedule); if(v) obs.observe(v,{childList:true,subtree:true}); schedule(); setInterval(function(){ var vv=document.getElementById("outboundView"); if(vv&&(vv.offsetParent!==null||!vv.hidden)) schedule(); },6000); }
   if(document.readyState!=="loading") setTimeout(init,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1600); });
 })();
 </script>
