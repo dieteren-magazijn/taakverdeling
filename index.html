@@ -877,6 +877,7 @@ function setSaveDot(state2, when){
 }
 async function syncWrite(){
   if(window.WL_blockWrite && window.WL_blockWrite()){ if(typeof setSaveDot==="function") setSaveDot("err"); return; }
+  if(window.__verOutdated && window.__verOutdated()){ return; }
   sync.timer = null;
   if(!sync.handle || !(await syncPerm(true))){ setSaveDot("err"); return; }
   setSaveDot("busy");
@@ -2472,9 +2473,22 @@ function obSave(){ obSavePlace(); obRender(); }
 function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
 var obTplMode=false;
 function obSaveTemplate(){ store.set("vp_ob_template", JSON.parse(JSON.stringify(obDepts))); scheduleSyncWrite(); toast("📌 Sjabloon opgeslagen — dit is nu de standaardindeling"); }
-function obLoadTemplate(){ var t=store.get("vp_ob_template"); if(!t){ toast("Nog geen sjabloon opgeslagen"); return; } obDepts=JSON.parse(JSON.stringify(t)); obSyncRosterToDepts(); obSave(); toast("↩ Sjabloon hersteld"); }
+﻿function obLoadTemplate(){
+  if(window.WL_blockWrite && window.WL_blockWrite()){ toast("Klik eerst op Bewerken"); return; }
+  var t=store.get("vp_ob_template"); if(!t){ toast("Nog geen standaard opgeslagen"); return; }
+  var std=JSON.parse(JSON.stringify(t));
+  if(obTplMode){
+    if(!confirm("Volledige standaard laden (iedereen, ook afwezigen) om te bewerken?")) return;
+    obDepts=std; obSyncRosterToDepts(); obSave(); toast("Standaard geladen - bewerken"); return;
+  }
+  if(!confirm("Start van standaard: outbound vullen met enkel wie vandaag aanwezig is? Dit vervangt de huidige plaatsing.")) return;
+  var present={}; (obRoster||[]).forEach(function(p){ if(p && p.status==="aanwezig") present[p.name]=1; });
+  std.forEach(function(d){ d.names=(d.names||[]).filter(function(n){ return present[n]; }); });
+  obDepts=std; obSyncRosterToDepts(); obSave();
+  toast("Start van standaard - aanwezigen geplaatst");
+}
 
-function obRolePip(rol){
+  function obRolePip(rol){
   if(rol==="leider") return '<i class="ob-pip" style="--p:#e67e22" title="Leidinggevende / sectoroverste"></i>';
   if(rol==="vroeg")  return '<i class="ob-pip" style="--p:#27ae60" title="Vroege shift"></i>';
   if(rol==="late")   return '<i class="ob-pip" style="--p:#23262b;box-shadow:0 0 0 1px #999" title="Vaste late ploeg"></i>';
@@ -2989,7 +3003,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v21 - 26/06";
+  var APP_VERSION="v22 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3163,5 +3177,33 @@ body.board #moreWrap{display:none}
 <style>
 .brand h1, .brand h1 b, #boardBar .bb-title, #boardBar .bb-title b{ color:#045779 !important; }
 </style>
+﻿<!-- ============ versie-wachter ============ -->
+<script>
+(function(){
+  "use strict";
+  var LOCAL="v22 - 26/06";
+  var outdated=false, banner=null, reloadT=null;
+  window.__verOutdated=function(){ return outdated; };
+  function showBanner(){
+    if(banner) return;
+    banner=document.createElement("div"); banner.id="verBanner";
+    banner.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:100000;background:#f6c945;color:#1a1205;font:700 13px/1.3 var(--fb,system-ui,sans-serif);padding:9px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer";
+    banner.textContent="Nieuwe versie beschikbaar - klik om te herladen";
+    banner.addEventListener("click", function(){ location.reload(true); });
+    document.body.appendChild(banner);
+  }
+  function check(){
+    fetch("version.txt?cb="+Date.now(), {cache:"no-store"}).then(function(r){ return r.ok?r.text():null; }).then(function(t){
+      if(t==null) return; t=(""+t).trim();
+      if(t && t!==LOCAL){
+        outdated=true; showBanner();
+        var editing=(typeof window.WL_iHold==="function") && window.WL_iHold();
+        if(!editing && !reloadT){ reloadT=setTimeout(function(){ location.reload(true); }, 8000); }
+      }
+    }).catch(function(){});
+  }
+  setTimeout(check,5000); setInterval(check,180000); window.addEventListener("focus",check);
+})();
+</script>
 </body>
 </html>
