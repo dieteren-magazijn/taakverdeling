@@ -2959,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v27 - 26/06";
+  var APP_VERSION="v29 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v27 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v29 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3213,5 +3213,31 @@ body:not(.board) #outboundView .chip{height:34px;align-items:center;gap:8px;padd
 body:not(.board) #outboundView .chip .ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
 </style>
+﻿<!-- ============ outbound-balk opruimen (Meer + uitlichten) ============ -->
+<style>
+#obMoreMenu{position:absolute;top:calc(100% + 6px);right:0;z-index:200;background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:12px;padding:8px;display:none;flex-direction:column;gap:6px;min-width:215px;box-shadow:0 12px 32px rgba(0,0,0,.55)}
+#obMoreMenu.open{display:flex}
+#obMoreMenu .btn,#obMoreMenu label.btn{width:100%;text-align:left;max-width:none}
+.ob-bar #obEdit{background:rgba(45,212,238,.14)!important;border-color:#2dd4ee!important;color:#2dd4ee!important;font-weight:600}
+.ob-bar #obTplLoad{border-color:#3ddc97!important;color:#3ddc97!important;font-weight:600}
+</style>
+<script>
+(function(){
+  "use strict";
+  function go(){
+    var bar=document.querySelector(".ob-bar"); if(!bar||document.getElementById("obMoreWrap")) return;
+    var wrap=document.createElement("div"); wrap.id="obMoreWrap"; wrap.style.cssText="position:relative;display:inline-flex;flex:0 0 auto";
+    var btn=document.createElement("button"); btn.type="button"; btn.className="btn"; btn.id="obMoreBtn"; btn.textContent="⋯ Meer";
+    var menu=document.createElement("div"); menu.id="obMoreMenu";
+    wrap.appendChild(btn); wrap.appendChild(menu); bar.appendChild(wrap);
+    ["obTplSave","obTplMode","obSync","obAvond","obAddName","obAddDept","siLink","obShot"].forEach(function(id){ var b=document.getElementById(id); if(b) menu.appendChild(b); });
+    var c=document.getElementById("obClock"); if(c) c.style.display="none";
+    btn.addEventListener("click",function(ev){ ev.stopPropagation(); menu.classList.toggle("open"); });
+    document.addEventListener("click",function(ev){ if(!wrap.contains(ev.target)) menu.classList.remove("open"); });
+    menu.addEventListener("click",function(){ setTimeout(function(){ menu.classList.remove("open"); },60); });
+  }
+  if(document.readyState!=="loading") setTimeout(go,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(go,1700); });
+})();
+</script>
 </body>
 </html>
