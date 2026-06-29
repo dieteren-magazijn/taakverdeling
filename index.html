@@ -2117,6 +2117,7 @@ function obClassify(vm,nm){
   // training/syndicaal = afwezig
   if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("HT")>=0) return {kol:"afwezig"};
   // IP = werktaak, blijft in ploeg met badge
+  if(a.indexOf("PW")>=0 || b.indexOf("PW")>=0) return {kol:"ploeg", badge:"PW", swap:true};
   var ipB = (both.indexOf("IP")>=0) ? "IP" : null;
   // uren-aftrek (-1/-2/...) -> blijft in ploeg met uren-badge
   var ur=null;
@@ -2337,7 +2338,7 @@ function obFromExcel(){
       var vmCol=obColLetter(dayStart + di*2), nmCol=obColLetter(dayStart + di*2 + 1);
       var cls=obClassify(ws[vmCol+r]?ws[vmCol+r].v:null, ws[nmCol+r]?ws[nmCol+r].v:null);
       var status = cls.kol==="ploeg" ? "aanwezig" : cls.kol;  // verlof/tk/afwezig
-      roster.push({name:nm, ploeg:ploeg, rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, herkomst:afd});
+      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, herkomst:afd, _pw:!!cls.swap});
     }
   });
   return roster;
@@ -2639,7 +2640,7 @@ function obRender(){
       '<div class="tbody" data-di="'+di+'">';
     if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
     else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
-    d.names.forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
+    d.names.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9; if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
     html+='</div></div>';
   });
   board.innerHTML=html;
@@ -2958,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v25 - 26/06";
+  var APP_VERSION="v26 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3136,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v25 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v26 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3206,5 +3207,11 @@ body.board #linkLamps{display:none}
 </script>
 ﻿<!-- ============ test-tijd verbergen ============ -->
 <style>label.btn:has(#obTestTime){display:none !important} #obTestTime{display:none}</style>
+<!-- strakke invul-chips -->
+<style>
+body:not(.board) #outboundView .chip{height:34px;align-items:center;gap:8px;padding:6px 9px}
+body:not(.board) #outboundView .chip .ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
+</style>
 </body>
 </html>
