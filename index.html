@@ -2959,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v29 - 26/06";
+  var APP_VERSION="v30 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v29 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v30 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3237,6 +3237,59 @@ body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
     menu.addEventListener("click",function(){ setTimeout(function(){ menu.classList.remove("open"); },60); });
   }
   if(document.readyState!=="loading") setTimeout(go,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(go,1700); });
+})();
+</script>
+﻿<!-- ============ terug-op-datum bij afwezigen ============ -->
+<style>
+.ob-return{cursor:pointer;font-size:10px;background:rgba(141,178,255,.12);border:1px solid rgba(141,178,255,.3);color:#8fa6c9;border-radius:5px;padding:1px 6px;margin-left:6px;white-space:nowrap}
+.ob-return:hover{border-color:#3ddc97;color:#3ddc97}
+.ob-return.set{border-color:#3ddc97;color:#3ddc97}
+body.wl-ro .ob-return{cursor:default}
+</style>
+<script>
+(function(){
+  "use strict";
+  function roster(){ try{ return (typeof obRoster!=="undefined"&&obRoster)?obRoster:[]; }catch(e){ return []; } }
+  function hoursMap(){ try{ return (typeof store!=="undefined"&&store.get)?(store.get("vp_ob_hours")||{}):{}; }catch(e){ return {}; } }
+  function isAbsent(p){ return p && p.status && p.status!=="aanwezig"; }
+  function findP(name){ var r=roster(); for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; return null; }
+  window.obSetReturn=function(name){
+    if(window.WL_blockWrite && window.WL_blockWrite()){ if(window.toast) window.toast("Klik eerst op Bewerken"); return; }
+    var hm=hoursMap(); var cur=(hm[name]||{}).terug||"";
+    var v=prompt("Eerste werkdag terug voor "+name+"\n(bv. ma 30/06 - leeg = wissen):", cur);
+    if(v===null) return; v=(""+v).trim();
+    var o=hm[name]||{}; if(v){ o.terug=v; } else { delete o.terug; }
+    if(!o.terug && !o.van && !o.tot){ delete hm[name]; } else { hm[name]=o; }
+    try{ store.set("vp_ob_hours", hm); }catch(e){}
+    if(typeof scheduleSyncWrite==="function") scheduleSyncWrite();
+    if(typeof obRender==="function") obRender();
+  };
+  var obs=null, t=null;
+  function paint(){
+    var view=document.getElementById("outboundView"); if(!view) return;
+    if(obs) obs.disconnect();
+    try{
+      var hm=hoursMap();
+      view.querySelectorAll(".chip[data-name]").forEach(function(chip){
+        var name=chip.getAttribute("data-name"); var p=findP(name);
+        var el=chip.querySelector(":scope > .ob-return");
+        if(!isAbsent(p)){ if(el) el.remove(); return; }
+        var ret=(hm[name]||{}).terug||"";
+        if(!el){ el=document.createElement("span"); el.setAttribute("data-name",name); chip.appendChild(el); }
+        el.className="ob-return"+(ret?" set":"");
+        el.title="Eerste werkdag terug - klik om in te stellen";
+        el.textContent= ret ? ("↩ "+ret) : "terug?";
+      });
+    }catch(e){}
+    if(obs) obs.observe(view,{childList:true,subtree:true});
+  }
+  function schedule(){ clearTimeout(t); t=setTimeout(paint,150); }
+  document.addEventListener("click", function(e){
+    var r=(e.target&&e.target.closest)?e.target.closest(".ob-return"):null;
+    if(!r) return; e.stopPropagation(); e.preventDefault(); window.obSetReturn(r.getAttribute("data-name"));
+  }, true);
+  function init(){ var v=document.getElementById("outboundView"); obs=new MutationObserver(schedule); if(v) obs.observe(v,{childList:true,subtree:true}); schedule(); setInterval(function(){ var vv=document.getElementById("outboundView"); if(vv&&(vv.offsetParent!==null||!vv.hidden)) schedule(); },5000); }
+  if(document.readyState!=="loading") setTimeout(init,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1600); });
 })();
 </script>
 </body>
