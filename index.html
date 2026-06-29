@@ -2959,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v27 - 26/06";
+  var APP_VERSION="v28 - 26/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v27 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v28 - 26/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3212,6 +3212,16 @@ body.board #linkLamps{display:none}
 body:not(.board) #outboundView .chip{height:34px;align-items:center;gap:8px;padding:6px 9px}
 body:not(.board) #outboundView .chip .ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
+</style>
+﻿<!-- ============ H-balk: vast + hoofdacties uitgelicht ============ -->
+<style>
+.ob-bar{flex-wrap:nowrap !important;gap:6px;overflow-x:auto}
+.ob-bar::-webkit-scrollbar{height:6px}
+.ob-bar::-webkit-scrollbar-thumb{background:rgba(141,178,255,.3);border-radius:3px}
+.ob-bar > .btn, .ob-bar > label.btn{white-space:nowrap;flex:0 0 auto;padding:6px 11px;font-size:12.5px}
+.ob-bar #obEdit{background:rgba(45,212,238,.14)!important;border-color:#2dd4ee!important;color:#2dd4ee!important;font-weight:600}
+.ob-bar #obTplLoad{border-color:#3ddc97!important;color:#3ddc97!important;font-weight:600}
+.ob-bar .ob-counts, .ob-bar .ob-leg{flex:0 0 auto}
 </style>
 </body>
 </html>
