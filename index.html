@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v2.3/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v2.4/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2474,7 +2474,7 @@ function obApplyHours(){
   });
 }
 function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
-function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}}); scheduleSyncWrite(); }
+function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}}); scheduleSyncWrite(); }
 function obSave(){ obSavePlace(); obRender(); }
 function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
 var obTplMode=false;
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v2.3";
+  var APP_VERSION="v2.4";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v2.3";
+  var LOCAL=window.__APP_VERSION||"v2.4";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3445,7 +3445,70 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   window.addEventListener("scroll",closePop,true);
 })();
 </script>
+<!-- ============ Leveringen-blok op het inbound-bord ============ -->
+<style>
+#levBox{margin:10px 14px;background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:10px 14px}
+#levBox .lev-h{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--txt,#e9f1ff);margin-bottom:8px;font-size:14px}
+#levBox .lev-h .lev-btn{margin-left:auto;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer}
+#levBox .lev-h .lev-btn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
+#levBox .lev-list{display:flex;flex-wrap:wrap;gap:8px}
+#levBox .lev-item{background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.28));border-radius:8px;padding:5px 11px;font-size:14px;color:var(--txt,#e9f1ff);white-space:nowrap}
+#levBox .lev-empty{color:var(--muted,#8fa6c9);font-size:13px;opacity:.75}
+#levBox textarea{width:100%;min-height:90px;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:8px;font:14px/1.5 system-ui,sans-serif;resize:vertical}
+#levBox .lev-edit-row{display:flex;gap:8px;margin-top:8px}
+#levBox .lev-edit-row button{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer}
+#levBox .lev-edit-row .save{border-color:var(--green,#3ddc97);color:var(--green,#3ddc97)}
+body.wl-ro #levBox .lev-btn{display:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  var editing=false;
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
+  function levGet(date){ try{ var p=store.get("vp_ob_place")||{}; return (p.leveringen&&p.leveringen[date])||""; }catch(e){ return ""; } }
+  function levSave(date,text){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; if(!p.leveringen) p.leveringen={}; if(text&&text.trim()) p.leveringen[date]=text.trim(); else delete p.leveringen[date]; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
+
+  function render(){
+    var box=document.getElementById("levBox"); if(!box) return;
+    var date=today(), txt=levGet(date);
+    if(editing){
+      box.innerHTML='<div class="lev-h"><span>🚚 Leveringen</span></div>'
+        +'<textarea id="levTa" placeholder="Eén per regel, bv:\nRudolf 08:00\nDHL 10:15">'+esc(txt)+'</textarea>'
+        +'<div class="lev-edit-row"><button class="save" id="levSave">Bewaren</button><button id="levCancel">Annuleren</button></div>';
+      var ta=document.getElementById("levTa"); if(ta) ta.focus();
+      document.getElementById("levSave").addEventListener("click",function(){ levSave(date, document.getElementById("levTa").value); editing=false; render(); });
+      document.getElementById("levCancel").addEventListener("click",function(){ editing=false; render(); });
+      return;
+    }
+    var lines=txt.split("\n").map(function(s){return s.trim();}).filter(function(s){return s;});
+    var list=lines.length? lines.map(function(l){return '<span class="lev-item">'+esc(l)+'</span>';}).join("") : '<span class="lev-empty">Nog geen leveringen ingevuld</span>';
+    box.innerHTML='<div class="lev-h"><span>🚚 Leveringen</span><button class="lev-btn" id="levEdit">Bewerken</button></div><div class="lev-list">'+list+'</div>';
+    var eb=document.getElementById("levEdit");
+    if(eb) eb.addEventListener("click",function(){ if(blocked()){ toast("Klik eerst op Bewerken"); return; } editing=true; render(); });
+  }
+  window.levRender=render;
+
+  function ensureUI(){
+    if(document.getElementById("levBox")) return;
+    var iv=document.getElementById("inboundView"); if(!iv) return;
+    var box=document.createElement("div"); box.id="levBox";
+    var anchor=document.getElementById("blockChips");
+    if(anchor && anchor.parentNode){ anchor.parentNode.insertBefore(box, anchor.nextSibling); }
+    else iv.insertBefore(box, iv.firstChild);
+    render();
+  }
+  function init(){
+    ensureUI();
+    setInterval(function(){ var iv=document.getElementById("inboundView"); if(iv && !iv.hidden && !editing) render(); }, 5000);
+  }
+  if(document.readyState!=="loading") setTimeout(init,1300); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1300); });
+})();
+</script>
 </body>
+
 
 
 
