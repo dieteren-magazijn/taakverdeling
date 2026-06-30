@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v2.0/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v2.1/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v2.0";
+  var APP_VERSION="v2.1";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v2.0";
+  var LOCAL=window.__APP_VERSION||"v2.1";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3248,19 +3248,20 @@ body.board #fileDates{display:none}
   if(document.readyState!=="loading") setTimeout(paint,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(paint,2000); });
 })();
 </script>
-<!-- ============ Sector sub-borden (Schaefer / Liften / Sector G / Zone 9) ============ -->
+<!-- ============ Sector sub-bord (Schaefer: alle taakgroepen op 1 bord) ============ -->
 <style>
 #sectorView .sec-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap}
-#sectorView .sec-bar label{color:var(--muted,#8fa6c9);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-#sectorView #secPick{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 10px;font-size:14px}
+#sectorView .sec-title{font-size:15px;font-weight:800;color:var(--txt,#e9f1ff)}
 #sectorView .sec-hint{color:var(--muted,#8fa6c9);font-size:12px}
 #sectorView .sec-tvbtn{margin-left:auto;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
 #sectorView .sec-tvbtn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
 #sectorView .sec-layout{display:grid;grid-template-columns:230px 1fr;gap:14px;padding:0 14px 24px;align-items:start}
 #sectorView .sec-pool{display:flex;flex-direction:column;gap:4px;position:sticky;top:70px;max-height:calc(100vh - 120px);overflow:auto}
 #sectorView .sec-pool .sec-h{color:var(--muted,#8fa6c9);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 4px}
-#sectorView .sec-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
-#sectorView .sec-card{background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:8px 10px;min-height:62px}
+#sectorView .sec-group{margin-bottom:18px}
+#sectorView .sec-group-h{font-size:13px;font-weight:800;color:var(--cyan,#2dd4ee);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px;border-bottom:1px solid var(--line2,rgba(141,178,255,.22));padding-bottom:4px}
+#sectorView .sec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
+#sectorView .sec-card{background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:8px 10px;min-height:60px}
 #sectorView .sec-card.drop{outline:2px dashed var(--cyan,#2dd4ee);outline-offset:2px;cursor:pointer}
 #sectorView .sec-card-h{font-weight:700;font-size:13px;color:var(--txt,#e9f1ff);margin-bottom:6px;display:flex;justify-content:space-between;gap:6px}
 #sectorView .sec-card-h .cnt{color:var(--muted,#8fa6c9);font-weight:600}
@@ -3272,39 +3273,38 @@ body.board #fileDates{display:none}
 #sectorView .sec-empty{color:var(--muted,#8fa6c9);font-size:12px;opacity:.7;padding:6px}
 body.board #sectorView{display:none}
 body.wl-ro #sectorView .sec-card.drop{outline:none}
-/* schermvullende bord-modus voor de sector */
+/* schermvullende bord-modus */
 #sectorView.sec-tv{position:fixed;inset:0;z-index:9000;background:var(--bg,#070f1f);overflow:auto;padding:18px 22px}
 #sectorView.sec-tv .sec-layout{grid-template-columns:1fr;padding:0}
 #sectorView.sec-tv .sec-pool{display:none}
-#sectorView.sec-tv #secPick,#sectorView.sec-tv .sec-hint{display:none}
-#sectorView.sec-tv .sec-board{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
-#sectorView.sec-tv .sec-card{min-height:90px;padding:12px 14px}
-#sectorView.sec-tv .sec-card-h{font-size:18px}
-#sectorView.sec-tv .chip.sec-chip{font-size:16px;padding:7px 11px}
-#sectorView.sec-tv .sec-tvtitle{font-size:24px;font-weight:800;color:var(--txt,#e9f1ff);margin:0 0 12px;display:flex;align-items:center;gap:12px}
+#sectorView.sec-tv .sec-bar{display:none}
+#sectorView.sec-tv .sec-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px}
+#sectorView.sec-tv .sec-card{min-height:84px;padding:11px 13px}
+#sectorView.sec-tv .sec-card-h{font-size:17px}
+#sectorView.sec-tv .sec-group-h{font-size:18px}
+#sectorView.sec-tv .chip.sec-chip{font-size:15px;padding:6px 10px}
 .sec-tvtitle{display:none}
-#sectorView.sec-tv .sec-tvtitle{display:flex}
-#sectorView.sec-tv .sec-tvbtn{margin-left:0}
+#sectorView.sec-tv .sec-tvtitle{display:flex;align-items:center;gap:14px;font-size:24px;font-weight:800;color:var(--txt,#e9f1ff);margin:0 0 14px}
 </style>
 <script>
 (function(){
   "use strict";
+  var SRC="SCHAEFER";
   var SECTOR_DEFS=[
-    {key:"Schaefer", src:"SCHAEFER", tasks:["Picking SDD+stock","Picking schäfer","Picking schuiven","Picking tour 400","Picking inpakzone","Putaway D","Putaway E","Putaway F","Putaway Schuiven","Staging/movements","Controle producten","Counting","Opkuisen schäfer"]},
-    {key:"Liften", src:"SCHAEFER", tasks:["Picking K06","Picking K07","Picking K08","Picking K09","Putaway K06","Putaway K07","Putaway K08","Putaway K09"]},
-    {key:"Sector G", src:"SCHAEFER", tasks:["Picking","Putaway","Opkuisen sector G"]},
-    {key:"Zone 9", src:"SCHAEFER", tasks:["Picking picktunnel/sector Z/airbaglokaal","Picking acties","Picking post","Opkuisen zone 9/inpakken vijzen"]}
+    {key:"Schaefer", tasks:["Picking SDD+stock","Picking schäfer","Picking schuiven","Picking tour 400","Picking inpakzone","Putaway D","Putaway E","Putaway F","Putaway Schuiven","Staging/movements","Controle producten","Counting","Opkuisen schäfer"]},
+    {key:"Liften", tasks:["Picking K06","Picking K07","Picking K08","Picking K09","Putaway K06","Putaway K07","Putaway K08","Putaway K09"]},
+    {key:"Sector G", tasks:["Picking","Putaway","Opkuisen sector G"]},
+    {key:"Zone 9", tasks:["Picking picktunnel/sector Z/airbaglokaal","Picking acties","Picking post","Opkuisen zone 9/inpakken vijzen"]}
   ];
-  var secCur=SECTOR_DEFS[0].key, secSel=null, secTV=false;
+  var secSel=null, secTV=false;
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
-  function def(){ return SECTOR_DEFS.filter(function(d){return d.key===secCur;})[0]||SECTOR_DEFS[0]; }
   function secGetAll(){ try{ var p=store.get("vp_ob_place")||{}; return p.sector||{}; }catch(e){ return {}; } }
   function secSave(all){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.sector=all; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
-  function srcNames(lbl){ try{ if(typeof obDepts==="undefined"||!obDepts) return []; var d=obDepts.filter(function(x){return x.label===lbl;})[0]; return d?(d.names||[]).slice():[]; }catch(e){ return []; } }
+  function srcNames(){ try{ if(typeof obDepts==="undefined"||!obDepts) return []; var d=obDepts.filter(function(x){return x.label===SRC;})[0]; return d?(d.names||[]).slice():[]; }catch(e){ return []; } }
   function byName(){ var m={}; try{ (obRoster||[]).forEach(function(p){m[p.name]=p;}); }catch(e){} return m; }
-  function assignedAnywhere(all){ var s={}; SECTOR_DEFS.forEach(function(d){ var a=all[d.key]||{}; d.tasks.forEach(function(t){ (a[t]||[]).forEach(function(n){ s[n]={g:d.key,t:t}; }); }); }); return s; }
+  function assignedAnywhere(all){ var s={}; SECTOR_DEFS.forEach(function(d){ var a=all[d.key]||{}; d.tasks.forEach(function(t){ (a[t]||[]).forEach(function(n){ s[n]=1; }); }); }); return s; }
 
   function chipHTML(n,BN,sel){
     var p=BN[n], pl=p?(p.ploeg||""):"";
@@ -3315,30 +3315,28 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 
   window.secRender=function(){
     var view=document.getElementById("sectorView"); if(!view||view.hidden) return;
-    var d=def(); var all=secGetAll(); var assign=all[d.key]||{};
-    var src=srcNames(d.src), BN=byName();
-    var anyMap=assignedAnywhere(all);
+    var all=secGetAll(), src=srcNames(), BN=byName(), anyMap=assignedAnywhere(all);
     var pool=src.filter(function(n){ return !anyMap[n]; });
+    var poolHTML=pool.length? pool.map(function(n){return chipHTML(n,BN,secSel===n);}).join("") : '<div class="sec-empty">Geen vrije mensen in '+esc(SRC)+'</div>';
 
-    var pickOpts=SECTOR_DEFS.map(function(x){ return '<option'+(x.key===secCur?' selected':'')+'>'+esc(x.key)+'</option>'; }).join("");
-    var poolHTML=pool.length? pool.map(function(n){return chipHTML(n,BN,secSel===n);}).join("") : '<div class="sec-empty">Geen vrije mensen in '+esc(d.src)+'</div>';
-    var cardsHTML=d.tasks.map(function(t){
-      var names=(assign[t]||[]).filter(function(n){return src.indexOf(n)>=0;});
-      var chips=names.map(function(n){return chipHTML(n,BN,false);}).join("");
-      return '<div class="sec-card'+((secSel&&!secTV)?' drop':'')+'" data-task="'+esc(t)+'"><div class="sec-card-h"><span>'+esc(t)+'</span><span class="cnt">'+names.length+'</span></div>'+chips+'</div>';
+    var groupsHTML=SECTOR_DEFS.map(function(d){
+      var a=all[d.key]||{};
+      var cards=d.tasks.map(function(t){
+        var names=(a[t]||[]).filter(function(n){return src.indexOf(n)>=0;});
+        var chips=names.map(function(n){return chipHTML(n,BN,false);}).join("");
+        return '<div class="sec-card'+((secSel&&!secTV)?' drop':'')+'" data-group="'+esc(d.key)+'" data-task="'+esc(t)+'"><div class="sec-card-h"><span>'+esc(t)+'</span><span class="cnt">'+names.length+'</span></div>'+chips+'</div>';
+      }).join("");
+      return '<div class="sec-group"><div class="sec-group-h">'+esc(d.key)+'</div><div class="sec-grid">'+cards+'</div></div>';
     }).join("");
 
-    var bar='<div class="sec-bar"><label for="secPick">Sector</label>'
-      +'<select id="secPick">'+pickOpts+'</select>'
+    var bar='<div class="sec-bar"><span class="sec-title">Schaefer — alle taken</span>'
       +'<span class="sec-hint">Klik een naam links, dan een taak · klik een geplaatste naam om hem terug te halen</span>'
       +'<button class="sec-tvbtn" id="secTvBtn">📺 Bord</button></div>';
-    var tvtitle='<div class="sec-tvtitle"><span>SCHAEFER · '+esc(d.key)+'</span><button class="sec-tvbtn" id="secTvExit">✕ Sluiten</button></div>';
+    var tvtitle='<div class="sec-tvtitle"><span>SCHAEFER</span><button class="sec-tvbtn" id="secTvExit">✕ Sluiten</button></div>';
     view.innerHTML=(secTV?tvtitle:bar)
-      +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(d.src)+'</div>'+poolHTML+'</aside>'
-      +'<div class="sec-board">'+cardsHTML+'</div></div>';
+      +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC)+'</div>'+poolHTML+'</aside>'
+      +'<div class="sec-board">'+groupsHTML+'</div></div>';
 
-    var sel=document.getElementById("secPick");
-    if(sel) sel.addEventListener("change",function(){ secCur=this.value; secSel=null; window.secRender(); });
     var tb=document.getElementById("secTvBtn"); if(tb) tb.addEventListener("click",enterTV);
     var ex=document.getElementById("secTvExit"); if(ex) ex.addEventListener("click",exitTV);
   };
@@ -3347,12 +3345,12 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   function exitTV(){ secTV=false; var v=document.getElementById("sectorView"); if(v) v.classList.remove("sec-tv"); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} window.secRender(); }
   document.addEventListener("fullscreenchange",function(){ if(!document.fullscreenElement && secTV){ secTV=false; var v=document.getElementById("sectorView"); if(v) v.classList.remove("sec-tv"); window.secRender(); } });
 
-  function assignTo(task){
+  function assignTo(group,task){
     if(blocked()){ toast("Klik eerst op Bewerken"); return; }
     if(!secSel) return;
     var all=secGetAll();
     SECTOR_DEFS.forEach(function(d){ var a=all[d.key]||{}; Object.keys(a).forEach(function(t){ a[t]=(a[t]||[]).filter(function(n){return n!==secSel;}); }); all[d.key]=a; });
-    var a=all[secCur]||{}; if(!a[task]) a[task]=[]; if(a[task].indexOf(secSel)<0) a[task].push(secSel); all[secCur]=a;
+    var g=all[group]||{}; if(!g[task]) g[task]=[]; if(g[task].indexOf(secSel)<0) g[task].push(secSel); all[group]=g;
     secSave(all); secSel=null; window.secRender();
   }
   function removeName(n){
@@ -3365,8 +3363,8 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   document.addEventListener("click",function(e){
     var view=document.getElementById("sectorView"); if(!view||view.hidden) return;
     if(!view.contains(e.target)) return;
-    if(e.target.closest("#secTvBtn")||e.target.closest("#secTvExit")||e.target.closest("#secPick")) return;
-    if(secTV) return; /* bord-modus = enkel tonen */
+    if(e.target.closest("#secTvBtn")||e.target.closest("#secTvExit")) return;
+    if(secTV) return;
     var card=e.target.closest(".sec-card");
     var chip=e.target.closest(".chip[data-name]");
     if(chip){
@@ -3374,14 +3372,14 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       if(card){ e.stopPropagation(); removeName(nm); return; }
       e.stopPropagation(); secSel=(secSel===nm)?null:nm; window.secRender(); return;
     }
-    if(card){ e.stopPropagation(); assignTo(card.getAttribute("data-task")); return; }
+    if(card){ e.stopPropagation(); assignTo(card.getAttribute("data-group"),card.getAttribute("data-task")); return; }
   }, true);
 
   function ensureUI(){
     var tabs=document.querySelector(".viewtabs");
     if(tabs && !tabs.querySelector('[data-view="sector"]')){
       var b=document.createElement("button"); b.className="vtab"; b.setAttribute("data-view","sector");
-      b.textContent="🗂 Sector";
+      b.textContent="🗂 Schaefer";
       b.addEventListener("click",function(){ if(typeof switchView==="function") switchView("sector"); });
       tabs.appendChild(b);
     }
@@ -3399,6 +3397,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 })();
 </script>
 </body>
+
 
 
 </html>
