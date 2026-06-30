@@ -310,11 +310,11 @@ body.board #outboundView .chip{display:flex;gap:.4vw;background:var(--panel);bor
 body.board #boardLogo{display:block;position:fixed;right:1.4vw;bottom:1.1vw;width:11vw;height:2.4vw;opacity:.6;z-index:60;pointer-events:none}
 @media (max-width:560px){.brand-logo{display:none}}
 </style>
-<link rel="icon" href="favicon.svg?v=1" type="image/svg+xml">
-<link rel="icon" href="favicon-32.png?v=1" sizes="32x32" type="image/png">
-<link rel="icon" href="favicon-16.png?v=1" sizes="16x16" type="image/png">
-<link rel="shortcut icon" href="favicon.ico?v=1">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
+<link rel="icon" href="favicon.svg?v=2" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png?v=2" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon-16.png?v=2" sizes="16x16" type="image/png">
+<link rel="shortcut icon" href="favicon.ico?v=2">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
 </head>
 <body>
 
@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v1.7/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v1.8/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2967,7 +2967,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v1.7";
+  var APP_VERSION="v1.8";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3040,7 +3040,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v1.7";
+  var LOCAL=window.__APP_VERSION||"v1.8";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
