@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v33 - 30/06";
+  var APP_VERSION="v34 - 30/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3139,7 +3139,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v33 - 30/06";
+  var LOCAL=window.__APP_VERSION||"v34 - 30/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3257,7 +3257,11 @@ body.wl-ro .ob-return{cursor:default}
   function isAbsent(p){ return p && (p.status==="verlof" || (p.status==="afwezig" && p.badge==="ziek")); }
   function findP(name){ var r=roster(); for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; return null; }
   function fmtDate(ms){ var d=new Date(ms); var dn=["zo","ma","di","wo","do","vr","za"][d.getDay()]; return dn+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
+  var _retCache={}, _retKey="";
   function autoReturn(name){
+    try{ var _k=((typeof state!=="undefined"&&state&&state.model)?state.model.sheet:"")+"|"+((typeof state!=="undefined"&&state)?state.dayKey:""); if(_k!==_retKey){ _retCache={}; _retKey=_k; } if(name in _retCache) return _retCache[name]; var _r=_arCompute(name); _retCache[name]=_r; return _r; }catch(e){ return null; }
+  }
+  function _arCompute(name){
     try{
       if(typeof state==="undefined"||!state||!state.model||!state.model.monday||!state.wb) return null;
       if(typeof obClassify!=="function"||typeof obColLetter!=="function") return null;
