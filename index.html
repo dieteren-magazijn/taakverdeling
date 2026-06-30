@@ -2602,7 +2602,7 @@ function obRender(){
   // POOL links: aanwezigen die nog niet geplaatst zijn
   var pool=document.getElementById("obPool"), absent=document.getElementById("obAbsent");
   var q=(document.getElementById("obSearch").value||"").toLowerCase();
-  var poolHTML="", absHTML="", nPool=0, nAbs=0;
+  var poolHTML="", absHTML="", nPool=0, nAbs=0, absArr=[];
   var studHTML="", intHTML="";
   obRoster.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
     if(q && p.name.toLowerCase().indexOf(q)<0) return;
@@ -2611,13 +2611,15 @@ function obRender(){
       if(p._kind==="interim") intHTML+=obChipHTML(p,"pool"); else studHTML+=obChipHTML(p,"pool");
       return;
     }
-    if(p.status!=="aanwezig"){ if(obTplMode){ poolHTML+=obChipHTML(p,"pool"); nPool++; } else { absHTML+=obChipHTML(p,"absent"); nAbs++; } return; }
+    if(p.status!=="aanwezig"){ if(obTplMode){ poolHTML+=obChipHTML(p,"pool"); nPool++; } else { absArr.push(p); nAbs++; } return; }
     poolHTML+=obChipHTML(p,"pool"); nPool++;
   });
   var poolOut = poolHTML || (studHTML||intHTML ? "" : '<div class="thint">Iedereen geplaatst 🎉</div>');
   if(studHTML) poolOut += '<div class="sub-h">🌙 Avondstudenten</div>' + studHTML;
   if(intHTML)  poolOut += '<div class="sub-h">Vaste late (interim)</div>' + intHTML;
   pool.innerHTML = poolOut || '<div class="thint">Iedereen geplaatst 🎉</div>';
+  absArr.sort(function(a,b){ var ma=(window.obReturnMs?window.obReturnMs(a.name):null), mb=(window.obReturnMs?window.obReturnMs(b.name):null); if(ma&&mb) return ma-mb; if(ma) return -1; if(mb) return 1; return a.name.localeCompare(b.name); });
+  absArr.forEach(function(p){ absHTML+=obChipHTML(p,"absent"); });
   absent.innerHTML = absHTML || '<div class="thint">Niemand afwezig</div>';
   // BORD rechts: afdelingen
   board.className="tasks";
@@ -2959,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v32 - 30/06";
+  var APP_VERSION="v33 - 30/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3139,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v32 - 30/06";
+  var LOCAL=window.__APP_VERSION||"v33 - 30/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
