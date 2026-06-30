@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v2.1/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v2.2/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v2.1";
+  var APP_VERSION="v2.2";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v2.1";
+  var LOCAL=window.__APP_VERSION||"v2.2";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3304,6 +3304,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   function secSave(all){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.sector=all; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
   function srcNames(){ try{ if(typeof obDepts==="undefined"||!obDepts) return []; var d=obDepts.filter(function(x){return x.label===SRC;})[0]; return d?(d.names||[]).slice():[]; }catch(e){ return []; } }
   function byName(){ var m={}; try{ (obRoster||[]).forEach(function(p){m[p.name]=p;}); }catch(e){} return m; }
+  function isGone(p){ try{ if(!p||typeof obWindowFor!=="function"||typeof obNowMin!=="function"||typeof obParseHM!=="function") return false; var w=obWindowFor(p); var tot=(w&&w.tot)?obParseHM(w.tot):null; return tot!=null && obNowMin()>=tot; }catch(e){ return false; } }
   function assignedAnywhere(all){ var s={}; SECTOR_DEFS.forEach(function(d){ var a=all[d.key]||{}; d.tasks.forEach(function(t){ (a[t]||[]).forEach(function(n){ s[n]=1; }); }); }); return s; }
 
   function chipHTML(n,BN,sel){
@@ -3316,13 +3317,13 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   window.secRender=function(){
     var view=document.getElementById("sectorView"); if(!view||view.hidden) return;
     var all=secGetAll(), src=srcNames(), BN=byName(), anyMap=assignedAnywhere(all);
-    var pool=src.filter(function(n){ return !anyMap[n]; });
+    var pool=src.filter(function(n){ return !anyMap[n] && !isGone(BN[n]); });
     var poolHTML=pool.length? pool.map(function(n){return chipHTML(n,BN,secSel===n);}).join("") : '<div class="sec-empty">Geen vrije mensen in '+esc(SRC)+'</div>';
 
     var groupsHTML=SECTOR_DEFS.map(function(d){
       var a=all[d.key]||{};
       var cards=d.tasks.map(function(t){
-        var names=(a[t]||[]).filter(function(n){return src.indexOf(n)>=0;});
+        var names=(a[t]||[]).filter(function(n){return src.indexOf(n)>=0 && !isGone(BN[n]);});
         var chips=names.map(function(n){return chipHTML(n,BN,false);}).join("");
         return '<div class="sec-card'+((secSel&&!secTV)?' drop':'')+'" data-group="'+esc(d.key)+'" data-task="'+esc(t)+'"><div class="sec-card-h"><span>'+esc(t)+'</span><span class="cnt">'+names.length+'</span></div>'+chips+'</div>';
       }).join("");
@@ -3397,6 +3398,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 })();
 </script>
 </body>
+
 
 
 
