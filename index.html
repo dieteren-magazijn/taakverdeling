@@ -1159,7 +1159,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v1.0/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v1.1/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2962,7 +2962,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v1.0";
+  var APP_VERSION="v1.1";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3140,7 +3140,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v1.0";
+  var LOCAL=window.__APP_VERSION||"v1.1";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3169,8 +3169,10 @@ body.board #moreWrap{display:none}
 #linkLamps{display:inline-flex;gap:11px;align-items:center;align-self:center;margin-left:8px}
 #linkLamps .lamp{display:inline-flex;align-items:center;gap:5px;cursor:pointer;font:600 10px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);text-transform:uppercase;letter-spacing:.06em}
 #linkLamps .lamp .d{width:9px;height:9px;border-radius:50%;background:#5a6473;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
-#linkLamps .lamp.on .d{background:#3ddc97;box-shadow:0 0 7px #3ddc97}
-#linkLamps .lamp.warn .d{background:#f6c945;box-shadow:0 0 7px #f6c945}
+#linkLamps .lamp.on .d{background:#3ddc97;--lc:#3ddc97;box-shadow:0 0 7px #3ddc97;animation:lampPulse 2.2s ease-in-out infinite}
+#linkLamps .lamp.warn .d{background:#f6c945;--lc:#f6c945;box-shadow:0 0 7px #f6c945;animation:lampPulse 1.3s ease-in-out infinite}
+@keyframes lampPulse{0%,100%{box-shadow:0 0 3px var(--lc,#3ddc97);opacity:.7}50%{box-shadow:0 0 10px 1px var(--lc,#3ddc97);opacity:1}}
+@media (prefers-reduced-motion:reduce){#linkLamps .lamp .d{animation:none!important}}
 body.board #linkLamps{display:none}
 </style>
 <script>
