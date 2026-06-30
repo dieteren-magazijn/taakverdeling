@@ -1115,7 +1115,7 @@ function setSheet(name){
 
 async function loadFile(file, viaHandle){
   try{
-    var buf = await file.arrayBuffer();
+    window.__planTS=file.lastModified;  var buf = await file.arrayBuffer();
     var wb = XLSX.read(buf, {type:"array", bookFiles:true, sheetRows:60});
     ingestWorkbook(wb, file.name + (file.lastModified ? " · " + fmtDT(file.lastModified) : ""));
     toast("Planning ingelezen" + (viaHandle ? " (gekoppeld bestand)" : ""));
@@ -2210,7 +2210,7 @@ function obComposeRoster(){
 /* ---- tweede Excel koppelen / inlezen ---- */
 async function siLoadFile(file){
   try{
-    var buf=await file.arrayBuffer();
+    window.__siTS=file.lastModified;    var buf=await file.arrayBuffer();
     siWb=XLSX.read(buf,{type:"array",bookFiles:true,cellStyles:true});
     updSiBtn();
     obRefreshFromExcel();
@@ -2962,7 +2962,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v44 - 30/06";
+  var APP_VERSION="v45 - 30/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3140,7 +3140,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v44 - 30/06";
+  var LOCAL=window.__APP_VERSION||"v45 - 30/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3326,6 +3326,20 @@ body.wl-ro .ob-return{cursor:default}
   }, true);
   function init(){ var v=document.getElementById("outboundView"); obs=new MutationObserver(schedule); if(v) obs.observe(v,{childList:true,subtree:true}); schedule(); setInterval(function(){ var vv=document.getElementById("outboundView"); if(vv&&(vv.offsetParent!==null||!vv.hidden)) schedule(); },6000); }
   if(document.readyState!=="loading") setTimeout(init,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1600); });
+})();
+</script>
+﻿<!-- ============ bestandsdatums (onopvallend) ============ -->
+<style>
+#fileDates{position:fixed;right:8px;bottom:6px;z-index:50;font:500 10px/1.3 system-ui,sans-serif;color:var(--muted,#8fa6c9);opacity:.45;text-align:right;pointer-events:none;white-space:nowrap}
+body.board #fileDates{display:none}
+</style>
+<script>
+(function(){
+  function fmt(ts){ if(!ts) return "?"; var d=new Date(ts); function p(n){return ("0"+n).slice(-2);} return p(d.getDate())+"/"+p(d.getMonth()+1)+" "+p(d.getHours())+":"+p(d.getMinutes()); }
+  function el(){ var e=document.getElementById("fileDates"); if(!e){ e=document.createElement("div"); e.id="fileDates"; document.body.appendChild(e); } return e; }
+  function paint(){ try{ var p=window.__planTS, s=window.__siTS; if(!p && !s){ var x=document.getElementById("fileDates"); if(x) x.style.display="none"; return; } var e=el(); e.style.display="block"; e.innerHTML="planning "+fmt(p)+" · interims "+fmt(s); }catch(e){} }
+  setInterval(paint, 3000);
+  if(document.readyState!=="loading") setTimeout(paint,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(paint,2000); });
 })();
 </script>
 </body>
