@@ -2640,7 +2640,7 @@ function obRender(){
       '<div class="tbody" data-di="'+di+'">';
     if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
     else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
-    d.names.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9; if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
+    d.names.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9e15; var zv=p&&(p.status==="verlof"||(p.status==="afwezig"&&p.badge==="ziek")); if(zv){ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); return ms?(1e12+ms/1e6):8e15; } if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
     html+='</div></div>';
   });
   board.innerHTML=html;
@@ -2959,7 +2959,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v31 - 26/06";
+  var APP_VERSION="v32 - 30/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3137,7 +3137,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v31 - 26/06";
+  var LOCAL=window.__APP_VERSION||"v32 - 30/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3252,7 +3252,7 @@ body.wl-ro .ob-return{cursor:default}
   "use strict";
   function roster(){ try{ return (typeof obRoster!=="undefined"&&obRoster)?obRoster:[]; }catch(e){ return []; } }
   function hoursMap(){ try{ return (typeof store!=="undefined"&&store.get)?(store.get("vp_ob_hours")||{}):{}; }catch(e){ return {}; } }
-  function isAbsent(p){ return p && p.status && p.status!=="aanwezig"; }
+  function isAbsent(p){ return p && (p.status==="verlof" || (p.status==="afwezig" && p.badge==="ziek")); }
   function findP(name){ var r=roster(); for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; return null; }
   function fmtDate(ms){ var d=new Date(ms); var dn=["zo","ma","di","wo","do","vr","za"][d.getDay()]; return dn+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
   function autoReturn(name){
@@ -3280,6 +3280,7 @@ body.wl-ro .ob-return{cursor:default}
     }catch(e){}
     return null;
   }
+  window.obReturnMs=autoReturn;
   window.obSetReturn=function(name){
     if(window.WL_blockWrite && window.WL_blockWrite()){ if(window.toast) window.toast("Klik eerst op Bewerken"); return; }
     var hm=hoursMap(); var cur=(hm[name]||{}).terug||"";
