@@ -841,15 +841,11 @@ async function syncPerm(ask){
 async function syncRead(force){
   if(!sync.handle || !(await syncPerm(false))) return;
   try{
-    var _ts=performance.now();
     var f = await sync.handle.getFile();
-    var _tg=performance.now();
     if(!force && f.lastModified <= sync.lastMod) return;
     sync.lastMod = f.lastModified;
     var txt = await f.text(); if(!txt || txt.length < 5) return;
-    var _tt=performance.now();
     var doc = JSON.parse(txt);
-    try{ if(window.toast) window.toast("JSON "+txt.length+"B · open "+Math.round(_tg-_ts)+"ms · lezen "+Math.round(_tt-_tg)+"ms"); }catch(_){}
     if(!doc||typeof doc!=="object"||(doc.days===undefined&&doc.obPlace===undefined&&doc.tasks===undefined&&doc.hist===undefined)) return;
     if(!force && doc.writer === CLIENT_ID && doc.updated === sync.lastWrite) return; /* eigen schrijfactie */
     _applyingRemote = true;
@@ -2826,6 +2822,7 @@ if(store.get("vp_view")==="outbound") switchView("outbound");
         banner("warn", "Planning is gekoppeld — klik op <b>🔄</b> om ze in te lezen (eenmalige toestemming per sessie).");
         return;
       }
+      syncRead(true);
       return;
     }
   }catch(e){}
@@ -2965,7 +2962,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v37 META - 30/06";
+  var APP_VERSION="v39 - 30/06";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3143,7 +3140,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v37 META - 30/06";
+  var LOCAL=window.__APP_VERSION||"v39 - 30/06";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
