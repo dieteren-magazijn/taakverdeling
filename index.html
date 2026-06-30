@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v1.8/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v1.9/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2474,7 +2474,7 @@ function obApplyHours(){
   });
 }
 function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
-function obSavePlace(){ store.set("vp_ob_place",{depts:obDepts}); scheduleSyncWrite(); }
+function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}}); scheduleSyncWrite(); }
 function obSave(){ obSavePlace(); obRender(); }
 function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
 var obTplMode=false;
@@ -2710,12 +2710,13 @@ function obAddName(){
 }
 
 function switchView(v){
-  var inb=v==="inbound";
-  document.getElementById("inboundView").hidden=!inb;
-  document.getElementById("outboundView").hidden=inb;
+  document.getElementById("inboundView").hidden=(v!=="inbound");
+  document.getElementById("outboundView").hidden=(v!=="outbound");
+  var _sv=document.getElementById("sectorView"); if(_sv) _sv.hidden=(v!=="sector");
   document.querySelectorAll(".vtab").forEach(function(t){ t.classList.toggle("active", t.dataset.view===v); });
   store.set("vp_view",v);
-  if(!inb){ obRefreshFromExcel(); }
+  if(v==="outbound"){ obRefreshFromExcel(); }
+  if(v==="sector"){ obRefreshFromExcel(); if(window.secRender) window.secRender(); }
 }
 document.querySelectorAll(".vtab").forEach(function(t){ t.addEventListener("click",function(){ switchView(t.dataset.view); }); });
 document.getElementById("obAddName").addEventListener("click",obAddName);
@@ -2967,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v1.8";
+  var APP_VERSION="v1.9";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3040,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v1.8";
+  var LOCAL=window.__APP_VERSION||"v1.9";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3247,5 +3248,127 @@ body.board #fileDates{display:none}
   if(document.readyState!=="loading") setTimeout(paint,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(paint,2000); });
 })();
 </script>
+<!-- ============ Sector sub-borden (Schaefer e.a.) ============ -->
+<style>
+#sectorView .sec-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap}
+#sectorView .sec-bar label{color:var(--muted,#8fa6c9);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+#sectorView #secPick{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 10px;font-size:14px}
+#sectorView .sec-hint{color:var(--muted,#8fa6c9);font-size:12px}
+#sectorView .sec-layout{display:grid;grid-template-columns:230px 1fr;gap:14px;padding:0 14px 24px;align-items:start}
+#sectorView .sec-pool{display:flex;flex-direction:column;gap:4px;position:sticky;top:70px;max-height:calc(100vh - 120px);overflow:auto}
+#sectorView .sec-pool .sec-h{color:var(--muted,#8fa6c9);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 4px}
+#sectorView .sec-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:10px}
+#sectorView .sec-card{background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:8px 10px;min-height:62px}
+#sectorView .sec-card.drop{outline:2px dashed var(--cyan,#2dd4ee);outline-offset:2px;cursor:pointer}
+#sectorView .sec-card-h{font-weight:700;font-size:13px;color:var(--txt,#e9f1ff);margin-bottom:6px;display:flex;justify-content:space-between;gap:6px}
+#sectorView .sec-card-h .cnt{color:var(--muted,#8fa6c9);font-weight:600}
+#sectorView .chip.sec-chip{display:flex;align-items:center;gap:6px;background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:8px;padding:5px 8px;cursor:pointer;font-size:13px;color:var(--txt,#e9f1ff)}
+#sectorView .chip.sec-chip.sel{border-color:var(--cyan,#2dd4ee);box-shadow:0 0 0 1px var(--cyan,#2dd4ee)}
+#sectorView .sec-pl{font-size:10px;font-weight:800;border-radius:4px;padding:1px 5px;background:#5a6473;color:#fff}
+#sectorView .sec-pl.a{background:#ff6b6b}
+#sectorView .sec-pl.b{background:#2dd4ee;color:#06222b}
+#sectorView .sec-empty{color:var(--muted,#8fa6c9);font-size:12px;opacity:.7;padding:6px}
+body.board #sectorView{display:none}
+body.wl-ro #sectorView .sec-card.drop{outline:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  var SECTOR_DEFS=[
+    {key:"Schaefer", src:"SCHAEFER", tasks:["Picking SDD+stock","Picking schäfer","Picking schuiven","Picking tour 400","Picking inpakzone","Putaway D","Putaway E","Putaway F","Putaway Schuiven","Staging/movements","Controle producten","Counting","Opkuisen schäfer"]}
+  ];
+  var secCur=SECTOR_DEFS[0].key, secSel=null;
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function def(){ return SECTOR_DEFS.filter(function(d){return d.key===secCur;})[0]||SECTOR_DEFS[0]; }
+  function secGetAll(){ try{ var p=store.get("vp_ob_place")||{}; return p.sector||{}; }catch(e){ return {}; } }
+  function secSave(all){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.sector=all; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
+  function srcNames(lbl){ try{ if(typeof obDepts==="undefined"||!obDepts) return []; var d=obDepts.filter(function(x){return x.label===lbl;})[0]; return d?(d.names||[]).slice():[]; }catch(e){ return []; } }
+  function byName(){ var m={}; try{ (obRoster||[]).forEach(function(p){m[p.name]=p;}); }catch(e){} return m; }
+
+  function chipHTML(n,BN,sel){
+    var p=BN[n], pl=p?(p.ploeg||""):"";
+    var cls=pl==="A"?"a":(pl==="B"?"b":"");
+    var badge=pl?('<span class="sec-pl '+cls+'">'+esc(pl)+'</span>'):'';
+    return '<div class="chip sec-chip'+(sel?' sel':'')+'" data-name="'+esc(n)+'">'+badge+'<span class="ob-nm">'+esc(n)+'</span></div>';
+  }
+
+  window.secRender=function(){
+    var view=document.getElementById("sectorView"); if(!view||view.hidden) return;
+    var d=def(); var all=secGetAll(); var assign=all[d.key]||{};
+    var src=srcNames(d.src), BN=byName();
+    var placedTask={};
+    d.tasks.forEach(function(t){ (assign[t]||[]).forEach(function(n){ if(src.indexOf(n)>=0) placedTask[n]=t; }); });
+    var pool=src.filter(function(n){ return !placedTask[n]; });
+
+    var pickOpts=SECTOR_DEFS.map(function(x){ return '<option'+(x.key===secCur?' selected':'')+'>'+esc(x.key)+'</option>'; }).join("");
+    var poolHTML=pool.length? pool.map(function(n){return chipHTML(n,BN,secSel===n);}).join("") : '<div class="sec-empty">Geen mensen in '+esc(d.src)+' (zet ze eerst in Outbound)</div>';
+    var cardsHTML=d.tasks.map(function(t){
+      var names=(assign[t]||[]).filter(function(n){return src.indexOf(n)>=0;});
+      var chips=names.map(function(n){return chipHTML(n,BN,false);}).join("");
+      return '<div class="sec-card'+(secSel?' drop':'')+'" data-task="'+esc(t)+'"><div class="sec-card-h"><span>'+esc(t)+'</span><span class="cnt">'+names.length+'</span></div>'+chips+'</div>';
+    }).join("");
+
+    view.innerHTML='<div class="sec-bar"><label for="secPick">Sector</label>'
+      +'<select id="secPick">'+pickOpts+'</select>'
+      +'<span class="sec-hint">Klik een naam links, dan een taak · klik een geplaatste naam om hem terug te halen</span></div>'
+      +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(d.src)+'</div>'+poolHTML+'</aside>'
+      +'<div class="sec-board">'+cardsHTML+'</div></div>';
+    var sel=document.getElementById("secPick");
+    if(sel) sel.addEventListener("change",function(){ secCur=this.value; secSel=null; window.secRender(); });
+  };
+
+  function assignTo(task){
+    if(blocked()){ toast("Klik eerst op Bewerken"); return; }
+    if(!secSel) return;
+    var all=secGetAll(), a=all[secCur]||{};
+    Object.keys(a).forEach(function(t){ a[t]=(a[t]||[]).filter(function(n){return n!==secSel;}); });
+    if(!a[task]) a[task]=[];
+    if(a[task].indexOf(secSel)<0) a[task].push(secSel);
+    all[secCur]=a; secSave(all); secSel=null; window.secRender();
+  }
+  function removeName(n){
+    if(blocked()){ toast("Klik eerst op Bewerken"); return; }
+    var all=secGetAll(), a=all[secCur]||{};
+    Object.keys(a).forEach(function(t){ a[t]=(a[t]||[]).filter(function(x){return x!==n;}); });
+    all[secCur]=a; secSave(all); window.secRender();
+  }
+
+  document.addEventListener("click",function(e){
+    var view=document.getElementById("sectorView"); if(!view||view.hidden) return;
+    if(!view.contains(e.target)) return;
+    var card=e.target.closest(".sec-card");
+    var chip=e.target.closest(".chip[data-name]");
+    if(chip){
+      var nm=chip.getAttribute("data-name");
+      if(card){ e.stopPropagation(); removeName(nm); return; }   // geplaatste naam -> terug naar pool
+      e.stopPropagation(); secSel=(secSel===nm)?null:nm; window.secRender(); return;   // pool-naam selecteren
+    }
+    if(card){ e.stopPropagation(); assignTo(card.getAttribute("data-task")); return; }
+  }, true);
+
+  function ensureUI(){
+    var tabs=document.querySelector(".viewtabs");
+    if(tabs && !tabs.querySelector('[data-view="sector"]')){
+      var b=document.createElement("button"); b.className="vtab"; b.setAttribute("data-view","sector");
+      b.textContent="🗂 Sector";
+      b.addEventListener("click",function(){ if(typeof switchView==="function") switchView("sector"); });
+      tabs.appendChild(b);
+    }
+    if(!document.getElementById("sectorView")){
+      var ob=document.getElementById("outboundView");
+      var v=document.createElement("div"); v.className="wrap"; v.id="sectorView"; v.hidden=true;
+      if(ob && ob.parentNode) ob.parentNode.insertBefore(v, ob.nextSibling); else document.body.appendChild(v);
+    }
+  }
+  function init(){
+    ensureUI();
+    setInterval(function(){ var v=document.getElementById("sectorView"); if(v && !v.hidden) window.secRender(); }, 5000);
+  }
+  if(document.readyState!=="loading") setTimeout(init,1200); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1200); });
+})();
+</script>
 </body>
+
 </html>
