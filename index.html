@@ -1159,7 +1159,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v1.2/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v1.3/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2962,7 +2962,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v1.2";
+  var APP_VERSION="v1.3";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3035,7 +3035,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v1.2";
+  var LOCAL=window.__APP_VERSION||"v1.3";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3168,6 +3168,7 @@ body.wl-ro .ob-return{cursor:default}
       var monMs=state.model.monday.getTime(), UP=(""+name).trim().toUpperCase();
       for(var w=curW; w<=curW+4; w++){
         var sh=state.wb.Sheets[String(w)]; if(!sh) continue;
+        var totRow=null; for(var tr=58;tr<=130;tr++){ var lb=(sh["B"+tr]&&sh["B"+tr].v)||(sh["C"+tr]&&sh["C"+tr].v)||""; if((""+lb).toLowerCase().indexOf("geprest")>=0){ totRow=tr; break; } }
         var found=null, cfgs=[["C",3],["O",15]];
         for(var ci=0; ci<cfgs.length && !found; ci++){
           var col=cfgs[ci][0], ds=cfgs[ci][1];
@@ -3177,6 +3178,8 @@ body.wl-ro .ob-return{cursor:default}
         var startDi=(w===curW)?curDi+1:0;
         for(var di=startDi; di<=4; di++){
           var vm=sh[obColLetter(found.ds+di*2)+found.r], nm=sh[obColLetter(found.ds+di*2+1)+found.r];
+          var _eVM=!vm||vm.v==null||(""+vm.v).trim()==="", _eNM=!nm||nm.v==null||(""+nm.v).trim()==="";
+          if(_eVM && _eNM && totRow){ var _tc=sh[obColLetter(3+di*2)+totRow]; var _tv=(_tc&&_tc.v!=null)?parseFloat((""+_tc.v).replace(",",".")):0; if(!(_tv>0)) continue; }
           var cls=obClassify(vm?vm.v:null, nm?nm.v:null);
           if(cls && cls.kol==="ploeg"){ return monMs + ((w-curW)*7 + di)*86400000; }
         }
