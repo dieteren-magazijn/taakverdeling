@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v2.9/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.0/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v2.9";
+  var APP_VERSION="v3.0";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v2.9";
+  var LOCAL=window.__APP_VERSION||"v3.0";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3451,15 +3451,14 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 #levBox .lev-h{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--txt,#e9f1ff);margin-bottom:8px;font-size:14px}
 #levBox .lev-h .lev-btn{margin-left:auto;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer}
 #levBox .lev-h .lev-btn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
-#levBox .lev-list{display:flex;flex-wrap:wrap;gap:8px}
-#levBox .lev-item{display:inline-flex;align-items:center;gap:6px;background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.28));border-radius:8px;padding:5px 10px;font-size:14px;color:var(--txt,#e9f1ff);white-space:nowrap;font-weight:600}
-#levBox .lev-item.k-stock{border-left:4px solid #3ddc97}
-#levBox .lev-item.k-express{border-left:4px solid #2dd4ee}
-#levBox .lev-truck{font-size:15px}
-#levBox .lev-type{font-size:10px;font-weight:800;border-radius:4px;padding:1px 6px;text-transform:uppercase;letter-spacing:.03em}
-#levBox .lev-type.stock{background:#3ddc97;color:#06241a}
-#levBox .lev-type.express{background:#2dd4ee;color:#06222b}
-#levBox .lev-x{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 2px}
+#levBox .lev-list{display:flex;flex-wrap:wrap;gap:14px 12px;align-items:flex-start}
+#levBox .lev-item{display:inline-flex;align-items:flex-start;gap:1px}
+#levBox .lev-col{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+#levBox .lev-svg{display:block}
+#levBox .lev-cap{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+#levBox .lev-cap.stock{color:#3ddc97}
+#levBox .lev-cap.express{color:#2dd4ee}
+#levBox .lev-x{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:15px;line-height:1;padding:0}
 #levBox .lev-empty{color:var(--muted,#8fa6c9);font-size:13px;opacity:.75}
 #levBox .lev-add{margin-top:12px;border-top:1px solid var(--line2,rgba(141,178,255,.18));padding-top:10px}
 #levBox .lev-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
@@ -3467,7 +3466,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 #levBox .kbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer}
 #levBox .kbtn.stock.active{background:#3ddc97;color:#06241a;border-color:#3ddc97}
 #levBox .kbtn.express.active{background:#2dd4ee;color:#06222b;border-color:#2dd4ee}
-#levBox .mbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+#levBox .mbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer}
 #levBox .mbtn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
 body.wl-ro #levBox .lev-btn{display:none}
 </style>
@@ -3485,9 +3484,27 @@ body.wl-ro #levBox .lev-btn{display:none}
       return []; }catch(e){ return []; } }
   function levSave(date,arr){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; if(!p.leveringen) p.leveringen={}; if(arr&&arr.length) p.leveringen[date]=arr; else delete p.leveringen[date]; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
 
+  function truckSVG(name,k){
+    var col=k==="express"?"#2dd4ee":"#3ddc97";
+    var nm=(""+name).toUpperCase();
+    var cw=Math.max(50, nm.length*9+16);
+    var W=cw+42, H=36;
+    var cabX=cw+4;
+    var cab='M'+cabX+' 7 h20 l7 8 v9 h-27 z';
+    return '<svg class="lev-svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">'
+      +'<rect x="2" y="3" width="'+cw+'" height="21" rx="3" fill="#0b1830" stroke="'+col+'" stroke-width="2"/>'
+      +'<text x="'+(2+cw/2)+'" y="18" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="700" fill="#e9f1ff">'+esc(nm)+'</text>'
+      +'<path d="'+cab+'" fill="'+col+'"/>'
+      +'<rect x="'+(cabX+4)+'" y="11" width="11" height="8" rx="1" fill="#0b1830"/>'
+      +'<circle cx="18" cy="28" r="5.5" fill="#141d2e" stroke="#7a869c" stroke-width="2"/>'
+      +'<circle cx="'+(cw-8)+'" cy="28" r="5.5" fill="#141d2e" stroke="#7a869c" stroke-width="2"/>'
+      +'<circle cx="'+(cabX+15)+'" cy="28" r="5.5" fill="#141d2e" stroke="#7a869c" stroke-width="2"/>'
+      +'</svg>';
+  }
+
   function chip(it,i,edit){
     var k=(it.k==="express")?"express":"stock";
-    return '<span class="lev-item k-'+k+'"><span class="lev-truck">🚚</span><span class="lev-type '+k+'">'+k+'</span>'+esc(it.m)
+    return '<span class="lev-item"><span class="lev-col">'+truckSVG(it.m,k)+'<span class="lev-cap '+k+'">'+k+'</span></span>'
       +(edit?'<button class="lev-x" data-i="'+i+'" title="Verwijderen">×</button>':'')+'</span>';
   }
 
@@ -3501,8 +3518,8 @@ body.wl-ro #levBox .lev-btn{display:none}
       var kt='<div class="lev-row"><span class="lev-lab">Soort</span>'
         +'<button class="kbtn stock'+(addKind==="stock"?" active":"")+'" data-k="stock">Stock</button>'
         +'<button class="kbtn express'+(addKind==="express"?" active":"")+'" data-k="express">Express</button></div>';
-      var mb='<div class="lev-row"><span class="lev-lab">Klik = toevoegen</span>'
-        +MERKEN.map(function(m){return '<button class="mbtn" data-m="'+esc(m)+'"><span class="lev-truck">🚚</span>'+esc(m)+'</button>';}).join("")+'</div>';
+      var mb='<div class="lev-row"><span class="lev-lab">Klik = vrachtwagen toevoegen</span>'
+        +MERKEN.map(function(m){return '<button class="mbtn" data-m="'+esc(m)+'">'+esc(m)+'</button>';}).join("")+'</div>';
       add='<div class="lev-add">'+kt+mb+'</div>';
     }
     box.innerHTML=head+'<div class="lev-list">'+chips+'</div>'+add;
@@ -3538,6 +3555,7 @@ body.wl-ro #levBox .lev-btn{display:none}
 })();
 </script>
 </body>
+
 
 
 
