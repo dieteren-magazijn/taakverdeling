@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.0/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.1/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.0";
+  var APP_VERSION="v3.1";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.0";
+  var LOCAL=window.__APP_VERSION||"v3.1";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3474,7 +3474,9 @@ body.wl-ro #levBox .lev-btn{display:none}
 (function(){
   "use strict";
   var editing=false, addKind="stock";
-  var MERKEN=["MSI","VOTEX","SKODA","SEAT","VW","PORSCHE"];
+  var MERKEN=["MSI","VOTEX","SKODA","SEAT","VW","PORSCHE","LKW"];
+  var MERK_COL={MSI:["#16a085","#eafff9"],VOTEX:["#e67e22","#2a1500"],SKODA:["#27ae60","#eafff1"],SEAT:["#c0392b","#ffecec"],VW:["#2980b9","#eaf4ff"],PORSCHE:["#f1c40f","#2a2400"],LKW:["#8e44ad","#f6eaff"]};
+  function merkColor(m){ if(MERK_COL[m]) return MERK_COL[m]; var hh=0; for(var i=0;i<m.length;i++) hh=(hh*31+m.charCodeAt(i))%360; return ["hsl("+hh+",52%,44%)","#ffffff"]; }
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
@@ -3485,20 +3487,20 @@ body.wl-ro #levBox .lev-btn{display:none}
   function levSave(date,arr){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; if(!p.leveringen) p.leveringen={}; if(arr&&arr.length) p.leveringen[date]=arr; else delete p.leveringen[date]; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
 
   function truckSVG(name,k){
-    var col=k==="express"?"#2dd4ee":"#3ddc97";
     var nm=(""+name).toUpperCase();
-    var cw=Math.max(50, nm.length*9+16);
-    var W=cw+42, H=36;
-    var cabX=cw+4;
-    var cab='M'+cabX+' 7 h20 l7 8 v9 h-27 z';
+    var c=merkColor(nm), bg=c[0], tx=c[1];
+    var cw=Math.max(66, nm.length*11+22);
+    var W=cw+56, H=48;
+    var cabX=cw+5;
+    var cab='M'+cabX+' 10 h26 l10 12 v14 h-36 z';
     return '<svg class="lev-svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">'
-      +'<rect x="2" y="3" width="'+cw+'" height="21" rx="3" fill="#0b1830" stroke="'+col+'" stroke-width="2"/>'
-      +'<text x="'+(2+cw/2)+'" y="18" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="12" font-weight="700" fill="#e9f1ff">'+esc(nm)+'</text>'
-      +'<path d="'+cab+'" fill="'+col+'"/>'
-      +'<rect x="'+(cabX+4)+'" y="11" width="11" height="8" rx="1" fill="#0b1830"/>'
-      +'<circle cx="18" cy="28" r="5.5" fill="#141d2e" stroke="#7a869c" stroke-width="2"/>'
-      +'<circle cx="'+(cw-8)+'" cy="28" r="5.5" fill="#141d2e" stroke="#7a869c" stroke-width="2"/>'
-      +'<circle cx="'+(cabX+15)+'" cy="28" r="5.5" fill="#141d2e" stroke="#7a869c" stroke-width="2"/>'
+      +'<rect x="2" y="3" width="'+cw+'" height="30" rx="5" fill="'+bg+'"/>'
+      +'<text x="'+(2+cw/2)+'" y="24" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="16" font-weight="800" fill="'+tx+'">'+esc(nm)+'</text>'
+      +'<path d="'+cab+'" fill="'+bg+'"/>'
+      +'<rect x="'+(cabX+5)+'" y="15" width="15" height="10" rx="2" fill="#0b1830" opacity="0.55"/>'
+      +'<circle cx="22" cy="38" r="7" fill="#141d2e" stroke="#8a97ad" stroke-width="2.5"/>'
+      +'<circle cx="'+(cw-10)+'" cy="38" r="7" fill="#141d2e" stroke="#8a97ad" stroke-width="2.5"/>'
+      +'<circle cx="'+(cabX+20)+'" cy="38" r="7" fill="#141d2e" stroke="#8a97ad" stroke-width="2.5"/>'
       +'</svg>';
   }
 
@@ -3555,6 +3557,7 @@ body.wl-ro #levBox .lev-btn{display:none}
 })();
 </script>
 </body>
+
 
 
 
