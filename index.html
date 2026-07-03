@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v2.8/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v2.9/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v2.8";
+  var APP_VERSION="v2.9";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v2.8";
+  var LOCAL=window.__APP_VERSION||"v2.9";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3452,39 +3452,42 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 #levBox .lev-h .lev-btn{margin-left:auto;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer}
 #levBox .lev-h .lev-btn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
 #levBox .lev-list{display:flex;flex-wrap:wrap;gap:8px}
-#levBox .lev-item{display:inline-flex;align-items:center;gap:6px;background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.28));border-radius:8px;padding:5px 10px;font-size:14px;color:var(--txt,#e9f1ff);white-space:nowrap}
-#levBox .lev-merk{font-size:10px;font-weight:800;border-radius:4px;padding:1px 6px;background:#26334d;color:#bcd2ff;border:1px solid rgba(141,178,255,.4);letter-spacing:.03em}
+#levBox .lev-item{display:inline-flex;align-items:center;gap:6px;background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.28));border-radius:8px;padding:5px 10px;font-size:14px;color:var(--txt,#e9f1ff);white-space:nowrap;font-weight:600}
+#levBox .lev-item.k-stock{border-left:4px solid #3ddc97}
+#levBox .lev-item.k-express{border-left:4px solid #2dd4ee}
+#levBox .lev-truck{font-size:15px}
 #levBox .lev-type{font-size:10px;font-weight:800;border-radius:4px;padding:1px 6px;text-transform:uppercase;letter-spacing:.03em}
 #levBox .lev-type.stock{background:#3ddc97;color:#06241a}
 #levBox .lev-type.express{background:#2dd4ee;color:#06222b}
 #levBox .lev-x{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 2px}
 #levBox .lev-empty{color:var(--muted,#8fa6c9);font-size:13px;opacity:.75}
-#levBox .lev-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-#levBox .lev-add input,#levBox .lev-add select{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 9px;font-size:14px}
-#levBox .lev-add input{min-width:150px;flex:1}
-#levBox .lev-add button{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
-#levBox .lev-add button.add{border-color:var(--green,#3ddc97);color:var(--green,#3ddc97)}
+#levBox .lev-add{margin-top:12px;border-top:1px solid var(--line2,rgba(141,178,255,.18));padding-top:10px}
+#levBox .lev-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+#levBox .lev-lab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#8fa6c9);margin-right:2px}
+#levBox .kbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer}
+#levBox .kbtn.stock.active{background:#3ddc97;color:#06241a;border-color:#3ddc97}
+#levBox .kbtn.express.active{background:#2dd4ee;color:#06222b;border-color:#2dd4ee}
+#levBox .mbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+#levBox .mbtn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
 body.wl-ro #levBox .lev-btn{display:none}
 </style>
 <script>
 (function(){
   "use strict";
-  var editing=false;
+  var editing=false, addKind="stock";
   var MERKEN=["MSI","VOTEX","SKODA","SEAT","VW","PORSCHE"];
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
   function levGet(date){ try{ var p=store.get("vp_ob_place")||{}; var v=p.leveringen&&p.leveringen[date];
-      if(Array.isArray(v)) return v.map(function(it){ return {t:it.t||"", m:it.m||"", k:(it.k==="express"?"express":"stock")}; });
-      if(typeof v==="string"&&v.trim()) return v.split("\n").map(function(s){return {t:s.trim(),m:"",k:"stock"};}).filter(function(x){return x.t;});
+      if(Array.isArray(v)) return v.map(function(it){ return {m:it.m||it.t||"", k:(it.k==="express"?"express":"stock")}; });
       return []; }catch(e){ return []; } }
   function levSave(date,arr){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; if(!p.leveringen) p.leveringen={}; if(arr&&arr.length) p.leveringen[date]=arr; else delete p.leveringen[date]; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
 
   function chip(it,i,edit){
     var k=(it.k==="express")?"express":"stock";
-    var merk=it.m? '<span class="lev-merk">'+esc(it.m)+'</span>' : '';
-    return '<span class="lev-item">'+merk+'<span class="lev-type '+k+'">'+k+'</span>'+esc(it.t)
+    return '<span class="lev-item k-'+k+'"><span class="lev-truck">🚚</span><span class="lev-type '+k+'">'+k+'</span>'+esc(it.m)
       +(edit?'<button class="lev-x" data-i="'+i+'" title="Verwijderen">×</button>':'')+'</span>';
   }
 
@@ -3493,22 +3496,25 @@ body.wl-ro #levBox .lev-btn{display:none}
     var date=today(), arr=levGet(date);
     var chips=arr.length? arr.map(function(it,i){return chip(it,i,editing);}).join("") : '<span class="lev-empty">Nog geen leveringen ingevuld</span>';
     var head='<div class="lev-h"><span>🚚 Leveringen</span><button class="lev-btn" id="levToggle">'+(editing?"Klaar":"Bewerken")+'</button></div>';
-    var merkOpts=MERKEN.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join("");
-    var add=editing? '<div class="lev-add"><input type="text" id="levTxt" placeholder="bv. Rudolf 13:00"><select id="levMerk">'+merkOpts+'</select><select id="levKind"><option value="stock">Stock</option><option value="express">Express</option></select><button class="add" id="levAdd">+ Toevoegen</button></div>' : '';
+    var add="";
+    if(editing){
+      var kt='<div class="lev-row"><span class="lev-lab">Soort</span>'
+        +'<button class="kbtn stock'+(addKind==="stock"?" active":"")+'" data-k="stock">Stock</button>'
+        +'<button class="kbtn express'+(addKind==="express"?" active":"")+'" data-k="express">Express</button></div>';
+      var mb='<div class="lev-row"><span class="lev-lab">Klik = toevoegen</span>'
+        +MERKEN.map(function(m){return '<button class="mbtn" data-m="'+esc(m)+'"><span class="lev-truck">🚚</span>'+esc(m)+'</button>';}).join("")+'</div>';
+      add='<div class="lev-add">'+kt+mb+'</div>';
+    }
     box.innerHTML=head+'<div class="lev-list">'+chips+'</div>'+add;
 
     var tg=document.getElementById("levToggle");
     if(tg) tg.addEventListener("click",function(){ if(!editing && blocked()){ toast("Klik eerst op Bewerken"); return; } editing=!editing; render(); });
-    var ab=document.getElementById("levAdd");
-    if(ab) ab.addEventListener("click",function(){
-      var t=(document.getElementById("levTxt").value||"").trim(); if(!t) return;
-      var m=document.getElementById("levMerk").value;
-      var k=document.getElementById("levKind").value;
-      var a=levGet(date); a.push({t:t,m:m,k:k}); levSave(date,a); render();
-      var ni=document.getElementById("levTxt"); if(ni) ni.focus();
+    Array.prototype.forEach.call(box.querySelectorAll(".kbtn"),function(b){
+      b.addEventListener("click",function(){ addKind=this.getAttribute("data-k"); render(); });
     });
-    var ta=document.getElementById("levTxt");
-    if(ta) ta.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); var b=document.getElementById("levAdd"); if(b) b.click(); } });
+    Array.prototype.forEach.call(box.querySelectorAll(".mbtn"),function(b){
+      b.addEventListener("click",function(){ var a=levGet(date); a.push({m:this.getAttribute("data-m"),k:addKind}); levSave(date,a); render(); });
+    });
     Array.prototype.forEach.call(box.querySelectorAll(".lev-x"),function(x){
       x.addEventListener("click",function(){ var i=+this.getAttribute("data-i"); var a=levGet(date); a.splice(i,1); levSave(date,a); render(); });
     });
@@ -3532,6 +3538,7 @@ body.wl-ro #levBox .lev-btn{display:none}
 })();
 </script>
 </body>
+
 
 
 
