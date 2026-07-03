@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.1/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.2/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.1";
+  var APP_VERSION="v3.2";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.1";
+  var LOCAL=window.__APP_VERSION||"v3.2";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3455,7 +3455,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 #levBox .lev-item{display:inline-flex;align-items:flex-start;gap:1px}
 #levBox .lev-col{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
 #levBox .lev-svg{display:block}
-#levBox .lev-cap{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+#levBox .lev-cap{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 #levBox .lev-cap.stock{color:#3ddc97}
 #levBox .lev-cap.express{color:#2dd4ee}
 #levBox .lev-x{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:15px;line-height:1;padding:0}
@@ -3489,18 +3489,18 @@ body.wl-ro #levBox .lev-btn{display:none}
   function truckSVG(name,k){
     var nm=(""+name).toUpperCase();
     var c=merkColor(nm), bg=c[0], tx=c[1];
-    var cw=Math.max(66, nm.length*11+22);
-    var W=cw+56, H=48;
-    var cabX=cw+5;
-    var cab='M'+cabX+' 10 h26 l10 12 v14 h-36 z';
+    var cw=Math.max(84, nm.length*14+28);
+    var W=cw+72, H=60;
+    var cabX=cw+6;
+    var cab='M'+cabX+' 13 h33 l13 15 v18 h-46 z';
     return '<svg class="lev-svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">'
-      +'<rect x="2" y="3" width="'+cw+'" height="30" rx="5" fill="'+bg+'"/>'
-      +'<text x="'+(2+cw/2)+'" y="24" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="16" font-weight="800" fill="'+tx+'">'+esc(nm)+'</text>'
+      +'<rect x="2" y="3" width="'+cw+'" height="38" rx="6" fill="'+bg+'"/>'
+      +'<text x="'+(2+cw/2)+'" y="30" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="21" font-weight="800" fill="'+tx+'">'+esc(nm)+'</text>'
       +'<path d="'+cab+'" fill="'+bg+'"/>'
-      +'<rect x="'+(cabX+5)+'" y="15" width="15" height="10" rx="2" fill="#0b1830" opacity="0.55"/>'
-      +'<circle cx="22" cy="38" r="7" fill="#141d2e" stroke="#8a97ad" stroke-width="2.5"/>'
-      +'<circle cx="'+(cw-10)+'" cy="38" r="7" fill="#141d2e" stroke="#8a97ad" stroke-width="2.5"/>'
-      +'<circle cx="'+(cabX+20)+'" cy="38" r="7" fill="#141d2e" stroke="#8a97ad" stroke-width="2.5"/>'
+      +'<rect x="'+(cabX+6)+'" y="19" width="19" height="13" rx="2" fill="#0b1830" opacity="0.55"/>'
+      +'<circle cx="28" cy="48" r="9" fill="#141d2e" stroke="#8a97ad" stroke-width="3"/>'
+      +'<circle cx="'+(cw-12)+'" cy="48" r="9" fill="#141d2e" stroke="#8a97ad" stroke-width="3"/>'
+      +'<circle cx="'+(cabX+25)+'" cy="48" r="9" fill="#141d2e" stroke="#8a97ad" stroke-width="3"/>'
       +'</svg>';
   }
 
@@ -3514,7 +3514,7 @@ body.wl-ro #levBox .lev-btn{display:none}
     var box=document.getElementById("levBox"); if(!box) return;
     var date=today(), arr=levGet(date);
     var chips=arr.length? arr.map(function(it,i){return chip(it,i,editing);}).join("") : '<span class="lev-empty">Nog geen leveringen ingevuld</span>';
-    var head='<div class="lev-h"><span>🚚 Leveringen</span><button class="lev-btn" id="levToggle">'+(editing?"Klaar":"Bewerken")+'</button></div>';
+    var head='<div class="lev-h"><button class="lev-btn" id="levToggle">'+(editing?"Klaar":"🚚 Bewerken")+'</button></div>';
     var add="";
     if(editing){
       var kt='<div class="lev-row"><span class="lev-lab">Soort</span>'
@@ -3557,6 +3557,7 @@ body.wl-ro #levBox .lev-btn{display:none}
 })();
 </script>
 </body>
+
 
 
 
