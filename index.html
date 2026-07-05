@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.5/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.6/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2629,7 +2629,7 @@ function obRender(){
   // BORD rechts: afdelingen
   board.className="tasks";
   var html="";
-  var laterOn=obHoursOn(); var laterList=[]; var SW={}; try{ var _hm=obHoursMap(), _nw=obNowMin(); obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_hm[_n]; if(_o&&_o.wisselTo&&_o.wisselAt){ var _at=obParseHM(_o.wisselAt); if(_at!=null && _nw>=_at) SW[_n]=_o.wisselTo; } }); }); }catch(e){}
+  var laterOn=obHoursOn(); var laterList=[]; var SW={}; try{ var _hm=obHoursMap(), _nw=obNowMin(), _td=(typeof curDateISO==="function"?curDateISO():null); obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_hm[_n]; if(_o&&_o.wisselTo&&_o.wisselAt&&_o.wisselDate===_td){ var _at=obParseHM(_o.wisselAt); if(_at!=null && _nw>=_at) SW[_n]=_o.wisselTo; } }); }); }catch(e){}
   obDepts.forEach(function(d, di){
     var hue=obDeptColor(d.label, di);
     var dropCls = obSel ? " drop" : "";
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.5";
+  var APP_VERSION="v3.6";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.5";
+  var LOCAL=window.__APP_VERSION||"v3.6";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3667,6 +3667,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   function getHM(){ try{ return store.get("vp_ob_hours")||{}; }catch(e){ return {}; } }
   function saveHM(hm){ try{ store.set("vp_ob_hours",hm); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
   function nowMin(){ try{ return obNowMin(); }catch(e){ var n=new Date(); return n.getHours()*60+n.getMinutes(); } }
+  function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
   function parseHM(s){ try{ return obParseHM(s); }catch(e){ var m=(s||"").match(/^(\d{1,2}):(\d{2})$/); return m?(+m[1]*60+ +m[2]):null; } }
   function sectors(){ try{ return (obDepts||[]).map(function(d){return d.label;}); }catch(e){ return []; } }
   function shortLbl(l){ l=""+l; return l.length>14?l.slice(0,13)+"…":l; }
@@ -3689,7 +3690,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     document.getElementById("swSave").addEventListener("click",function(){
       var tm=document.getElementById("swTime").value, to=document.getElementById("swTo").value;
       var hm2=getHM(), oo=hm2[name]||{};
-      if(tm && to){ oo.wisselAt=tm; oo.wisselTo=to; } else { delete oo.wisselAt; delete oo.wisselTo; }
+      if(tm && to){ oo.wisselAt=tm; oo.wisselTo=to; oo.wisselDate=today(); } else { delete oo.wisselAt; delete oo.wisselTo; delete oo.wisselDate; }
       if(!oo.wisselAt && !oo.van && !oo.tot && !oo.terug){ delete hm2[name]; } else { hm2[name]=oo; }
       saveHM(hm2); closePop(); if(typeof obRender==="function") obRender();
     });
@@ -3708,7 +3709,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       view.querySelectorAll("#obBoard .chip[data-name]").forEach(function(chip){
         var name=chip.getAttribute("data-name"); var o=hm[name]||{};
         var pill=chip.querySelector(":scope > .sw-pill"); var setb=chip.querySelector(":scope > .sw-set");
-        if(o.wisselTo && o.wisselAt){
+        if(o.wisselTo && o.wisselAt && o.wisselDate===today()){
           var at=parseHM(o.wisselAt);
           if(!pill){ pill=document.createElement("span"); pill.className="sw-pill"; chip.appendChild(pill); }
           pill.textContent=(at!=null && nm>=at)? ("⇄ "+o.wisselAt) : ("→ "+shortLbl(o.wisselTo)+" "+o.wisselAt);
@@ -3732,6 +3733,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 })();
 </script>
 </body>
+
 
 
 
