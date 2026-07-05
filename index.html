@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.4/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.5/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2629,7 +2629,7 @@ function obRender(){
   // BORD rechts: afdelingen
   board.className="tasks";
   var html="";
-  var laterOn=obHoursOn(); var laterList=[];
+  var laterOn=obHoursOn(); var laterList=[]; var SW={}; try{ var _hm=obHoursMap(), _nw=obNowMin(); obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_hm[_n]; if(_o&&_o.wisselTo&&_o.wisselAt){ var _at=obParseHM(_o.wisselAt); if(_at!=null && _nw>=_at) SW[_n]=_o.wisselTo; } }); }); }catch(e){}
   obDepts.forEach(function(d, di){
     var hue=obDeptColor(d.label, di);
     var dropCls = obSel ? " drop" : "";
@@ -2637,8 +2637,8 @@ function obRender(){
        verborgen zodat het scherm de actuele bezetting toont. Ze blijven WEL
        in de data (d.names), dus in bewerkmodus zie je ze nog gedimd staan en
        gaat de planning niet verloren. */
-    var hideOff = !!state.board || laterOn;
-    var visNames = d.names.filter(function(n){ var p=byName[n]; return p && !(hideOff && p._buitenUren); });
+    var hideOff = !!state.board || laterOn; var dn=d.names.filter(function(n){ return !(SW[n] && SW[n]!==d.label); }); Object.keys(SW).forEach(function(n){ if(SW[n]===d.label && dn.indexOf(n)<0) dn.push(n); });
+    var visNames = dn.filter(function(n){ var p=byName[n]; return p && !(hideOff && p._buitenUren); });
     html+='<div class="tcard'+dropCls+'" data-di="'+di+'" style="--hue:'+hue+'">'+
       '<header><span class="tname" data-di="'+di+'">'+esc(d.label)+'</span>'+
       '<span class="tcount">'+visNames.length+'</span>'+
@@ -2647,7 +2647,7 @@ function obRender(){
       '<div class="tbody" data-di="'+di+'">';
     if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
     else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
-    d.names.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9e15; var zv=p&&(p.status==="verlof"||(p.status==="afwezig"&&p.badge==="ziek")); if(zv){ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); return ms?(1e12+ms/1e6):8e15; } if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
+    dn.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9e15; var zv=p&&(p.status==="verlof"||(p.status==="afwezig"&&p.badge==="ziek")); if(zv){ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); return ms?(1e12+ms/1e6):8e15; } if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
     html+='</div></div>';
   });
   board.innerHTML=html;
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.4";
+  var APP_VERSION="v3.5";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.4";
+  var LOCAL=window.__APP_VERSION||"v3.5";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3642,7 +3642,97 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   if(document.readyState!=="loading") setTimeout(init,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1500); });
 })();
 </script>
+<!-- ============ sector-wissel op tijd (bv. 16:00 naar H&L) ============ -->
+<style>
+.sw-pill{display:inline-flex;align-items:center;font-size:10px;font-weight:700;background:rgba(167,139,250,.16);border:1px solid rgba(167,139,250,.5);color:#c9b8ff;border-radius:5px;padding:1px 5px;margin-left:4px;white-space:nowrap}
+.sw-set{cursor:pointer;font-size:12px;color:#a78bfa;margin-left:4px;user-select:none}
+.sw-set:hover{color:#c9b8ff}
+#swPop{position:fixed;z-index:9600;background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.35));border-radius:12px;padding:12px 14px;width:250px;box-shadow:0 12px 34px rgba(0,0,0,.5);font:500 13px/1.5 system-ui,sans-serif;color:var(--txt,#e9f1ff)}
+#swPop .swp-h{font-weight:800;margin-bottom:8px;font-size:13px}
+#swPop label{display:flex;align-items:center;gap:8px;margin:6px 0}
+#swPop input[type=time],#swPop select{flex:1;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:5px 8px;font-size:13px}
+#swPop .swp-btns{display:flex;gap:8px;margin-top:10px}
+#swPop .swp-btns button{flex:1;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 8px;font-size:13px;cursor:pointer}
+#swPop .swp-btns .save{border-color:var(--green,#3ddc97);color:var(--green,#3ddc97)}
+#swPop .swp-btns .del{border-color:#ff6b6b;color:#ff6b6b}
+</style>
+<script>
+(function(){
+  "use strict";
+  var obs=null, t=null;
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function inEdit(){ try{ return (typeof obEdit!=="undefined" && obEdit) && !blocked(); }catch(e){ return false; } }
+  function getHM(){ try{ return store.get("vp_ob_hours")||{}; }catch(e){ return {}; } }
+  function saveHM(hm){ try{ store.set("vp_ob_hours",hm); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
+  function nowMin(){ try{ return obNowMin(); }catch(e){ var n=new Date(); return n.getHours()*60+n.getMinutes(); } }
+  function parseHM(s){ try{ return obParseHM(s); }catch(e){ var m=(s||"").match(/^(\d{1,2}):(\d{2})$/); return m?(+m[1]*60+ +m[2]):null; } }
+  function sectors(){ try{ return (obDepts||[]).map(function(d){return d.label;}); }catch(e){ return []; } }
+  function shortLbl(l){ l=""+l; return l.length>14?l.slice(0,13)+"…":l; }
+
+  function closePop(){ var e=document.getElementById("swPop"); if(e&&e.parentNode) e.parentNode.removeChild(e); }
+  function openPop(name, anchor){
+    if(blocked()){ toast("Klik eerst op Bewerken"); return; }
+    closePop();
+    var hm=getHM(), o=hm[name]||{};
+    var opts=sectors().map(function(l){ return '<option value="'+esc(l)+'"'+((o.wisselTo===l)?" selected":"")+'>'+esc(l)+'</option>'; }).join("");
+    var pop=document.createElement("div"); pop.id="swPop";
+    pop.innerHTML='<div class="swp-h">Sector-wissel — '+esc(name)+'</div>'
+      +'<label>Om <input type="time" id="swTime" value="'+esc(o.wisselAt||"16:00")+'"></label>'
+      +'<label>naar <select id="swTo"><option value="">— kies —</option>'+opts+'</select></label>'
+      +'<div class="swp-btns"><button class="save" id="swSave">Bewaren</button><button class="del" id="swDel">Verwijderen</button></div>';
+    document.body.appendChild(pop);
+    var r=anchor.getBoundingClientRect();
+    pop.style.left=Math.max(8, Math.min(r.left, window.innerWidth-260))+"px";
+    pop.style.top=(r.bottom+6+pop.offsetHeight>window.innerHeight? Math.max(8,r.top-pop.offsetHeight-6):r.bottom+6)+"px";
+    document.getElementById("swSave").addEventListener("click",function(){
+      var tm=document.getElementById("swTime").value, to=document.getElementById("swTo").value;
+      var hm2=getHM(), oo=hm2[name]||{};
+      if(tm && to){ oo.wisselAt=tm; oo.wisselTo=to; } else { delete oo.wisselAt; delete oo.wisselTo; }
+      if(!oo.wisselAt && !oo.van && !oo.tot && !oo.terug){ delete hm2[name]; } else { hm2[name]=oo; }
+      saveHM(hm2); closePop(); if(typeof obRender==="function") obRender();
+    });
+    document.getElementById("swDel").addEventListener("click",function(){
+      var hm2=getHM(), oo=hm2[name]||{}; delete oo.wisselAt; delete oo.wisselTo;
+      if(!oo.van && !oo.tot && !oo.terug){ delete hm2[name]; } else { hm2[name]=oo; }
+      saveHM(hm2); closePop(); if(typeof obRender==="function") obRender();
+    });
+  }
+
+  function paint(){
+    var view=document.getElementById("outboundView"); if(!view||view.hidden) return;
+    if(obs) obs.disconnect();
+    try{
+      var hm=getHM(), nm=nowMin(), edit=inEdit();
+      view.querySelectorAll("#obBoard .chip[data-name]").forEach(function(chip){
+        var name=chip.getAttribute("data-name"); var o=hm[name]||{};
+        var pill=chip.querySelector(":scope > .sw-pill"); var setb=chip.querySelector(":scope > .sw-set");
+        if(o.wisselTo && o.wisselAt){
+          var at=parseHM(o.wisselAt);
+          if(!pill){ pill=document.createElement("span"); pill.className="sw-pill"; chip.appendChild(pill); }
+          pill.textContent=(at!=null && nm>=at)? ("⇄ "+o.wisselAt) : ("→ "+shortLbl(o.wisselTo)+" "+o.wisselAt);
+        } else if(pill){ pill.remove(); }
+        if(edit){
+          if(!setb){ setb=document.createElement("span"); setb.className="sw-set"; setb.setAttribute("data-name",name); setb.title="Sector-wissel instellen"; setb.textContent="⇄"; chip.appendChild(setb); }
+        } else if(setb){ setb.remove(); }
+      });
+    }catch(e){}
+    if(obs) obs.observe(view,{childList:true,subtree:true});
+  }
+  function schedule(){ clearTimeout(t); t=setTimeout(paint,150); }
+
+  document.addEventListener("click",function(e){
+    var s=(e.target&&e.target.closest)?e.target.closest(".sw-set"):null;
+    if(!s) return; e.stopPropagation(); e.preventDefault(); openPop(s.getAttribute("data-name"), s);
+  }, true);
+
+  function init(){ var v=document.getElementById("outboundView"); obs=new MutationObserver(schedule); if(v) obs.observe(v,{childList:true,subtree:true}); schedule(); setInterval(function(){ var vv=document.getElementById("outboundView"); if(vv&&!vv.hidden) schedule(); },6000); }
+  if(document.readyState!=="loading") setTimeout(init,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1700); });
+})();
+</script>
 </body>
+
 
 
 
