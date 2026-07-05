@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.8/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.9/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.8";
+  var APP_VERSION="v3.9";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.8";
+  var LOCAL=window.__APP_VERSION||"v3.9";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3115,8 +3115,8 @@ body.board #linkLamps{display:none}
 <style>label.btn:has(#obTestTime){display:none !important} #obTestTime{display:none}</style>
 <!-- strakke invul-chips -->
 <style>
-body:not(.board) #outboundView .chip{min-height:34px;align-items:center;gap:8px;padding:6px 9px;flex-wrap:wrap}
-body:not(.board) #outboundView .chip .ob-nm{flex:1 1 60%;min-width:0;overflow:visible;text-overflow:clip;white-space:normal;word-break:break-word;line-height:1.15}
+body:not(.board) #outboundView .chip{height:34px;align-items:center;gap:8px;padding:6px 9px} body:not(.board) #obBoard .chip{height:auto;min-height:34px;flex-wrap:wrap;align-items:center}
+body:not(.board) #outboundView .chip .ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} body:not(.board) #obBoard .chip .ob-nm{flex:1 1 60%;min-width:0;overflow:visible;text-overflow:clip;white-space:normal;word-break:break-word;line-height:1.15}
 body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
 </style>
 ﻿<!-- ============ outbound-balk opruimen (Meer + uitlichten) ============ -->
