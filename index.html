@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.2/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.3/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.2";
+  var APP_VERSION="v3.3";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.2";
+  var LOCAL=window.__APP_VERSION||"v3.3";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3447,46 +3447,42 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 </script>
 <!-- ============ Leveringen-blok op het inbound-bord ============ -->
 <style>
-#levBox{margin:10px 14px;background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:10px 14px}
-#levBox .lev-h{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--txt,#e9f1ff);margin-bottom:8px;font-size:14px}
-#levBox .lev-h .lev-btn{margin-left:auto;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer}
-#levBox .lev-h .lev-btn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
-#levBox .lev-list{display:flex;flex-wrap:wrap;gap:14px 12px;align-items:flex-start}
-#levBox .lev-item{display:inline-flex;align-items:flex-start;gap:1px}
-#levBox .lev-col{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+#levBox{margin:8px 14px}
+#levBox .lev-list{display:flex;flex-wrap:wrap;gap:16px 14px;align-items:flex-start}
+#levBox .lev-item{display:inline-flex;align-items:flex-start;gap:2px}
+#levBox .lev-col{display:inline-flex;flex-direction:column;align-items:center;gap:2px}
 #levBox .lev-svg{display:block}
-#levBox .lev-cap{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+#levBox .lev-cap{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
 #levBox .lev-cap.stock{color:#3ddc97}
 #levBox .lev-cap.express{color:#2dd4ee}
-#levBox .lev-x{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:15px;line-height:1;padding:0}
-#levBox .lev-empty{color:var(--muted,#8fa6c9);font-size:13px;opacity:.75}
-#levBox .lev-add{margin-top:12px;border-top:1px solid var(--line2,rgba(141,178,255,.18));padding-top:10px}
-#levBox .lev-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
-#levBox .lev-lab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#8fa6c9);margin-right:2px}
+#levBox .lev-x{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:16px;line-height:1;padding:0}
+#levBox .lev-empty{color:var(--muted,#8fa6c9);font-size:13px;opacity:.8}
+#levBox .lev-add{margin-top:12px;background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:10px;padding:10px 12px}
+#levBox .lev-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#levBox .lev-row+.lev-row{margin-top:8px}
+#levBox .lev-lab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#8fa6c9);margin-right:2px;min-width:44px}
 #levBox .kbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer}
 #levBox .kbtn.stock.active{background:#3ddc97;color:#06241a;border-color:#3ddc97}
 #levBox .kbtn.express.active{background:#2dd4ee;color:#06222b;border-color:#2dd4ee}
 #levBox .mbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700;cursor:pointer}
 #levBox .mbtn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
-body.wl-ro #levBox .lev-btn{display:none}
 </style>
 <script>
 (function(){
   "use strict";
-  var editing=false, addKind="stock";
+  var addKind="stock";
   var MERKEN=["MSI","VOTEX","SKODA","SEAT","VW","PORSCHE","LKW"];
   var MERK_COL={MSI:["#16a085","#eafff9"],VOTEX:["#e67e22","#2a1500"],SKODA:["#27ae60","#eafff1"],SEAT:["#c0392b","#ffecec"],VW:["#2980b9","#eaf4ff"],PORSCHE:["#f1c40f","#2a2400"],LKW:["#8e44ad","#f6eaff"]};
   function merkColor(m){ if(MERK_COL[m]) return MERK_COL[m]; var hh=0; for(var i=0;i<m.length;i++) hh=(hh*31+m.charCodeAt(i))%360; return ["hsl("+hh+",52%,44%)","#ffffff"]; }
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
-  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
   function levGet(date){ try{ var p=store.get("vp_ob_place")||{}; var v=p.leveringen&&p.leveringen[date];
       if(Array.isArray(v)) return v.map(function(it){ return {m:it.m||it.t||"", k:(it.k==="express"?"express":"stock")}; });
       return []; }catch(e){ return []; } }
   function levSave(date,arr){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; if(!p.leveringen) p.leveringen={}; if(arr&&arr.length) p.leveringen[date]=arr; else delete p.leveringen[date]; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
 
-  function truckSVG(name,k){
+  function truckSVG(name){
     var nm=(""+name).toUpperCase();
     var c=merkColor(nm), bg=c[0], tx=c[1];
     var cw=Math.max(84, nm.length*14+28);
@@ -3506,28 +3502,27 @@ body.wl-ro #levBox .lev-btn{display:none}
 
   function chip(it,i,edit){
     var k=(it.k==="express")?"express":"stock";
-    return '<span class="lev-item"><span class="lev-col">'+truckSVG(it.m,k)+'<span class="lev-cap '+k+'">'+k+'</span></span>'
+    return '<span class="lev-item"><span class="lev-col">'+truckSVG(it.m)+'<span class="lev-cap '+k+'">'+k+'</span></span>'
       +(edit?'<button class="lev-x" data-i="'+i+'" title="Verwijderen">×</button>':'')+'</span>';
   }
 
   function render(){
     var box=document.getElementById("levBox"); if(!box) return;
-    var date=today(), arr=levGet(date);
-    var chips=arr.length? arr.map(function(it,i){return chip(it,i,editing);}).join("") : '<span class="lev-empty">Nog geen leveringen ingevuld</span>';
-    var head='<div class="lev-h"><button class="lev-btn" id="levToggle">'+(editing?"Klaar":"🚚 Bewerken")+'</button></div>';
+    var date=today(), arr=levGet(date), editing=!blocked();
+    if(!arr.length && !editing){ box.style.display="none"; box.innerHTML=""; return; }
+    box.style.display="";
+    var chips=arr.length? arr.map(function(it,i){return chip(it,i,editing);}).join("") : '<span class="lev-empty">Kies soort en klik een merk om een vrachtwagen toe te voegen</span>';
     var add="";
     if(editing){
       var kt='<div class="lev-row"><span class="lev-lab">Soort</span>'
         +'<button class="kbtn stock'+(addKind==="stock"?" active":"")+'" data-k="stock">Stock</button>'
         +'<button class="kbtn express'+(addKind==="express"?" active":"")+'" data-k="express">Express</button></div>';
-      var mb='<div class="lev-row"><span class="lev-lab">Klik = vrachtwagen toevoegen</span>'
+      var mb='<div class="lev-row"><span class="lev-lab">Merk</span>'
         +MERKEN.map(function(m){return '<button class="mbtn" data-m="'+esc(m)+'">'+esc(m)+'</button>';}).join("")+'</div>';
       add='<div class="lev-add">'+kt+mb+'</div>';
     }
-    box.innerHTML=head+'<div class="lev-list">'+chips+'</div>'+add;
+    box.innerHTML='<div class="lev-list">'+chips+'</div>'+add;
 
-    var tg=document.getElementById("levToggle");
-    if(tg) tg.addEventListener("click",function(){ if(!editing && blocked()){ toast("Klik eerst op Bewerken"); return; } editing=!editing; render(); });
     Array.prototype.forEach.call(box.querySelectorAll(".kbtn"),function(b){
       b.addEventListener("click",function(){ addKind=this.getAttribute("data-k"); render(); });
     });
@@ -3551,12 +3546,13 @@ body.wl-ro #levBox .lev-btn{display:none}
   }
   function init(){
     ensureUI();
-    setInterval(function(){ var iv=document.getElementById("inboundView"); if(iv && !iv.hidden && !editing) render(); }, 5000);
+    setInterval(function(){ var iv=document.getElementById("inboundView"); if(iv && !iv.hidden) render(); }, 4000);
   }
   if(document.readyState!=="loading") setTimeout(init,1300); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1300); });
 })();
 </script>
 </body>
+
 
 
 
