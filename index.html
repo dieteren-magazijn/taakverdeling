@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.10/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.11/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.10";
+  var APP_VERSION="v3.11";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.10";
+  var LOCAL=window.__APP_VERSION||"v3.11";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3732,7 +3732,80 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   if(document.readyState!=="loading") setTimeout(init,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1700); });
 })();
 </script>
+<!-- ============ Handleiding + tips doorgeven ============ -->
+<style>
+#helpBtn{margin-left:4px}
+.help-back{position:fixed;inset:0;z-index:9600;background:rgba(4,10,22,.62);display:flex;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.help-panel{background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:14px;width:min(560px,94vw);max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.help-h{display:flex;align-items:center;font-weight:800;font-size:16px;color:var(--txt,#e9f1ff);padding:14px 18px;border-bottom:1px solid var(--line2,rgba(141,178,255,.18));position:sticky;top:0;background:var(--panel,#13233e)}
+.help-h button{margin-left:auto;background:none;border:none;color:var(--muted,#8fa6c9);font-size:20px;cursor:pointer;line-height:1}
+.help-body{padding:14px 18px}
+.help-body h4{margin:16px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan,#2dd4ee)}
+.help-body h4:first-child{margin-top:0}
+.help-body p{font-size:14px;line-height:1.6;color:var(--txt,#e9f1ff);margin:5px 0}
+.help-body .k{color:var(--cyan,#2dd4ee);font-weight:700}
+.help-fb{margin-top:8px;background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:10px;padding:12px}
+.help-fb textarea{width:100%;min-height:80px;background:var(--panel2,#0f1d35);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:8px;font:14px/1.5 system-ui,sans-serif;resize:vertical}
+.help-fb button{margin-top:8px;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--green,#3ddc97);color:var(--green,#3ddc97);border-radius:8px;padding:7px 14px;font-size:14px;font-weight:700;cursor:pointer}
+</style>
+<script>
+(function(){
+  "use strict";
+  var MAIL="vancraywinkel.jens@protonmail.com";
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  var HTML=''
+    +'<h4>Aan de slag</h4>'
+    +'<p>Klik bovenaan op <span class="k">Bewerken</span> om de controle te nemen. Anders sta je in <span class="k">lees-modus</span> en kun je niets wijzigen. Klaar? Klik opnieuw op Bewerken zodat een collega kan bewerken.</p>'
+    +'<h4>Mensen indelen (Outbound)</h4>'
+    +'<p>Klik op <span class="k">✎ Indeling</span>. Klik dan een naam links en daarna een sector — of versleep de naam. Klik het <span class="k">×</span> om iemand weg te halen.</p>'
+    +'<h4>Uren van iemand</h4>'
+    +'<p>Klik het <span class="k">⏰</span> op een naam om zijn begin- en einduur in te stellen.</p>'
+    +'<h4>Sector-wissel op tijd</h4>'
+    +'<p>Klik het <span class="k">⇄</span> op een naam om hem op een bepaald uur naar een andere sector te sturen (bv. 16:00 → H&amp;L). Dat geldt enkel die dag; hij verspringt automatisch.</p>'
+    +'<h4>Groot scherm</h4>'
+    +'<p>Klik op <span class="k">📺 Bord</span> voor een schermvullende weergave, ideaal voor het grote scherm.</p>'
+    +'<h4>Leveringen (Inbound)</h4>'
+    +'<p>In Bewerken: kies <span class="k">Stock</span> of <span class="k">Express</span> en klik een merk (MSI, VOTEX…). Er verschijnt een vrachtwagen op het bord.</p>'
+    +'<h4>Schaefer sub-bord</h4>'
+    +'<p>Tab <span class="k">🗂 Schaefer</span>: verdeel de Schaefer-mensen over hun taken (Liften, Sector G, Zone 9…).</p>'
+    +'<h4>Toestemming bij openen</h4>'
+    +'<p>Open je de pagina vers? Klik dan op <span class="k">🔄</span> en kies <span class="k">Toestaan</span>, zodat de planning ingelezen wordt. Dit is één klik per keer.</p>';
+
+  function open(){
+    var back=document.createElement("div"); back.className="help-back"; back.id="helpBack";
+    back.innerHTML='<div class="help-panel"><div class="help-h"><span>❓ Handleiding &amp; tips</span><button id="helpClose" title="Sluiten">✕</button></div>'
+      +'<div class="help-body">'+HTML
+      +'<h4>Tip of aanpassing doorgeven</h4>'
+      +'<p>Iets dat beter kan, of werkt iets niet? Schrijf het hier en stuur het naar Jens.</p>'
+      +'<div class="help-fb"><textarea id="helpTxt" placeholder="Bv. kan de kleur van B-ploeg feller? of: in Colisage klopt iets niet…"></textarea>'
+      +'<button id="helpSend">✉ Versturen naar Jens</button></div>'
+      +'</div></div>';
+    document.body.appendChild(back);
+    function close(){ if(back.parentNode) back.parentNode.removeChild(back); }
+    back.addEventListener("click",function(e){ if(e.target===back) close(); });
+    back.querySelector("#helpClose").addEventListener("click",close);
+    back.querySelector("#helpSend").addEventListener("click",function(){
+      var t=(document.getElementById("helpTxt").value||"").trim();
+      if(!t){ document.getElementById("helpTxt").focus(); return; }
+      var subj="Planbord — tip/aanpassing";
+      window.location.href="mailto:"+MAIL+"?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(t);
+    });
+  }
+  window.openHelp=open;
+
+  function ensureBtn(){
+    if(document.getElementById("helpBtn")) return;
+    var host=document.querySelector(".topbar-in")||document.querySelector(".topbar")||document.body;
+    var b=document.createElement("button"); b.id="helpBtn"; b.className="btn"; b.textContent="❓ Hulp"; b.title="Handleiding en tips doorgeven";
+    b.addEventListener("click",open);
+    host.appendChild(b);
+  }
+  function init(){ ensureBtn(); setInterval(ensureBtn, 4000); }
+  if(document.readyState!=="loading") setTimeout(init,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1500); });
+})();
+</script>
 </body>
+
 
 
 
