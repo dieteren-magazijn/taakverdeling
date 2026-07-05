@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.14/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.15/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2565,7 +2565,7 @@ function obBuildTicker(){
     obTile("#ff9f43","Stopt vroeger · "+early.length, earlyCell),
     obTile("#ff7eb6","Afwezig", '<div class="ob-tn">'+nAfw+'</div>')
   ];
-  if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
+  var _wset={}; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null); obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselTo&&_o.wisselAt&&_o.wisselDate===_wtd) _wset[_n]=1; }); }); }catch(e){} if(Object.keys(_wset).length) tiles.push(obTile("#a78bfa","Wisselt sector", '<div class="ob-tn">'+Object.keys(_wset).length+'</div>')); if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
   bar.style.gridTemplateColumns="repeat("+tiles.length+",1fr)";
   bar.innerHTML=tiles.join("");
   /* verticaal laten doorlopen wanneer de namen niet in de tegel passen */
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.14";
+  var APP_VERSION="v3.15";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.14";
+  var LOCAL=window.__APP_VERSION||"v3.15";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
