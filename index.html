@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.13/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.14/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.13";
+  var APP_VERSION="v3.14";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.13";
+  var LOCAL=window.__APP_VERSION||"v3.14";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3302,7 +3302,20 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function secGetAll(){ try{ var p=store.get("vp_ob_place")||{}; return p.sector||{}; }catch(e){ return {}; } }
   function secSave(all){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.sector=all; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
-  function srcNames(){ try{ if(typeof obDepts==="undefined"||!obDepts) return []; var d=obDepts.filter(function(x){return x.label===SRC;})[0]; return d?(d.names||[]).slice():[]; }catch(e){ return []; } }
+  function srcNames(){ try{
+    if(typeof obDepts==="undefined"||!obDepts) return [];
+    var d=obDepts.filter(function(x){return x.label===SRC;})[0];
+    var base=d?(d.names||[]).slice():[];
+    try{
+      var hm=(typeof obHoursMap==="function")?obHoursMap():(store.get("vp_ob_hours")||{});
+      var nw=(typeof obNowMin==="function")?obNowMin():0;
+      var td=(typeof curDateISO==="function")?curDateISO():null;
+      function pa(s){ try{ return obParseHM(s); }catch(e){ var m=(s||"").match(/^(\d{1,2}):(\d{2})$/); return m?(+m[1]*60+ +m[2]):null; } }
+      base=base.filter(function(n){ var o=hm[n]; if(o&&o.wisselTo&&o.wisselAt&&o.wisselDate===td){ var at=pa(o.wisselAt); if(at!=null && nw>=at && o.wisselTo!==SRC) return false; } return true; });
+      obDepts.forEach(function(dep){ (dep.names||[]).forEach(function(n){ var o=hm[n]; if(o&&o.wisselTo===SRC&&o.wisselAt&&o.wisselDate===td){ var at=pa(o.wisselAt); if(at!=null && nw>=at && base.indexOf(n)<0) base.push(n); } }); });
+    }catch(e){}
+    return base;
+  }catch(e){ return []; } }
   function byName(){ var m={}; try{ (obRoster||[]).forEach(function(p){m[p.name]=p;}); }catch(e){} return m; }
   function isGone(p){ try{ if(!p||typeof obWindowFor!=="function"||typeof obNowMin!=="function"||typeof obParseHM!=="function") return false; var w=obWindowFor(p); var tot=(w&&w.tot)?obParseHM(w.tot):null; return tot!=null && obNowMin()>=tot; }catch(e){ return false; } }
   function assignedAnywhere(all){ var s={}; SECTOR_DEFS.forEach(function(d){ var a=all[d.key]||{}; d.tasks.forEach(function(t){ (a[t]||[]).forEach(function(n){ s[n]=1; }); }); }); return s; }
