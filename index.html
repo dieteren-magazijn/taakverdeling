@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.3/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.4/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2474,7 +2474,7 @@ function obApplyHours(){
   });
 }
 function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
-function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}}); scheduleSyncWrite(); }
+function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}, statuscolors:_pp.statuscolors||{}}); scheduleSyncWrite(); }
 function obSave(){ obSavePlace(); obRender(); }
 function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
 var obTplMode=false;
@@ -2968,7 +2968,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.3";
+  var APP_VERSION="v3.4";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.3";
+  var LOCAL=window.__APP_VERSION||"v3.4";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3551,7 +3551,99 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   if(document.readyState!=="loading") setTimeout(init,1300); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1300); });
 })();
 </script>
+<!-- ============ Instellingen (kleuren + sjabloon-uitleg) ============ -->
+<style>
+.obset-back{position:fixed;inset:0;z-index:9500;background:rgba(4,10,22,.6);display:flex;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.obset-panel{background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:14px;padding:16px 18px;width:min(480px,92vw);max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.obset-h{display:flex;align-items:center;font-weight:800;font-size:16px;color:var(--txt,#e9f1ff);margin-bottom:12px}
+.obset-h button{margin-left:auto;background:none;border:none;color:var(--muted,#8fa6c9);font-size:20px;cursor:pointer;line-height:1}
+.obset-sec{border-top:1px solid var(--line2,rgba(141,178,255,.18));padding-top:12px;margin-top:12px}
+.obset-sec:first-of-type{border-top:none;padding-top:0;margin-top:0}
+.obset-sec h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan,#2dd4ee)}
+.obcol-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.obcol-row .sw{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.15);flex:0 0 auto}
+.obcol-row label{flex:1;font-size:14px;color:var(--txt,#e9f1ff)}
+.obcol-row input[type=color]{width:40px;height:28px;border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:6px;background:none;cursor:pointer;padding:0}
+.obset-btn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;margin-top:6px}
+.obset-btn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
+.obset-sec p{font-size:13.5px;line-height:1.6;color:var(--txt,#e9f1ff);margin:6px 0}
+.obset-sec .k{color:var(--cyan,#2dd4ee);font-weight:700}
+</style>
+<script>
+(function(){
+  "use strict";
+  var STATUSES=[["aanwezig-A","A Ploeg"],["aanwezig-B","B Ploeg"],["verlof","Verlof"],["tk","Tijdskrediet"],["afwezig","Afwezig"],["intlate","Vaste Late"],["student","Avondstudent"]];
+  var DEF={};
+  try{ STATUSES.forEach(function(s){ if(typeof OB_STATUS!=="undefined"&&OB_STATUS[s[0]]) DEF[s[0]]=OB_STATUS[s[0]][1]; }); }catch(e){}
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function getOv(){ try{ var p=store.get("vp_ob_place")||{}; return p.statuscolors||{}; }catch(e){ return {}; } }
+  function saveOv(ov){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.statuscolors=ov; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
+  function applyColors(){
+    var ov=getOv();
+    try{ STATUSES.forEach(function(s){ var k=s[0]; if(typeof OB_STATUS!=="undefined"&&OB_STATUS[k]) OB_STATUS[k][1]=ov[k]||DEF[k]; }); }catch(e){}
+    updateLegend();
+  }
+  function updateLegend(){
+    var lg=document.querySelector("#outboundView .ob-legend"); if(!lg) return;
+    var map={"A Ploeg":"aanwezig-A","B Ploeg":"aanwezig-B","Verlof":"verlof","Tijdskrediet":"tk","Afwezig":"afwezig","Vaste Late":"intlate","Avondstudent":"student"};
+    Array.prototype.forEach.call(lg.querySelectorAll(".ob-leg"),function(el){
+      var t=el.textContent; var key=null; Object.keys(map).forEach(function(lbl){ if(t.indexOf(lbl)>=0) key=map[lbl]; });
+      if(key && OB_STATUS[key]){ var sw=el.querySelector(".ob-sw"); if(sw) sw.style.setProperty("--c", OB_STATUS[key][1]); }
+    });
+  }
+  window.obApplyStatusColors=applyColors;
+
+  function openPanel(){
+    var ov=getOv();
+    var rows=STATUSES.map(function(s){
+      var k=s[0], cur=(ov[k]||DEF[k]||"#888888");
+      return '<div class="obcol-row"><span class="sw" style="background:'+esc(cur)+'"></span><label>'+esc(s[1])+'</label><input type="color" data-k="'+k+'" value="'+esc(cur)+'"></div>';
+    }).join("");
+    var back=document.createElement("div"); back.className="obset-back"; back.id="obSettings";
+    back.innerHTML='<div class="obset-panel">'
+      +'<div class="obset-h"><span>⚙ Instellingen</span><button id="obsetClose" title="Sluiten">✕</button></div>'
+      +'<div class="obset-sec"><h4>Kleuren van ploegen &amp; statussen</h4>'+rows+'<button class="obset-btn" id="obColReset">↩ Standaardkleuren</button></div>'
+      +'<div class="obset-sec"><h4>Sjabloon — hoe werkt het?</h4>'
+      +'<p>Een <span class="k">sjabloon</span> is je vaste basis-indeling: welke mensen standaard in welke sector horen.</p>'
+      +'<p><span class="k">📌 Sjabloon</span> — bewaart de huidige indeling als standaard.</p>'
+      +'<p><span class="k">↩ Herstel</span> — zet die opgeslagen standaard terug (handig aan het begin van de dag).</p>'
+      +'<p><span class="k">Sjabloon-modus</span> — toont ook afwezigen in de pool, zodat je iedereen in zijn vaste sector kunt zetten; zet die modus daarna weer uit.</p>'
+      +'</div></div>';
+    document.body.appendChild(back);
+    function close(){ if(back.parentNode) back.parentNode.removeChild(back); }
+    back.addEventListener("click",function(e){ if(e.target===back) close(); });
+    back.querySelector("#obsetClose").addEventListener("click",close);
+    Array.prototype.forEach.call(back.querySelectorAll('input[type=color]'),function(inp){
+      inp.addEventListener("input",function(){
+        var k=this.getAttribute("data-k"), v=this.value;
+        var o=getOv(); o[k]=v; saveOv(o); applyColors();
+        var sw=this.parentNode.querySelector(".sw"); if(sw) sw.style.background=v;
+        if(typeof obRender==="function") obRender();
+      });
+    });
+    back.querySelector("#obColReset").addEventListener("click",function(){
+      saveOv({}); applyColors(); if(typeof obRender==="function") obRender(); close(); openPanel();
+    });
+  }
+
+  function ensureBtn(){
+    var menu=document.getElementById("obMoreMenu");
+    if(menu && !document.getElementById("obSettBtn")){
+      var b=document.createElement("button"); b.className="btn"; b.id="obSettBtn"; b.textContent="⚙ Instellingen";
+      b.addEventListener("click",openPanel);
+      menu.appendChild(b);
+    }
+  }
+  function init(){
+    ensureBtn();
+    applyColors();
+    setInterval(function(){ ensureBtn(); }, 4000);
+  }
+  if(document.readyState!=="loading") setTimeout(init,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1500); });
+})();
+</script>
 </body>
+
 
 
 
