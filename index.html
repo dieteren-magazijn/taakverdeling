@@ -388,7 +388,7 @@ body.board #boardLogo{display:block;position:fixed;right:1.4vw;bottom:1.1vw;widt
       <div id="absGrid"></div>
 
       <details class="subpanel" id="histPanel">
-        <summary>📊 Historiek — wie deed wat (laatste 4 weken)</summary>
+        <summary>📊 Historiek — wie deed wat</summary>
         <p>Telt per persoon hoe vaak die op elke taak stond. Zo zie je meteen wie aan rotatie toe is.
         Bij een geselecteerde naam tonen de taakkaarten dit ook live.</p>
         <div class="tscroll"><table class="prev"><thead id="histHead"></thead><tbody id="histBody"></tbody></table></div>
@@ -818,7 +818,7 @@ function onVpStoreSet(k){
   else if(k==="vp_taskorder") SYNC_DIRTY.fields.order=1;
   else if(k==="vp_ob_place") SYNC_DIRTY.fields.obPlace=1;
   else if(k==="vp_ob_template") SYNC_DIRTY.fields.obTpl=1;
-  else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1;
+  else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1; else if(k==="vp_ob_hist") SYNC_DIRTY.fields.obhist=1;
   else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
   else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
 }
@@ -833,7 +833,7 @@ function collectLocal(){
       }
     }
   }catch(e){}
-  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null};
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obhist:store.get("vp_ob_hist") || {}};
 }
 async function syncPerm(ask){
   if(!sync.handle) return false;
@@ -857,7 +857,7 @@ async function syncRead(force){
     Object.keys(doc.days || {}).forEach(function(k){ store.set("vp_" + k, doc.days[k]); });
     if(doc.hist)  store.set("vp_hist", doc.hist);
     if(doc.tasks) store.set("vp_tasks", doc.tasks);
-    if(doc.order) store.set("vp_taskorder", doc.order);
+    if(doc.order) store.set("vp_taskorder", doc.order); if(doc.obhist) store.set("vp_ob_hist", doc.obhist);
     if(doc.obPlace){ store.set("vp_ob_place", doc.obPlace); if(typeof obDepts !== "undefined" && doc.obPlace.depts){ obDepts = doc.obPlace.depts; if(typeof obSyncRosterToDepts==="function") obSyncRosterToDepts(); if(!document.getElementById("outboundView").hidden) obRender(); } }
     if(doc.obTpl){ store.set("vp_ob_template", doc.obTpl); }
     if(doc.obHours){ store.set("vp_ob_hours", doc.obHours); }
@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.17/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.18/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -1229,7 +1229,7 @@ function snapshotHist(){
     if((state.assign[t] || []).length){ compact[t] = state.assign[t].slice(); any = true; }
   });
   if(any) hist[d] = compact; else delete hist[d];
-  var cutoff = new Date(Date.now() - 220 * 86400000).toISOString().slice(0, 10);
+  var cutoff = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
   Object.keys(hist).forEach(function(k){ if(k < cutoff) delete hist[k]; });
   store.set("vp_hist", hist);
 }
@@ -1238,9 +1238,9 @@ function histCounts(name){
   var out = {}, tot = 0;
   var hist = store.get("vp_hist") || {};
   var cur = curDateISO();
-  var cutoff = new Date(Date.now() - HIST_DAGEN * 86400000).toISOString().slice(0, 10);
+  var _R = (window.histRange?window.histRange():{start:new Date(Date.now()-HIST_DAGEN*86400000).toISOString().slice(0,10),end:"9999-99"});
   Object.keys(hist).forEach(function(d){
-    if(d < cutoff || d === cur) return;
+    if(d < _R.start || d > _R.end || d === cur) return;
     TASKS.forEach(function(t){
       if((hist[d][t] || []).indexOf(name) >= 0){ out[t] = (out[t] || 0) + 1; tot++; }
     });
@@ -2474,7 +2474,7 @@ function obApplyHours(){
   });
 }
 function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
-function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}, statuscolors:_pp.statuscolors||{}}); scheduleSyncWrite(); }
+function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}, statuscolors:_pp.statuscolors||{}}); try{ if(window.snapshotObHist) window.snapshotObHist(); }catch(e){} scheduleSyncWrite(); }
 function obSave(){ obSavePlace(); obRender(); }
 function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
 var obTplMode=false;
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.17";
+  var APP_VERSION="v3.18";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.17";
+  var LOCAL=window.__APP_VERSION||"v3.18";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3421,10 +3421,10 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     try{
       var hist=store.get("vp_hist")||{};
       var cur=(typeof curDateISO==="function")?curDateISO():null;
-      var days=(typeof HIST_DAGEN!=="undefined")?HIST_DAGEN:28;
-      var cutoff=new Date(Date.now()-days*86400000).toISOString().slice(0,10);
+      var _R=(window.histRange?window.histRange():{start:new Date(Date.now()-(typeof HIST_DAGEN!=="undefined"?HIST_DAGEN:28)*86400000).toISOString().slice(0,10),end:"9999-99"});
+      var _cu=0;
       var out=[];
-      Object.keys(hist).forEach(function(d){ if(d<cutoff||d===cur) return; if((hist[d][task]||[]).indexOf(name)>=0) out.push(d); });
+      Object.keys(hist).forEach(function(d){ if(d<_R.start||d>_R.end||d===cur) return; if((hist[d][task]||[]).indexOf(name)>=0) out.push(d); });
       out.sort();
       return out;
     }catch(e){ return []; }
@@ -3812,7 +3812,81 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 </script>
 <style>#boardBar .bb-title, #boardBar .bb-title b{ color:#e9f1ff !important; font-weight:700 !important; }</style>
 <style>#obStatusbar .ob-nrow.wis{font-size:13px;line-height:18px}body.board #obStatusbar .ob-nrow.wis{font-size:1vw;line-height:1.5vw}</style>
+<!-- ============ historiek: outbound + maand/jaar-navigatie ============ -->
+<style>
+.histnav{display:flex;align-items:center;gap:8px;margin:8px 0 10px;flex-wrap:wrap}
+.histnav button{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:4px 11px;font-size:13px;font-weight:700;cursor:pointer}
+.histnav button:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
+.histnav .hn-lab{font-weight:800;min-width:150px;text-align:center;color:var(--txt,#e9f1ff)}
+.histnav .hn-seg{display:inline-flex;border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;overflow:hidden}
+.histnav .hn-seg button{border:none;border-radius:0}
+.histnav .hn-seg button.on{background:var(--cyan,#2dd4ee);color:#06222b;border-color:var(--cyan,#2dd4ee)}
+.histnav .sp{flex:1}
+#obHistPanel .tscroll{overflow:auto}
+#obHistPanel table.prev{width:100%;border-collapse:collapse}
+</style>
+<script>
+(function(){
+  "use strict";
+  var MND=["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+  var now=new Date();
+  window.histPeriod={mode:"maand", y:now.getFullYear(), m:now.getMonth()};
+  window.histRange=function(){ var p=window.histPeriod; function pad(n){return ("0"+n).slice(-2);} if(p.mode==="jaar") return {start:p.y+"-01-01",end:p.y+"-12-31"}; var last=new Date(p.y,p.m+1,0).getDate(); return {start:p.y+"-"+pad(p.m+1)+"-01",end:p.y+"-"+pad(p.m+1)+"-"+pad(last)}; };
+  function fmtP(){ var p=window.histPeriod; return p.mode==="jaar"? (""+p.y) : (MND[p.m].charAt(0).toUpperCase()+MND[p.m].slice(1)+" "+p.y); }
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  window.snapshotObHist=function(){
+    try{
+      var d=(typeof curDateISO==="function")?curDateISO():null; if(!d) return;
+      if(typeof obDepts==="undefined"||!obDepts) return;
+      var oh=store.get("vp_ob_hist")||{}, compact={}, any=false;
+      obDepts.forEach(function(dep){ var ns=(dep.names||[]).slice(); if(ns.length){ compact[dep.label]=ns; any=true; } });
+      if(any) oh[d]=compact; else delete oh[d];
+      var cut=new Date(Date.now()-400*86400000).toISOString().slice(0,10);
+      Object.keys(oh).forEach(function(k){ if(k<cut) delete oh[k]; });
+      store.set("vp_ob_hist", oh);
+    }catch(e){}
+  };
+
+  function rerender(){ try{ if(typeof renderHist==="function") renderHist(); }catch(e){} window.renderObHist(); updNavs(); }
+  function step(dir){ var p=window.histPeriod; if(p.mode==="jaar"){ p.y+=dir; } else { p.m+=dir; if(p.m<0){p.m=11;p.y--;} if(p.m>11){p.m=0;p.y++;} } rerender(); }
+  function setMode(mode){ window.histPeriod.mode=mode; rerender(); }
+  document.addEventListener("click",function(e){ var b=(e.target&&e.target.closest)?e.target.closest(".histnav button"):null; if(!b) return; var a=b.getAttribute("data-h"); if(a==="prev") step(-1); else if(a==="next") step(1); else if(a==="maand") setMode("maand"); else if(a==="jaar") setMode("jaar"); },true);
+  function navHTML(){ var p=window.histPeriod; return '<div class="histnav"><button data-h="prev" title="Vorige">◀</button><span class="hn-lab">'+esc(fmtP())+'</span><button data-h="next" title="Volgende">▶</button><span class="sp"></span><span class="hn-seg"><button data-h="maand" class="'+(p.mode==="maand"?"on":"")+'">Maand</button><button data-h="jaar" class="'+(p.mode==="jaar"?"on":"")+'">Jaar</button></span></div>'; }
+  function ensureNav(container){ if(!container) return; var nav=container.querySelector(".histnav"); if(nav){ nav.outerHTML=navHTML(); } else { var summary=container.querySelector("summary"); var tmp=document.createElement("div"); tmp.innerHTML=navHTML(); var node=tmp.firstChild; if(summary&&summary.parentNode) summary.insertAdjacentElement("afterend",node); else container.insertBefore(node,container.firstChild); } }
+  function updNavs(){ ensureNav(document.getElementById("histPanel")); ensureNav(document.getElementById("obHistPanel")); }
+
+  function obSectors(){ var s=[]; try{ (typeof OB_DEFAULT_DEPTS!=="undefined"?OB_DEFAULT_DEPTS:[]).forEach(function(l){s.push(l);}); }catch(e){} return s; }
+  window.renderObHist=function(){
+    var body=document.getElementById("obHistBody"), head=document.getElementById("obHistHead"); if(!body) return;
+    var hist=store.get("vp_ob_hist")||{}, R=window.histRange(), cur=(typeof curDateISO==="function")?curDateISO():null;
+    var secs=obSectors(), seen={}, counts={};
+    Object.keys(hist).forEach(function(d){ if(d<R.start||d>R.end||d===cur) return; var day=hist[d]; Object.keys(day).forEach(function(sec){ if(secs.indexOf(sec)<0) secs.push(sec); (day[sec]||[]).forEach(function(nm){ seen[nm]=1; if(!counts[nm]) counts[nm]={}; counts[nm][sec]=(counts[nm][sec]||0)+1; }); }); });
+    var names=Object.keys(seen).sort();
+    var hh="<tr><th>Naam</th>"; secs.forEach(function(s){ hh+="<th>"+esc(s)+"</th>"; }); hh+="<th>Tot.</th></tr>";
+    if(head) head.innerHTML=hh;
+    var rows="";
+    if(!names.length){ rows='<tr><td colspan="'+(secs.length+2)+'" style="opacity:.6;padding:10px">Nog geen outbound-historiek voor '+esc(fmtP())+'.</td></tr>'; }
+    names.forEach(function(nm){ var c=counts[nm]||{}, tot=0, row="<td>"+esc(nm)+"</td>"; secs.forEach(function(s){ var n=c[s]||0; tot+=n; var bg=n?" style='background:rgba(45,212,238,"+Math.min(0.08*n,0.45)+")'":""; row+="<td class='num'"+bg+">"+(n||"")+"</td>"; }); row+="<td class='num'>"+(tot||"")+"</td>"; rows+="<tr>"+row+"</tr>"; });
+    body.innerHTML=rows;
+  };
+
+  function ensurePanel(){
+    if(document.getElementById("obHistPanel")) return;
+    var iv=document.getElementById("outboundView"); if(!iv) return;
+    var det=document.createElement("details"); det.className="subpanel"; det.id="obHistPanel"; det.style.margin="12px 14px";
+    det.innerHTML='<summary style="cursor:pointer;font-weight:700;color:var(--txt,#e9f1ff)">📊 Historiek Outbound — wie stond in welke sector</summary>'
+      +'<p style="color:var(--muted,#8fa6c9);font-size:13px;margin:6px 0">Telt per persoon hoe vaak die in elke sector stond. Blader per maand of jaar met de knoppen.</p>'
+      +'<div class="tscroll"><table class="prev"><thead id="obHistHead"></thead><tbody id="obHistBody"></tbody></table></div>';
+    iv.appendChild(det);
+    det.addEventListener("toggle",function(){ if(det.open){ ensureNav(det); window.renderObHist(); } });
+  }
+  function init(){ ensurePanel(); updNavs(); window.renderObHist(); setInterval(function(){ var iv=document.getElementById("outboundView"); if(iv && !iv.hidden){ ensurePanel(); updNavs(); } },5000); }
+  if(document.readyState!=="loading") setTimeout(init,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1600); });
+})();
+</script>
 </body>
+
 
 
 
