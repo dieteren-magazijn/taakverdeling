@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.32/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.33/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2963,7 +2963,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.32";
+  var APP_VERSION="v3.33";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -2981,19 +2981,24 @@ body.board #betaRibbon{display:none}
 (function(){
   function views(){ return [document.getElementById("inboundView"), document.getElementById("outboundView")].filter(Boolean); }
   function visible(){ return views().filter(function(v){ return v.offsetParent!==null || (!v.hidden && getComputedStyle(v).display!=="none"); })[0]; }
-  function reset(){ views().forEach(function(v){ v.style.transform=""; v.style.transformOrigin=""; v.style.height=""; }); }
+  function reset(){ views().forEach(function(v){ v.style.transform=""; v.style.transformOrigin=""; v.style.height=""; v.dataset.fitScale="1"; }); }
   function fit(){
     if(!document.body.classList.contains("board")){ reset(); return; }
     var v=visible(); if(!v) return;
-    v.style.transform=""; v.style.transformOrigin="top center"; v.style.height="";
+    var prevH=v.style.height; v.style.height="";
     var avail=window.innerHeight-6;
     var need=v.scrollHeight;
-    if(need>avail+2){ var s=Math.max(0.35, avail/need); v.style.transform="scale("+s+")"; v.style.height=(need*s)+"px"; }
+    var s=(need>avail+2)?Math.max(0.35, avail/need):1;
+    var prev=parseFloat(v.dataset.fitScale||"1");
+    if(Math.abs(s-prev)<0.012){ v.style.height=prevH; return; }
+    v.dataset.fitScale=s;
+    if(s>=0.999){ v.style.transform=""; v.style.transformOrigin=""; v.style.height=""; }
+    else { v.style.transformOrigin="top center"; v.style.transform="scale("+s+")"; v.style.height=(need*s)+"px"; }
   }
   var t;
   function schedule(){ clearTimeout(t); t=setTimeout(fit, 80); }
   window.addEventListener("resize", schedule);
-  setInterval(function(){ if(document.body.classList.contains("board")) schedule(); }, 2500);
+  setInterval(function(){ if(document.body.classList.contains("board")) schedule(); }, 4000);
   try{ new MutationObserver(schedule).observe(document.body,{attributes:true,attributeFilter:["class"]}); }catch(e){}
   if(document.readyState!=="loading") setTimeout(schedule,1200); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(schedule,1200); });
 })();
@@ -3036,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.32";
+  var LOCAL=window.__APP_VERSION||"v3.33";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
