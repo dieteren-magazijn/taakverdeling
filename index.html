@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.25/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.26/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.25";
+  var APP_VERSION="v3.26";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.25";
+  var LOCAL=window.__APP_VERSION||"v3.26";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3927,6 +3927,46 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     if(a===PW){ ok=true; toast("ðŸ”“ Sjabloon-beheer ontgrendeld"); setTimeout(function(){ try{ t.click(); }catch(_){}} ,20); }
     else { toast("âŒ Fout wachtwoord"); }
   }, true);
+})();
+</script>
+<!-- ============ digitale klok met seconden op het outbound-bord ============ -->
+<style>
+.obclock{text-align:right;line-height:1;user-select:none;white-space:nowrap}
+.obclock .oc-time{font-weight:800;letter-spacing:.02em;color:var(--txt,#e9f1ff);font-variant-numeric:tabular-nums}
+.obclock .oc-time .oc-s{color:var(--cyan,#2dd4ee)}
+.obclock .oc-date{font-weight:700;text-transform:capitalize;color:var(--muted,#8fa6c9)}
+#obClockN{margin-left:auto;padding-left:14px;display:flex;flex-direction:column;align-items:flex-end}
+#obClockN .oc-time{font-size:20px}
+#obClockN .oc-date{font-size:10.5px;margin-top:1px}
+#obClockB{display:none}
+body.board #obClockB{display:block;position:fixed;top:.7vw;right:1.1vw;z-index:60}
+body.board #obClockB .oc-time{font-size:3.3vw}
+body.board #obClockB .oc-time .oc-s{font-size:2.2vw}
+body.board #obClockB .oc-date{font-size:1.05vw;margin-top:.25vw}
+</style>
+<script>
+(function(){
+  "use strict";
+  var DAYS=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"];
+  var MND=["jan.","feb.","mrt.","apr.","mei","jun.","jul.","aug.","sep.","okt.","nov.","dec."];
+  function two(n){ return ("0"+n).slice(-2); }
+  function mk(id){ var e=document.createElement("div"); e.id=id; e.className="obclock"; e.innerHTML='<div class="oc-time"></div><div class="oc-date"></div>'; return e; }
+  function ensure(){
+    var iv=document.getElementById("outboundView"); if(!iv) return;
+    if(!document.getElementById("obClockB")) iv.appendChild(mk("obClockB"));
+    var bar=iv.querySelector(".ob-bar");
+    if(bar && !document.getElementById("obClockN")) bar.appendChild(mk("obClockN"));
+  }
+  function tick(){
+    ensure();
+    var d=new Date();
+    var tm=two(d.getHours())+":"+two(d.getMinutes())+'<span class="oc-s">:'+two(d.getSeconds())+'</span>';
+    var dt=DAYS[d.getDay()]+" "+d.getDate()+" "+MND[d.getMonth()];
+    var ts=document.querySelectorAll(".obclock .oc-time"); for(var i=0;i<ts.length;i++) ts[i].innerHTML=tm;
+    var ds=document.querySelectorAll(".obclock .oc-date"); for(var j=0;j<ds.length;j++) ds[j].textContent=dt;
+  }
+  function start(){ tick(); setInterval(tick,1000); }
+  if(document.readyState!=="loading") setTimeout(start,1100); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1100); });
 })();
 </script>
 </body>
