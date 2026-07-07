@@ -268,7 +268,7 @@ body.board #absGrid .chip .bdg{font-size:.65vw;padding:.2vw .45vw}
 .ob-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--ac,var(--cyan))}
 .ob-th{color:var(--muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ob-tn{font-family:var(--fd);font-weight:700;font-size:32px;color:var(--txt);line-height:1.15}
-.ob-scan{position:absolute;top:0;bottom:0;width:42px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ac,var(--cyan)) 28%,transparent),transparent);transform:translateX(-60px);pointer-events:none}
+.ob-scan{position:absolute;top:0;bottom:0;width:42px;background:linear-gradient(90deg,transparent,var(--ac,var(--cyan)),transparent);opacity:.28;transform:translateX(-60px);pointer-events:none}
 @media (prefers-reduced-motion:no-preference){.ob-scan{animation:ob-scan 5s linear infinite}}
 @keyframes ob-scan{0%{transform:translateX(-60px)}55%,100%{transform:translateX(440px)}}
 .ob-names-wrap{height:46px;overflow:hidden;position:relative}
@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.33/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.34/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2963,7 +2963,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.33";
+  var APP_VERSION="v3.34";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.33";
+  var LOCAL=window.__APP_VERSION||"v3.34";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
