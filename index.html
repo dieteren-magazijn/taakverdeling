@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.18/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.19/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.18";
+  var APP_VERSION="v3.19";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3003,7 +3003,7 @@ body.board #betaRibbon{display:none}
 #moreMenu{position:absolute;top:calc(100% + 6px);right:0;z-index:200;background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:12px;padding:8px;display:none;flex-direction:column;gap:6px;min-width:220px;box-shadow:0 12px 32px rgba(0,0,0,.55)}
 #moreMenu.open{display:flex}
 #moreMenu .btn{width:100%;text-align:left;max-width:none}
-body.wl-ro .edit-only{display:none !important}
+body.wl-ro .edit-only{opacity:.42}
 body.board #moreWrap{display:none}
 </style>
 <script>
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.18";
+  var LOCAL=window.__APP_VERSION||"v3.19";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
