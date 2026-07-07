@@ -855,9 +855,9 @@ async function syncRead(force){
     if(!force && doc.writer === CLIENT_ID && doc.updated === sync.lastWrite) return; /* eigen schrijfactie */
     _applyingRemote = true;
     Object.keys(doc.days || {}).forEach(function(k){ store.set("vp_" + k, doc.days[k]); });
-    if(doc.hist)  store.set("vp_hist", doc.hist);
+    if(doc.hist)  store.set("vp_hist", (window.vpMergeHist?window.vpMergeHist(store.get("vp_hist")||{}, doc.hist):doc.hist));
     if(doc.tasks) store.set("vp_tasks", doc.tasks);
-    if(doc.order) store.set("vp_taskorder", doc.order); if(doc.obhist) store.set("vp_ob_hist", doc.obhist);
+    if(doc.order) store.set("vp_taskorder", doc.order); if(doc.obhist) store.set("vp_ob_hist", (window.vpMergeHist?window.vpMergeHist(store.get("vp_ob_hist")||{}, doc.obhist):doc.obhist));
     if(doc.obPlace){ store.set("vp_ob_place", doc.obPlace); if(typeof obDepts !== "undefined" && doc.obPlace.depts){ obDepts = doc.obPlace.depts; if(typeof obSyncRosterToDepts==="function") obSyncRosterToDepts(); if(!document.getElementById("outboundView").hidden) obRender(); } }
     if(doc.obTpl){ store.set("vp_ob_template", doc.obTpl); }
     if(doc.obHours){ store.set("vp_ob_hours", doc.obHours); }
@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.27/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.28/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.27";
+  var APP_VERSION="v3.28";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.27";
+  var LOCAL=window.__APP_VERSION||"v3.28";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3967,6 +3967,24 @@ body.board #obClockB .oc-date{font-size:1.05vw;margin-top:.25vw}
   }
   function start(){ tick(); setInterval(tick,1000); }
   if(document.readyState!=="loading") setTimeout(start,1100); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1100); });
+})();
+</script>
+<!-- ============ historiek veilig samenvoegen (nooit overschrijven bij sync) ============ -->
+<script>
+(function(){
+  "use strict";
+  function cnt(o){ if(!o) return 0; if(Array.isArray(o)) return o.length; var n=0; for(var k in o){ if(!o.hasOwnProperty(k)) continue; n+=(Array.isArray(o[k])?o[k].length:1); } return n; }
+  // union per datum: houd alle datums van beide; bij overlap wint de vollere
+  window.vpMergeHist=function(local, remote){
+    var out={}, k;
+    local=local||{}; remote=remote||{};
+    for(k in local){ if(local.hasOwnProperty(k)) out[k]=local[k]; }
+    for(k in remote){ if(!remote.hasOwnProperty(k)) continue;
+      if(!out[k]) out[k]=remote[k];
+      else if(cnt(remote[k])>cnt(out[k])) out[k]=remote[k];
+    }
+    return out;
+  };
 })();
 </script>
 </body>
