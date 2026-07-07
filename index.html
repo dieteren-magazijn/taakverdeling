@@ -464,7 +464,7 @@ body.board #boardLogo{display:block;position:fixed;right:1.4vw;bottom:1.1vw;widt
     <button class="btn" id="obTplMode" title="Template-bouwmodus: toon ook afwezigen in de pool zodat je iedereen in zijn vaste sector kunt zetten. Zet daarna uit.">🧩 Template-modus</button>
     <button class="btn" id="obTplLoad" title="Opgeslagen sjabloon terugzetten">↩ Herstel</button>
     <button class="btn" id="obSync" title="Opnieuw uit de planning laden">🔄 Uit planning</button>
-    <button class="btn" id="obHoursToggle" title="Uren-automatiek aan/uit — aan = mensen verschijnen/verdwijnen op hun ploeguren (voor het TV-bord); uit = iedereen beschikbaar (om te plannen)">⏰ Uren: uit</button>
+    <button class="btn" id="obHoursToggle" title="Toon-op-uren. AAN = wie nog niet begonnen is of al naar huis is verdwijnt vanzelf van het bord (ideaal voor het TV-scherm). UIT = iedereen blijft staan zodat je vrij kan plannen.">⏰ Uren: uit</button>
     <span class="ob-counts" id="obClock" title="Huidige tijd (of testtijd)">🕐 --:--</span>
     <label class="btn" title="Testtijd instellen om het verdwijnen-op-uren te testen — leeg laten = echte klok">🕐 Test <input type="time" id="obTestTime" style="background:transparent;border:0;color:inherit;font:inherit;width:62px"></label>
     <button class="btn" id="siLink" title="Tweede Excel koppelen: avondstudenten &amp; interims (Planning_interims_en_studenten_2026.xlsx)">👷 Studenten/interims</button>
@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.22/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.23/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2374,7 +2374,7 @@ function obSyncRosterToDepts(){
     if(!p) return false;                       // niet meer in roster → weg
     if(obTplMode) return true;                 // template-bouwmodus → iedereen behouden (ook afwezig)
     if(p._buitenUren) return true;             // alleen tijdelijk buiten uren → in afdeling houden
-    return p.status==="aanwezig";              // echte afwezigheid (verlof/ziek/TK) → uit afdeling
+    return true; /* geplaatste afwezigen blijven in hun sector */              // echte afwezigheid (verlof/ziek/TK) → uit afdeling
   }); });
 }
 /* per persoon een vast van–tot venster; buiten dat venster → afwezig ("buiten uren") */
@@ -2545,7 +2545,7 @@ function obBuildTicker(){
   if(obNamesTimer){ clearInterval(obNamesTimer); obNamesTimer=null; }
   var eindA=obDefaultHours({ploeg:"A"}).tot, eindB=obDefaultHours({ploeg:"B"}).tot;
   var laatEind = (obParseHM(eindA)||0) >= (obParseHM(eindB)||0) ? eindA : eindB;
-  var vroegEind = laatEind===eindA ? eindB : eindA;
+  var vroegEind = laatEind===eindA ? eindB : eindA; var _hA=obDefaultHours({ploeg:"A"}), _hB=obDefaultHours({ploeg:"B"}); var _lp=(obParseHM(_hA.tot)||0)>=(obParseHM(_hB.tot)||0)?"A":"B"; var _vp=_lp==="A"?"B":"A"; var _hl=_lp==="A"?_hA:_hB, _hv=_vp==="A"?_hA:_hB;
   var nLaat=0, nVroeg=0, nAfw=0, nAvond=0, early=[];
   obRoster.forEach(function(p){
     if(p._avond){ nAvond++; return; }   /* avondstudenten/interims apart */
@@ -2560,8 +2560,8 @@ function obBuildTicker(){
     ? '<div class="ob-names-wrap"><div class="ob-names" id="obEarlyNames">'+namesRows+'</div></div>'
     : '<div class="ob-tn">0</div>';
   var tiles=[
-    obTile("#ff6b6b","Late · "+laatEind, '<div class="ob-tn">'+nLaat+'</div>'),
-    obTile("#3ddc97","Vroege · "+vroegEind, '<div class="ob-tn">'+nVroeg+'</div>'),
+    obTile("#ff6b6b","Late \u00b7 Ploeg "+_lp+" \u00b7 "+_hl.van+"\u2013"+_hl.tot, '<div class="ob-tn">'+nLaat+'</div>'),
+    obTile("#3ddc97","Vroege \u00b7 Ploeg "+_vp+" \u00b7 "+_hv.van+"\u2013"+_hv.tot, '<div class="ob-tn">'+nVroeg+'</div>'),
     obTile("#ff9f43","Stopt vroeger · "+early.length, earlyCell),
     obTile("#ff7eb6","Afwezig", '<div class="ob-tn">'+nAfw+'</div>')
   ];
@@ -2631,7 +2631,7 @@ function obRender(){
        in de data (d.names), dus in bewerkmodus zie je ze nog gedimd staan en
        gaat de planning niet verloren. */
     var hideOff = !!state.board || laterOn; var dn=d.names.filter(function(n){ return !(SW[n] && SW[n]!==d.label); }); Object.keys(SW).forEach(function(n){ if(SW[n]===d.label && dn.indexOf(n)<0) dn.push(n); });
-    var visNames = dn.filter(function(n){ var p=byName[n]; return p && !(hideOff && p._buitenUren); });
+    var visNames = dn.filter(function(n){ var p=byName[n]; return p && !(hideOff && (p._buitenUren || p.status!=="aanwezig")); });
     html+='<div class="tcard'+dropCls+'" data-di="'+di+'" style="--hue:'+hue+'">'+
       '<header><span class="tname" data-di="'+di+'">'+esc(d.label)+'</span>'+
       '<span class="tcount">'+visNames.length+'</span>'+
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.22";
+  var APP_VERSION="v3.23";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.22";
+  var LOCAL=window.__APP_VERSION||"v3.23";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3910,6 +3910,25 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 </script>
 <style>#outboundView .pool-ploeg-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#8fa6c9);margin:9px 2px 4px;border-top:1px solid var(--line2,rgba(141,178,255,.14));padding-top:6px}#outboundView .pool-ploeg-h:first-child{border-top:none;padding-top:0;margin-top:2px}#outboundView .pool-ploeg-h b{color:var(--cyan,#2dd4ee)}</style>
 <style>body.board #levBox .lev-add{display:none !important}</style>
+<!-- ============ wachtwoord op sjabloon-knoppen ============ -->
+<script>
+(function(){
+  "use strict";
+  var PW="dieteren";      // wachtwoord voor sjabloon-beheer
+  var ok=false;
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  document.addEventListener("click",function(e){
+    var t=(e.target&&e.target.closest)?e.target.closest("#obTplSave, #obTplMode"):null;
+    if(!t) return;
+    if(ok) return;                         // al ontgrendeld deze sessie
+    e.stopPropagation(); e.preventDefault();
+    var a=prompt("Wachtwoord voor sjabloon-beheer (Sjabloon / Template-modus):");
+    if(a===null) return;                   // geannuleerd
+    if(a===PW){ ok=true; toast("ðŸ”“ Sjabloon-beheer ontgrendeld"); setTimeout(function(){ try{ t.click(); }catch(_){}} ,20); }
+    else { toast("âŒ Fout wachtwoord"); }
+  }, true);
+})();
+</script>
 </body>
 
 
