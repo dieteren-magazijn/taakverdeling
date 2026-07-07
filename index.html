@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.20/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.21/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2602,15 +2602,15 @@ function obRender(){
   var q=(document.getElementById("obSearch").value||"").toLowerCase();
   var poolHTML="", absHTML="", nPool=0, nAbs=0, absArr=[];
   var studHTML="", intHTML="";
-  obRoster.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(p){
+  var _sorted=obRoster.slice().sort(function(a,b){ function _rk(x){return x.ploeg==="A"?0:(x.ploeg==="B"?1:2);} var _d=_rk(a)-_rk(b); return _d||a.name.localeCompare(b.name); }); var _poolCnt={A:0,B:0,O:0}; _sorted.forEach(function(p){ if(q&&p.name.toLowerCase().indexOf(q)<0)return; if(placed[p.name])return; if(p._avond)return; if(p.status!=="aanwezig"&&!obTplMode)return; if(p.ploeg==="A")_poolCnt.A++; else if(p.ploeg==="B")_poolCnt.B++; else _poolCnt.O++; }); var _lastPP=""; function _poolAdd(p){ var pp=(p.ploeg==="A"?"A":(p.ploeg==="B"?"B":"?")); if(pp!==_lastPP){ _lastPP=pp; var cnt2=(pp==="A")?_poolCnt.A:((pp==="B")?_poolCnt.B:_poolCnt.O); poolHTML+='<div class="pool-ploeg-h">'+(pp==="?"?"Overig":"Ploeg "+pp)+' <b>'+cnt2+'</b></div>'; } poolHTML+=obChipHTML(p,"pool"); nPool++; } _sorted.forEach(function(p){
     if(q && p.name.toLowerCase().indexOf(q)<0) return;
     if(placed[p.name]) return;            // in een afdeling (ook tijdelijk buiten uren) → niet in pool/afwezig
     if(p._avond){
       if(p._kind==="interim") intHTML+=obChipHTML(p,"pool"); else studHTML+=obChipHTML(p,"pool");
       return;
     }
-    if(p.status!=="aanwezig"){ if(obTplMode){ poolHTML+=obChipHTML(p,"pool"); nPool++; } else { absArr.push(p); nAbs++; } return; }
-    poolHTML+=obChipHTML(p,"pool"); nPool++;
+    if(p.status!=="aanwezig"){ if(obTplMode){ _poolAdd(p); } else { absArr.push(p); nAbs++; } return; }
+    _poolAdd(p);
   });
   var poolOut = poolHTML || (studHTML||intHTML ? "" : '<div class="thint">Iedereen geplaatst 🎉</div>');
   if(studHTML) poolOut += '<div class="sub-h">🌙 Avondstudenten</div>' + studHTML;
@@ -2910,7 +2910,7 @@ if(store.get("vp_view")==="outbound") switchView("outbound");
 
 ﻿<!-- ================= SCHRIJF-SLOT (write-lock) v1 ================= -->
 <style>
-#wlBtn{margin-left:4px}
+#wlBtn{order:99;margin-left:auto;min-width:250px;white-space:nowrap;text-align:center}
 body.wl-ro .pool, body.wl-ro .tasks, body.wl-ro #obBoard, body.wl-ro #absGrid{ opacity:.92; } body.wl-ro .pool .chip, body.wl-ro .tasks .chip, body.wl-ro #obBoard .chip, body.wl-ro #obBoard .tcard, body.wl-ro #absGrid .chip, body.wl-ro .obl-chip{ pointer-events:none; }
 body.wl-ro::after{ content:"LEES-MODUS - klik Bewerken om te wijzigen"; position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:9997; background:rgba(246,201,69,.14); border:1px solid #f6c945; color:#f6c945; font:600 12px/1 var(--fb,sans-serif); padding:7px 14px; border-radius:999px; pointer-events:none; }
 body.wl-ro.board::after{ display:none; }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.20";
+  var APP_VERSION="v3.21";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.20";
+  var LOCAL=window.__APP_VERSION||"v3.21";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3908,6 +3908,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   if(document.readyState!=="loading") setTimeout(start,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,2000); });
 })();
 </script>
+<style>#outboundView .pool-ploeg-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#8fa6c9);margin:9px 2px 4px;border-top:1px solid var(--line2,rgba(141,178,255,.14));padding-top:6px}#outboundView .pool-ploeg-h:first-child{border-top:none;padding-top:0;margin-top:2px}#outboundView .pool-ploeg-h b{color:var(--cyan,#2dd4ee)}</style>
 </body>
 
 
