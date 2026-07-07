@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.29/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.30/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.29";
+  var APP_VERSION="v3.30";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.29";
+  var LOCAL=window.__APP_VERSION||"v3.30";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3840,7 +3840,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       var d=(typeof curDateISO==="function")?curDateISO():null; if(!d) return;
       if(typeof obDepts==="undefined"||!obDepts) return;
       var oh=store.get("vp_ob_hist")||{}, compact={}, any=false;
-      obDepts.forEach(function(dep){ var ns=(dep.names||[]).slice(); if(ns.length){ compact[dep.label]=ns; any=true; } });
+      obDepts.forEach(function(dep){ var ns=(dep.names||[]).slice(); if(ns.length){ compact[dep.label]=ns; any=true; } }); try{ var _placed={}; obDepts.forEach(function(dep){ (dep.names||[]).forEach(function(n){ _placed[n]=1; }); }); var _hm=store.get("vp_ob_hours")||{}; Object.keys(_hm).forEach(function(nm){ var o=_hm[nm]; if(o&&o.wisselTo&&o.wisselDate===d&&_placed[nm]){ if(!compact[o.wisselTo]) compact[o.wisselTo]=[]; if(compact[o.wisselTo].indexOf(nm)<0){ compact[o.wisselTo].push(nm); any=true; } } }); }catch(e){}
       if(any) oh[d]=compact; else delete oh[d];
       var cut=new Date(Date.now()-400*86400000).toISOString().slice(0,10);
       Object.keys(oh).forEach(function(k){ if(k<cut) delete oh[k]; });
