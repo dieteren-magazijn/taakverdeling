@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.28/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.29/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.28";
+  var APP_VERSION="v3.29";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,28 +3034,28 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.28";
-  var outdated=false, banner=null, reloadT=null;
+  var LOCAL=window.__APP_VERSION||"v3.29";
+  var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
     if(banner) return;
     banner=document.createElement("div"); banner.id="verBanner";
     banner.style.cssText="position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:100000;background:#f6c945;color:#1a1205;font:700 13px/1.3 var(--fb,system-ui,sans-serif);padding:9px 16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);cursor:pointer";
     banner.textContent="Nieuwe versie beschikbaar - klik om te herladen";
-    banner.addEventListener("click", function(){ location.reload(true); });
+    banner.addEventListener("click", function(){ doReload(window.__verLatest); });
     document.body.appendChild(banner);
   }
   function check(){
     fetch("version.txt?cb="+Date.now(), {cache:"no-store"}).then(function(r){ return r.ok?r.text():null; }).then(function(t){
       if(t==null) return; t=(""+t).trim();
       if(t && t!==LOCAL){
-        outdated=true; showBanner();
-        var editing=(typeof window.WL_iHold==="function") && window.WL_iHold();
-        if(!editing && !reloadT){ reloadT=setTimeout(function(){ location.reload(true); }, 8000); }
+        outdated=true; window.__verLatest=t; showBanner();
+        var editing=((typeof window.WL_iHold==="function") && window.WL_iHold()) || ((typeof window.WL_blockWrite==="function") && !window.WL_blockWrite());
+        if(!editing && !reloadT){ reloadT=setTimeout(function(){ doReload(t); }, 6000); }
       }
     }).catch(function(){});
   }
-  setTimeout(check,5000); setInterval(check,180000); window.addEventListener("focus",check);
+  setTimeout(check,4000); setInterval(check,60000); window.addEventListener("focus",check); document.addEventListener("visibilitychange",function(){ if(!document.hidden) check(); });
 })();
 </script>
 ﻿<!-- ============ koppel-lampjes (Plan / Interim / Sync) ============ -->
