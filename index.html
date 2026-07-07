@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.31/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.32/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2963,7 +2963,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.31";
+  var APP_VERSION="v3.32";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3036,7 +3036,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.31";
+  var LOCAL=window.__APP_VERSION||"v3.32";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3941,9 +3941,9 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
 #obClockN .oc-time{font-size:20px}
 #obClockN .oc-date{font-size:10.5px;margin-top:1px}
 #obClockB{display:none}
-body.board #obClockB{display:block;position:fixed;top:.7vw;right:1.1vw;z-index:60}
-body.board #obClockB .oc-time{font-size:3.3vw}
-body.board #obClockB .oc-time .oc-s{font-size:2.2vw}
+body.board #obClockB{display:flex;flex-direction:column;align-items:flex-end;padding:.7vw 1.4vw .2vw;border-bottom:1px solid rgba(141,178,255,.14)}
+body.board #obClockB .oc-time{font-size:2.6vw}
+body.board #obClockB .oc-time .oc-s{font-size:1.9vw}
 body.board #obClockB .oc-date{font-size:1.05vw;margin-top:.25vw}
 </style>
 <script>
@@ -3955,7 +3955,7 @@ body.board #obClockB .oc-date{font-size:1.05vw;margin-top:.25vw}
   function mk(id){ var e=document.createElement("div"); e.id=id; e.className="obclock"; e.innerHTML='<div class="oc-time"></div><div class="oc-date"></div>'; return e; }
   function ensure(){
     var iv=document.getElementById("outboundView"); if(!iv) return;
-    if(!document.getElementById("obClockB")) iv.appendChild(mk("obClockB"));
+    if(!document.getElementById("obClockB")) iv.insertBefore(mk("obClockB"), iv.firstChild);
     var bar=iv.querySelector(".ob-bar");
     if(bar && !document.getElementById("obClockN")) bar.appendChild(mk("obClockN"));
   }
