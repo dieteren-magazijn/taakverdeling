@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.26/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.27/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.26";
+  var APP_VERSION="v3.27";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.26";
+  var LOCAL=window.__APP_VERSION||"v3.27";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3830,9 +3830,9 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   "use strict";
   var MND=["januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
   var now=new Date();
-  window.histPeriod={mode:"maand", y:now.getFullYear(), m:now.getMonth()};
-  window.histRange=function(){ var p=window.histPeriod; function pad(n){return ("0"+n).slice(-2);} if(p.mode==="jaar") return {start:p.y+"-01-01",end:p.y+"-12-31"}; var last=new Date(p.y,p.m+1,0).getDate(); return {start:p.y+"-"+pad(p.m+1)+"-01",end:p.y+"-"+pad(p.m+1)+"-"+pad(last)}; };
-  function fmtP(){ var p=window.histPeriod; return p.mode==="jaar"? (""+p.y) : (MND[p.m].charAt(0).toUpperCase()+MND[p.m].slice(1)+" "+p.y); }
+  window.histPeriod={mode:"alles", y:now.getFullYear(), m:now.getMonth()};
+  window.histRange=function(){ var p=window.histPeriod; function pad(n){return ("0"+n).slice(-2);} if(p.mode==="alles") return {start:"0000-01-01",end:"9999-12-31"}; if(p.mode==="jaar") return {start:p.y+"-01-01",end:p.y+"-12-31"}; var last=new Date(p.y,p.m+1,0).getDate(); return {start:p.y+"-"+pad(p.m+1)+"-01",end:p.y+"-"+pad(p.m+1)+"-"+pad(last)}; };
+  function fmtP(){ var p=window.histPeriod; return p.mode==="alles"? "Alles" : p.mode==="jaar"? (""+p.y) : (MND[p.m].charAt(0).toUpperCase()+MND[p.m].slice(1)+" "+p.y); }
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
 
   window.snapshotObHist=function(){
@@ -3849,10 +3849,10 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   };
 
   function rerender(){ try{ if(typeof renderHist==="function") renderHist(); }catch(e){} window.renderObHist(); updNavs(); }
-  function step(dir){ var p=window.histPeriod; if(p.mode==="jaar"){ p.y+=dir; } else { p.m+=dir; if(p.m<0){p.m=11;p.y--;} if(p.m>11){p.m=0;p.y++;} } rerender(); }
+  function step(dir){ var p=window.histPeriod; if(p.mode==="alles") return; if(p.mode==="jaar"){ p.y+=dir; } else { p.m+=dir; if(p.m<0){p.m=11;p.y--;} if(p.m>11){p.m=0;p.y++;} } rerender(); }
   function setMode(mode){ window.histPeriod.mode=mode; rerender(); }
-  document.addEventListener("click",function(e){ var b=(e.target&&e.target.closest)?e.target.closest(".histnav button"):null; if(!b) return; var a=b.getAttribute("data-h"); if(a==="prev") step(-1); else if(a==="next") step(1); else if(a==="maand") setMode("maand"); else if(a==="jaar") setMode("jaar"); },true);
-  function navHTML(){ var p=window.histPeriod; return '<div class="histnav"><button data-h="prev" title="Vorige">◀</button><span class="hn-lab">'+esc(fmtP())+'</span><button data-h="next" title="Volgende">▶</button><span class="sp"></span><span class="hn-seg"><button data-h="maand" class="'+(p.mode==="maand"?"on":"")+'">Maand</button><button data-h="jaar" class="'+(p.mode==="jaar"?"on":"")+'">Jaar</button></span></div>'; }
+  document.addEventListener("click",function(e){ var b=(e.target&&e.target.closest)?e.target.closest(".histnav button"):null; if(!b) return; var a=b.getAttribute("data-h"); if(a==="prev") step(-1); else if(a==="next") step(1); else if(a==="alles") setMode("alles"); else if(a==="maand") setMode("maand"); else if(a==="jaar") setMode("jaar"); },true);
+  function navHTML(){ var p=window.histPeriod; return '<div class="histnav"><button data-h="prev" title="Vorige">◀</button><span class="hn-lab">'+esc(fmtP())+'</span><button data-h="next" title="Volgende">▶</button><span class="sp"></span><span class="hn-seg"><button data-h="alles" class="'+(p.mode==="alles"?"on":"")+'">Alles</button><button data-h="maand" class="'+(p.mode==="maand"?"on":"")+'">Maand</button><button data-h="jaar" class="'+(p.mode==="jaar"?"on":"")+'">Jaar</button></span></div>'; }
   function ensureNav(container){ if(!container) return; var nav=container.querySelector(".histnav"); if(nav){ nav.outerHTML=navHTML(); } else { var summary=container.querySelector("summary"); var tmp=document.createElement("div"); tmp.innerHTML=navHTML(); var node=tmp.firstChild; if(summary&&summary.parentNode) summary.insertAdjacentElement("afterend",node); else container.insertBefore(node,container.firstChild); } }
   function updNavs(){ ensureNav(document.getElementById("histPanel")); ensureNav(document.getElementById("obHistPanel")); }
 
