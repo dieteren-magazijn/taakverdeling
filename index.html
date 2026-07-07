@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.30/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.31/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2125,10 +2125,10 @@ function obClassify(vm,nm){
   if(a.indexOf("PW")>=0 || b.indexOf("PW")>=0) return {kol:"ploeg", badge:"PW", swap:true};
   var ipB = (both.indexOf("IP")>=0) ? "IP" : null;
   // uren-aftrek (-1/-2/...) -> blijft in ploeg met uren-badge
-  var ur=null;
-  [vm,nm].forEach(function(v){ if(v!=null){ var n=parseFloat((""+v).replace(",",".")); if(!isNaN(n)&&n<0) ur=(""+n).replace(".0",""); } });
+  var ur=null, urHalf=null;
+  [vm,nm].forEach(function(v,_ix){ if(v!=null){ var n=parseFloat((""+v).replace(",",".")); if(!isNaN(n)&&n<0){ ur=(""+n).replace(".0",""); urHalf=(_ix===0?"VM":"NM"); } } });
   var bd = ipB || (ur!=null?ur+"u":null);
-  return {kol:"ploeg", badge:bd};
+  return {kol:"ploeg", badge:bd, aftrekHalf:(ur!=null?urHalf:null)};
 }
 /* =====================================================================
    AVOND — tweede Excel (Planning_interims_en_studenten_2026.xlsx)
@@ -2343,7 +2343,7 @@ function obFromExcel(){
       var vmCol=obColLetter(dayStart + di*2), nmCol=obColLetter(dayStart + di*2 + 1);
       var cls=obClassify(ws[vmCol+r]?ws[vmCol+r].v:null, ws[nmCol+r]?ws[nmCol+r].v:null);
       var status = cls.kol==="ploeg" ? "aanwezig" : cls.kol;  // verlof/tk/afwezig
-      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, herkomst:afd, _pw:!!cls.swap});
+      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, _aftrekHalf:cls.aftrekHalf||null, herkomst:afd, _pw:!!cls.swap});
     }
   });
   return roster;
@@ -2422,11 +2422,13 @@ function obWindowFor(p){
   var b = p && (p._origBadge || p.badge);
   var m = b ? (""+b).match(/^-(\d+(?:[.,]\d+)?)/) : null;
   if(m){
-    var endMin = obParseHM(def.tot);
-    if(endMin!=null){
-      endMin -= Math.round(parseFloat(m[1].replace(",","."))*60);
-      def.tot = ("0"+Math.floor(endMin/60)).slice(-2)+":"+("0"+(endMin%60)).slice(-2);
-      def.aftrek = true;
+    var _xMin = Math.round(parseFloat(m[1].replace(",","."))*60);
+    if(p && p._aftrekHalf==="VM"){
+      var startMin = obParseHM(def.van);
+      if(startMin!=null){ startMin += _xMin; def.van = ("0"+Math.floor(startMin/60)).slice(-2)+":"+("0"+(startMin%60)).slice(-2); def.aftrek = true; }
+    } else {
+      var endMin = obParseHM(def.tot);
+      if(endMin!=null){ endMin -= _xMin; def.tot = ("0"+Math.floor(endMin/60)).slice(-2)+":"+("0"+(endMin%60)).slice(-2); def.aftrek = true; }
     }
   }
   return def;
@@ -2961,7 +2963,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.30";
+  var APP_VERSION="v3.31";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3036,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.30";
+  var LOCAL=window.__APP_VERSION||"v3.31";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
