@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.19/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.20/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2961,7 +2961,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.19";
+  var APP_VERSION="v3.20";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3034,7 +3034,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.19";
+  var LOCAL=window.__APP_VERSION||"v3.20";
   var outdated=false, banner=null, reloadT=null;
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3885,7 +3885,31 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   if(document.readyState!=="loading") setTimeout(init,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1600); });
 })();
 </script>
+<!-- ============ Meer-menu's uitklappen: alle knoppen zichtbaar op de balk ============ -->
+<script>
+(function(){
+  "use strict";
+  function drain(menuId, wrapId, barSel){
+    var menu=document.getElementById(menuId);
+    var wrap=document.getElementById(wrapId);
+    var bar=document.querySelector(barSel);
+    if(menu && bar){
+      Array.prototype.slice.call(menu.children).forEach(function(b){
+        try{ bar.insertBefore(b, wrap||null); }catch(e){}
+      });
+    }
+    if(wrap) wrap.style.display="none";
+  }
+  function unmore(){
+    drain("obMoreMenu","obMoreWrap",".ob-bar");   // outbound
+    drain("moreMenu","moreWrap",".topbar-in");     // inbound
+  }
+  function start(){ unmore(); setTimeout(unmore,600); setTimeout(unmore,1400); setTimeout(unmore,2600); setInterval(unmore,6000); }
+  if(document.readyState!=="loading") setTimeout(start,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,2000); });
+})();
+</script>
 </body>
+
 
 
 
