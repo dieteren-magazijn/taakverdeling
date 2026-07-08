@@ -2486,12 +2486,13 @@ function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts()
 /* === sjabloon-helpers (v3.37) === */
 window.obNrm=function(s){ s=(""+s).toLowerCase().trim().replace(/\s+/g," "); try{ s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }catch(e){} return s; };
 window.obApplyTemplate=function(std, silent){
+  try{ if(typeof obApplyHours==="function") obApplyHours(); }catch(e){}
   var canon={}; (obRoster||[]).forEach(function(p){ if(p&&p.name) canon[window.obNrm(p.name)]=p.name; });
-  var present={}; (obRoster||[]).forEach(function(p){ if(p&&p.status==="aanwezig") present[window.obNrm(p.name)]=1; });
+  var present={}; (obRoster||[]).forEach(function(p){ if(p&&(p.status==="aanwezig"||p._buitenUren)) present[window.obNrm(p.name)]=1; });
   std.forEach(function(d){ d.names=(d.names||[]).map(function(n){ return canon[window.obNrm(n)]||n; }).filter(function(n){ return present[window.obNrm(n)]; }); });
   obDepts=std; obSyncRosterToDepts(); obSave();
   var placed={}; std.forEach(function(d){ (d.names||[]).forEach(function(n){ placed[window.obNrm(n)]=1; }); });
-  var loose=[]; (obRoster||[]).forEach(function(p){ if(p&&p.status==="aanwezig"&&!p._avond&&!placed[window.obNrm(p.name)]) loose.push(p.name); });
+  var loose=[]; (obRoster||[]).forEach(function(p){ if(p&&(p.status==="aanwezig"||p._buitenUren)&&!p._avond&&!placed[window.obNrm(p.name)]) loose.push(p.name); });
   if(!silent){ toast(loose.length? ("\u26a0 Geen vaste plek (staan in de pool): "+loose.slice(0,8).join(", ")+(loose.length>8?" \u2026":"")) : "\u2705 Iedereen heeft zijn vaste plek gekregen"); }
   if(!document.getElementById("outboundView").hidden && typeof obRender==="function") obRender();
   return loose;
@@ -3074,7 +3075,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.37";
+  var APP_VERSION="v3.38";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3153,7 +3154,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.37";
+  var LOCAL=window.__APP_VERSION||"v3.38";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4185,6 +4186,9 @@ body.tplmode #obTplSave{display:inline-block !important}
     try{
       if(blocked()) return;
       if(typeof obDepts==="undefined" || typeof window.obApplyTemplate!=="function") return;
+      if(typeof obRoster==="undefined" || !obRoster || !obRoster.length) return;
+      var _nA=0; obRoster.forEach(function(p){ if(p&&(p.status==="aanwezig"||p._buitenUren)) _nA++; });
+      if(!_nA) return;
       var td=realToday();
       var sel=null; try{ if(typeof curDateISO==="function") sel=curDateISO(); }catch(e){}
       if(sel && sel!==td) return;                      // enkel op de echte vandaag
