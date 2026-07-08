@@ -3076,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.45";
+  var APP_VERSION="v3.46";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.45";
+  var LOCAL=window.__APP_VERSION||"v3.46";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3460,7 +3460,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     var bar='<div class="sec-bar"><span class="sec-title">Schaefer — alle taken</span>'
       +'<span class="sec-hint">Klik een naam links, dan een taak · klik een geplaatste naam om hem terug te halen</span>'
       +'<button class="sec-tvbtn" id="secTvBtn">📺 Bord</button></div>';
-    var tvtitle='<div class="sec-tvtitle"><span>SCHAEFER</span><button class="sec-tvbtn" id="secTvExit">✕ Sluiten</button></div>';
+    var tvtitle='<div class="sec-tvtitle"><span>SCHAEFER</span><span class="sec-clock"></span><button class="sec-tvbtn" id="secTvExit">✕ Sluiten</button></div>';
     view.innerHTML=(secTV?tvtitle:bar)
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC)+'</div>'+poolHTML+'</aside>'
       +'<div class="sec-board">'+groupsHTML+'</div></div>';
@@ -4408,7 +4408,7 @@ body.board #mpView{display:none}
     var bar='<div class="sec-bar"><span class="sec-title">M & P \u2014 EK-12 & cijfers</span>'
       +'<span class="sec-hint">Klik een naam links en dan een EK-12 \u00b7 klik een cijfer om het in te vullen</span>'
       +'<button class="sec-tvbtn" id="mpTvBtn">\ud83d\udcfa Bord</button></div>';
-    var tvtitle='<div class="sec-tvtitle"><span>SECTOR M & P</span><button class="sec-tvbtn" id="mpTvExit">\u2715 Sluiten</button></div>';
+    var tvtitle='<div class="sec-tvtitle"><span>SECTOR M & P</span><span class="sec-clock"></span><button class="sec-tvbtn" id="mpTvExit">\u2715 Sluiten</button></div>';
     view.innerHTML=(mpTV?tvtitle:bar)
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC||"M & P")+'</div>'+poolHTML+'</aside>'
       +'<div class="sec-board">'+notesGroup
@@ -4487,6 +4487,24 @@ body.board #mpView{display:none}
 .mp-filelbl:hover{color:#e9f1ff}
 #mpNotePrev img{max-width:100%;max-height:180px;border-radius:8px;margin-top:8px}
 </style>
+<!-- ============ sub-bord TV: volledige dekking + klok (v3.46) ============ -->
+<style>
+#mpView.sec-tv,#sectorView.sec-tv{max-width:none;margin:0}
+.sec-clock{margin-left:auto;font-size:28px;font-weight:800;color:var(--cyan,#2dd4ee);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.sec-tvtitle .sec-tvbtn{margin-left:16px}
+</style>
+<script>
+(function(){
+  function tick(){
+    var els=document.querySelectorAll(".sec-clock"); if(!els.length) return;
+    var n=new Date(); function p(x){ return ("0"+x).slice(-2); }
+    var s=p(n.getHours())+":"+p(n.getMinutes())+":"+p(n.getSeconds());
+    els.forEach(function(e){ e.textContent=s; });
+  }
+  setInterval(tick,1000);
+  if(document.readyState!=="loading") tick(); else window.addEventListener("DOMContentLoaded",tick);
+})();
+</script>
 </body>
 
 
