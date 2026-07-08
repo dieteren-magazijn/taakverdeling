@@ -3076,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.43";
+  var APP_VERSION="v3.44";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.43";
+  var LOCAL=window.__APP_VERSION||"v3.44";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4253,16 +4253,19 @@ body.tplmode #obTplSave{display:inline-block !important}
 #mpView .sec-pl.b{background:#2dd4ee;color:#06222b}
 #mpView .sec-empty{color:var(--muted,#8fa6c9);font-size:12px;opacity:.7;padding:6px}
 body.board #mpView{display:none}
-#mpView .mp-ek{display:flex;gap:10px;align-items:stretch}
-#mpView .mp-ekimg{flex:0 0 58px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid rgba(242,140,0,.45);border-radius:10px;padding:3px;overflow:hidden}
+#mpView .mp-ek{display:flex;gap:10px;align-items:stretch;min-height:124px}
+#mpView .mp-ek .sec-card-h{font-size:14px}
+#mpView .mp-ekinfo{justify-content:center}
+#mpView .mp-ekimg{flex:0 0 96px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid rgba(242,140,0,.45);border-radius:10px;padding:0;overflow:hidden}
 #mpView .mp-ekimg svg{width:36px;height:50px}
-#mpView .mp-ekimg .mp-ekphoto{width:100%;height:58px;object-fit:contain;display:block}
+#mpView .mp-ekimg .mp-ekphoto{width:100%;height:100%;min-height:118px;object-fit:cover;display:block}
 #mpView .mp-ekimg .mp-eksvg{display:none;line-height:0}
 #mpView .mp-ekimg.noimg .mp-ekphoto{display:none}
 #mpView .mp-ekimg.noimg .mp-eksvg{display:block}
 #mpView .mp-ekimg.noimg{background:rgba(242,140,0,.08)}
-#mpView.sec-tv .mp-ekimg{flex:0 0 76px}
-#mpView.sec-tv .mp-ekimg .mp-ekphoto{height:76px}
+#mpView.sec-tv .mp-ekimg{flex:0 0 140px}
+#mpView.sec-tv .mp-ekimg .mp-ekphoto{min-height:170px}
+#mpView.sec-tv .mp-ek{min-height:174px}
 #mpView .mp-ekinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
 #mpView .mp-ekdel{cursor:pointer;color:#ff6b6b;font-weight:800;padding:0 3px}
 #mpView .mp-free{color:var(--muted,#8fa6c9);font-size:12px;border:1px dashed rgba(141,178,255,.3);border-radius:8px;padding:5px 8px}
