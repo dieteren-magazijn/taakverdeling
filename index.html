@@ -819,7 +819,8 @@ function onVpStoreSet(k){
   else if(k==="vp_ob_place") SYNC_DIRTY.fields.obPlace=1;
   else if(k==="vp_ob_template") SYNC_DIRTY.fields.obTpl=1;
   else if(k==="vp_ob_templates") SYNC_DIRTY.fields.obTpls=1;
-  else if(k==="vp_ob_tplday") SYNC_DIRTY.fields.obTplDay=1;
+  else if(k==="vp_ob_tplday") SYNC_DIRTY.fields.obTplDay=1;
+  else if(k==="vp_ob_log") SYNC_DIRTY.fields.obLog=1;
   else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1; else if(k==="vp_ob_hist") SYNC_DIRTY.fields.obhist=1;
   else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
   else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
@@ -835,7 +836,7 @@ function collectLocal(){
       }
     }
   }catch(e){}
-  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obhist:store.get("vp_ob_hist") || {}};
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obLog:store.get("vp_ob_log") || [], obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obhist:store.get("vp_ob_hist") || {}};
 }
 async function syncPerm(ask){
   if(!sync.handle) return false;
@@ -864,6 +865,7 @@ async function syncRead(force){
     if(doc.obTpl){ store.set("vp_ob_template", doc.obTpl); }
     if(doc.obTpls){ store.set("vp_ob_templates", doc.obTpls); }
     if(doc.obTplDay){ store.set("vp_ob_tplday", doc.obTplDay); }
+    if(doc.obLog){ try{ var _L=store.get("vp_ob_log")||[]; var _seen={}; _L.forEach(function(e){ if(e) _seen[e.t+"|"+e.x]=1; }); (doc.obLog||[]).forEach(function(e){ if(e && !_seen[e.t+"|"+e.x]) _L.push(e); }); _L.sort(function(a,b){ return (b.t||0)-(a.t||0); }); if(_L.length>250) _L.length=250; store.set("vp_ob_log",_L); }catch(e){} }
     if(doc.obHours){ store.set("vp_ob_hours", doc.obHours); }
     if(doc.obColors){ store.set("vp_ob_deptcolors", doc.obColors); }
     rebuildTasks();
@@ -3076,7 +3078,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.53";
+  var APP_VERSION="v3.54";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3157,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.53";
+  var LOCAL=window.__APP_VERSION||"v3.54";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3826,6 +3828,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     }
     var pop=document.createElement("div"); pop.id="swPop";
     pop.innerHTML='<div class="swp-h">Sector-wissel \u2014 '+esc(name)+'</div>'
+      +'<label class="swp-date">Op <input type="date" id="swDate" value="'+esc(o.wisselDate||today())+'"></label>'
       +'<div id="swRows">'+blocks.map(rowHTML).join("")+'</div>'
       +'<button type="button" id="swAdd" class="swp-add">+ blok toevoegen</button>'
       +'<div class="swp-btns"><button class="save" id="swSave">Bewaren</button><button class="del" id="swDel">Alles wissen</button></div>';
@@ -3845,7 +3848,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       list.sort(function(a,b){ return (""+a.at).localeCompare(""+b.at); });
       var hm2=getHM(), oo=hm2[name]||{};
       if(list.length){
-        oo.wissels=list; oo.wisselDate=today();
+        oo.wissels=list; oo.wisselDate=((document.getElementById("swDate")||{}).value)||today();
         var f=null; for(var i=0;i<list.length;i++){ if(list[i].to){ f=list[i]; break; } }
         if(f){ oo.wisselAt=f.at; oo.wisselTo=f.to; } else { delete oo.wisselAt; delete oo.wisselTo; }
       } else { delete oo.wissels; delete oo.wisselAt; delete oo.wisselTo; delete oo.wisselDate; }
@@ -3868,7 +3871,8 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
         var name=chip.getAttribute("data-name"); var o=hm[name]||{};
         var pill=chip.querySelector(":scope > .sw-pill"); var setb=chip.querySelector(":scope > .sw-set");
         var wl=(window.obWisselList?window.obWisselList(o):[]); var txt="";
-        if(wl.length && o.wisselDate===today()){
+        if(wl.length && o.wisselDate && o.wisselDate>today()){ var d1=wl[0]; txt="\u2192 "+shortLbl(d1.to||"eigen")+" ("+o.wisselDate.slice(8,10)+"/"+o.wisselDate.slice(5,7)+" "+d1.at+")"; }
+        else if(wl.length && o.wisselDate===today()){
           var cur=null, curAt=null, nxt=null;
           wl.forEach(function(b){ var at=parseHM(b.at); if(at==null) return; if(nm>=at){ cur=(b.to||null); curAt=b.at; } else if(!nxt){ nxt=b; } });
           if(cur){ txt="\u21c4 "+(nxt?("tot "+nxt.at):curAt); }
@@ -4527,6 +4531,142 @@ body.board #mpView{display:none}
 #mpView .chip.sec-chip .ob-nm,#sectorView .chip.sec-chip .ob-nm{flex:1 1 auto;min-width:0;white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.2}
 #mpView.sec-tv .chip.sec-chip .ob-nm,#sectorView.sec-tv .chip.sec-chip .ob-nm{line-height:1.25}
 </style>
+<!-- ============ ongedaan maken + logboek + touch-doelen (v3.54) ============ -->
+<style>
+#obUndoBtn{display:none}
+body.ob-edit #obUndoBtn{display:inline-block}
+#swPop .swp-date input[type=date]{flex:1;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:5px 8px;font-size:13px}
+/* grotere klikdoelen in bewerkmodus (touch) */
+body.ob-edit #outboundView .chip .x{font-size:19px;padding:2px 9px}
+body.ob-edit #outboundView .sw-set{font-size:19px;padding:2px 9px}
+body.ob-edit #outboundView .ob-clock{font-size:17px;padding:2px 7px}
+body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
+#mpView .mp-ekdel,#mpView .mp-tdel,#mpView .mp-ndel{font-size:18px;padding:2px 9px}
+.tpl-del{font-size:17px;padding:0 8px}
+#swPop .swp-x{width:28px;height:28px;font-size:17px}
+/* logboek */
+.log-rows{max-height:52vh;overflow:auto;margin:6px 0;display:flex;flex-direction:column;gap:3px}
+.log-row{display:flex;gap:8px;font-size:12px;border-bottom:1px solid rgba(141,178,255,.12);padding:3px 0;align-items:baseline}
+.log-t{color:var(--muted,#8fa6c9);flex:0 0 78px;font-variant-numeric:tabular-nums}
+.log-w{color:var(--cyan,#2dd4ee);font-weight:700;flex:0 0 auto;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.log-x{flex:1;min-width:0;color:var(--txt,#e9f1ff)}
+</style>
+<script>
+(function(){
+  "use strict";
+  if(typeof store==="undefined"||!store||!store.set) return;
+  var origSet=store.set.bind(store);
+  var UNDO=[];
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function logAdd(txts){
+    if(!txts||!txts.length) return;
+    try{
+      var L=store.get("vp_ob_log")||[];
+      var w=store.get("vp_who")||"";
+      txts.forEach(function(x){ L.unshift({t:Date.now(), w:w, x:(""+x).slice(0,120)}); });
+      if(L.length>250) L.length=250;
+      origSet("vp_ob_log",L);
+      if(typeof scheduleSyncWrite==="function") scheduleSyncWrite();
+    }catch(e){}
+  }
+  function diffPlace(a,b){
+    var out=[];
+    try{
+      var A={},B={};
+      ((a&&a.depts)||[]).forEach(function(d){ (d.names||[]).forEach(function(n){ A[n]=d.label; }); });
+      ((b&&b.depts)||[]).forEach(function(d){ (d.names||[]).forEach(function(n){ B[n]=d.label; }); });
+      Object.keys(B).forEach(function(n){ if(A[n]!==B[n]) out.push(n+" \u2192 "+B[n]); });
+      Object.keys(A).forEach(function(n){ if(B[n]==null) out.push(n+" uit "+A[n]); });
+      if(!out.length){
+        var M={sector:"Schaefer-toewijzing",mp:"M & P-bord",leveringen:"leveringen",statuscolors:"statuskleuren"};
+        Object.keys(M).forEach(function(f){ if(JSON.stringify((a||{})[f])!==JSON.stringify((b||{})[f])) out.push(M[f]+" aangepast"); });
+      }
+      if(out.length>8) out=["plaatsing aangepast ("+out.length+" wijzigingen)"];
+    }catch(e){}
+    return out;
+  }
+  function diffHours(a,b){
+    var out=[]; a=a||{}; b=b||{};
+    try{
+      var keys={}; Object.keys(a).forEach(function(k){keys[k]=1;}); Object.keys(b).forEach(function(k){keys[k]=1;});
+      Object.keys(keys).forEach(function(k){ if(JSON.stringify(a[k])!==JSON.stringify(b[k])) out.push("uren/wissel: "+k); });
+      if(out.length>8) out=["uren/wissels aangepast ("+out.length+" personen)"];
+    }catch(e){}
+    return out;
+  }
+  store.set=function(k,v){
+    try{
+      if(!window._applyingRemote && !window.__undoBusy){
+        if(k==="vp_ob_place"||k==="vp_ob_hours"){
+          var prev=store.get(k);
+          var pj=JSON.stringify(prev===undefined?null:prev), nj=JSON.stringify(v===undefined?null:v);
+          if(pj!==nj){
+            UNDO.push({k:k,v:JSON.parse(pj)});
+            if(UNDO.length>15) UNDO.shift();
+            logAdd(k==="vp_ob_place"?diffPlace(prev,v):diffHours(prev,v));
+          }
+        } else if(k==="vp_ob_template"){
+          logAdd(["dagelijkse standaard-sjabloon gewijzigd"]);
+        } else if(k==="vp_ob_templates"){
+          logAdd(["sjablonen gewijzigd"]);
+        }
+      }
+    }catch(e){}
+    return origSet(k,v);
+  };
+  function undo(){
+    if(blocked()){ toast("Klik eerst op Bewerken"); return; }
+    var it=UNDO.pop();
+    if(!it){ toast("Niets om ongedaan te maken"); return; }
+    window.__undoBusy=true;
+    try{
+      origSet(it.k, it.v);
+      if(it.k==="vp_ob_place" && it.v && it.v.depts && typeof obDepts!=="undefined"){ obDepts=JSON.parse(JSON.stringify(it.v.depts)); }
+      if(typeof scheduleSyncWrite==="function") scheduleSyncWrite();
+      if(typeof obRefreshFromExcel==="function") obRefreshFromExcel();
+      else { if(typeof obSyncRosterToDepts==="function") obSyncRosterToDepts(); if(typeof obRender==="function") obRender(); }
+      if(typeof window.mpRender==="function") window.mpRender();
+      if(typeof window.secRender==="function") window.secRender();
+      logAdd(["\u21b6 wijziging ongedaan gemaakt"]);
+      toast("\u21b6 Laatste wijziging ongedaan gemaakt");
+    }finally{ window.__undoBusy=false; }
+  }
+  function showLog(){
+    var old=document.getElementById("obLogPop"); if(old) old.remove();
+    var L=store.get("vp_ob_log")||[];
+    var who=store.get("vp_who")||"";
+    var rows=L.slice(0,120).map(function(e){
+      var d=new Date(e.t||0); function p(x){ return ("0"+x).slice(-2); }
+      return '<div class="log-row"><span class="log-t">'+p(d.getDate())+"/"+p(d.getMonth()+1)+" "+p(d.getHours())+":"+p(d.getMinutes())+'</span><span class="log-w">'+esc(e.w||"?")+'</span><span class="log-x">'+esc(e.x||"")+'</span></div>';
+    }).join("") || '<div class="sec-empty" style="color:#8fa6c9;font-size:12px">Nog geen wijzigingen gelogd</div>';
+    var back=document.createElement("div"); back.className="tpl-back"; back.id="obLogPop";
+    back.innerHTML='<div class="tpl-pop" style="width:480px"><h3>\ud83d\udcdc Logboek</h3>'
+      +'<div class="tpl-sum">Dit toestel logt als: <b>'+esc(who||"onbekend")+'</b> <button class="mp-add" id="logWho" style="margin:0 0 0 8px;padding:2px 8px;width:auto">wijzig</button></div>'
+      +'<div class="log-rows">'+rows+'</div>'
+      +'<div class="tpl-btns"><button id="logClose">Sluiten</button></div></div>';
+    document.body.appendChild(back);
+    back.addEventListener("click",function(e){
+      if(e.target===back||e.target.id==="logClose"){ back.remove(); return; }
+      if(e.target.id==="logWho"){ var n=prompt("Naam van deze gebruiker / dit toestel:", who||""); if(n===null) return; origSet("vp_who",(""+n).trim()); back.remove(); showLog(); }
+    });
+  }
+  function ensure(){
+    var bar=document.querySelector("#outboundView .ob-bar"); if(!bar) return;
+    if(!document.getElementById("obUndoBtn")){
+      var b=document.createElement("button"); b.className="btn"; b.id="obUndoBtn"; b.textContent="\u21b6 Ongedaan"; b.title="Laatste wijziging terugdraaien (plaatsing/uren)";
+      b.addEventListener("click",undo); bar.appendChild(b);
+    }
+    if(!document.getElementById("obLogBtn")){
+      var l=document.createElement("button"); l.className="btn"; l.id="obLogBtn"; l.textContent="\ud83d\udcdc Log"; l.title="Wie wijzigde wat wanneer";
+      l.addEventListener("click",showLog); bar.appendChild(l);
+    }
+  }
+  setInterval(ensure,3000);
+  if(document.readyState!=="loading") setTimeout(ensure,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(ensure,1500); });
+})();
+</script>
 </body>
 
 
