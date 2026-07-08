@@ -817,7 +817,9 @@ function onVpStoreSet(k){
   else if(k==="vp_tasks") SYNC_DIRTY.fields.tasks=1;
   else if(k==="vp_taskorder") SYNC_DIRTY.fields.order=1;
   else if(k==="vp_ob_place") SYNC_DIRTY.fields.obPlace=1;
-  else if(k==="vp_ob_template") SYNC_DIRTY.fields.obTpl=1;
+  else if(k==="vp_ob_template") SYNC_DIRTY.fields.obTpl=1;
+  else if(k==="vp_ob_templates") SYNC_DIRTY.fields.obTpls=1;
+  else if(k==="vp_ob_tplday") SYNC_DIRTY.fields.obTplDay=1;
   else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1; else if(k==="vp_ob_hist") SYNC_DIRTY.fields.obhist=1;
   else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
   else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
@@ -833,7 +835,7 @@ function collectLocal(){
       }
     }
   }catch(e){}
-  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obhist:store.get("vp_ob_hist") || {}};
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obhist:store.get("vp_ob_hist") || {}};
 }
 async function syncPerm(ask){
   if(!sync.handle) return false;
@@ -860,6 +862,8 @@ async function syncRead(force){
     if(doc.order) store.set("vp_taskorder", doc.order); if(doc.obhist) store.set("vp_ob_hist", (window.vpMergeHist?window.vpMergeHist(store.get("vp_ob_hist")||{}, doc.obhist):doc.obhist));
     if(doc.obPlace){ store.set("vp_ob_place", doc.obPlace); if(typeof obDepts !== "undefined" && doc.obPlace.depts){ obDepts = doc.obPlace.depts; if(typeof obSyncRosterToDepts==="function") obSyncRosterToDepts(); if(!document.getElementById("outboundView").hidden) obRender(); } }
     if(doc.obTpl){ store.set("vp_ob_template", doc.obTpl); }
+    if(doc.obTpls){ store.set("vp_ob_templates", doc.obTpls); }
+    if(doc.obTplDay){ store.set("vp_ob_tplday", doc.obTplDay); }
     if(doc.obHours){ store.set("vp_ob_hours", doc.obHours); }
     if(doc.obColors){ store.set("vp_ob_deptcolors", doc.obColors); }
     rebuildTasks();
@@ -2479,21 +2483,109 @@ function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(f
 function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}, statuscolors:_pp.statuscolors||{}}); try{ if(window.snapshotObHist) window.snapshotObHist(); }catch(e){} scheduleSyncWrite(); }
 function obSave(){ obSavePlace(); obRender(); }
 function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
+/* === sjabloon-helpers (v3.37) === */
+window.obNrm=function(s){ s=(""+s).toLowerCase().trim().replace(/\s+/g," "); try{ s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }catch(e){} return s; };
+window.obApplyTemplate=function(std, silent){
+  var canon={}; (obRoster||[]).forEach(function(p){ if(p&&p.name) canon[window.obNrm(p.name)]=p.name; });
+  var present={}; (obRoster||[]).forEach(function(p){ if(p&&p.status==="aanwezig") present[window.obNrm(p.name)]=1; });
+  std.forEach(function(d){ d.names=(d.names||[]).map(function(n){ return canon[window.obNrm(n)]||n; }).filter(function(n){ return present[window.obNrm(n)]; }); });
+  obDepts=std; obSyncRosterToDepts(); obSave();
+  var placed={}; std.forEach(function(d){ (d.names||[]).forEach(function(n){ placed[window.obNrm(n)]=1; }); });
+  var loose=[]; (obRoster||[]).forEach(function(p){ if(p&&p.status==="aanwezig"&&!p._avond&&!placed[window.obNrm(p.name)]) loose.push(p.name); });
+  if(!silent){ toast(loose.length? ("\u26a0 Geen vaste plek (staan in de pool): "+loose.slice(0,8).join(", ")+(loose.length>8?" \u2026":"")) : "\u2705 Iedereen heeft zijn vaste plek gekregen"); }
+  if(!document.getElementById("outboundView").hidden && typeof obRender==="function") obRender();
+  return loose;
+};
 var obTplMode=false;
-function obSaveTemplate(){ (function(){ var cur=JSON.parse(JSON.stringify(obDepts)); var old=(!obTplMode)?store.get("vp_ob_template"):null; if(old){ var placed={}; cur.forEach(function(d){(d.names||[]).forEach(function(n){placed[n]=1;});}); var present={}; ((typeof obRoster!=="undefined"&&obRoster)||[]).forEach(function(p){ if(p&&p.name&&p.status==="aanwezig") present[p.name]=1; }); var byLab={}; cur.forEach(function(d){ byLab[d.label]=d; }); old.forEach(function(od){ var cd=byLab[od.label]; if(!cd){ cd=JSON.parse(JSON.stringify(od)); cd.names=[]; cur.push(cd); byLab[od.label]=cd; } (od.names||[]).forEach(function(n){ if(!placed[n]&&!present[n]){ cd.names.push(n); placed[n]=1; } }); }); } store.set("vp_ob_template", cur); })(); scheduleSyncWrite(); toast("📌 Sjabloon opgeslagen — dit is nu de standaardindeling"); }
+function obSaveTemplate(){
+  if(window.WL_blockWrite && window.WL_blockWrite()){ toast("Klik eerst op Bewerken"); return; }
+  if(!obTplMode){ toast("\u26a0 Sjabloon opslaan kan enkel in Template-modus \u2014 zo blijft je standaard zuiver"); return; }
+  var oldp=document.getElementById("tplSavePop"); if(oldp&&oldp.parentNode) oldp.parentNode.removeChild(oldp);
+  var cur=JSON.parse(JSON.stringify(obDepts));
+  var nSec=cur.length, nMen=0; cur.forEach(function(d){ nMen+=(d.names||[]).length; });
+  var tpls=store.get("vp_ob_templates")||{};
+  var names=Object.keys(tpls).sort();
+  var back=document.createElement("div"); back.id="tplSavePop"; back.className="tpl-back";
+  back.innerHTML='<div class="tpl-pop">'
+    +'<h3>\ud83d\udccc Sjabloon opslaan</h3>'
+    +'<div class="tpl-sum">'+nSec+' sectoren \u00b7 '+nMen+' mensen geplaatst</div>'
+    +'<label>Naam <input type="text" id="tplName" list="tplNames" value="Standaard" maxlength="30"></label>'
+    +'<datalist id="tplNames">'+names.map(function(n){ return '<option value="'+esc(n)+'">'; }).join("")+'</datalist>'
+    +'<label class="tpl-chk"><input type="checkbox" id="tplDef" checked> Gebruik als dagelijkse standaard (elke dag het vertrekpunt)</label>'
+    +'<div class="tpl-btns"><button class="save" id="tplOk">Bewaren</button><button id="tplCancel">Annuleren</button></div>'
+    +'</div>';
+  document.body.appendChild(back);
+  back.addEventListener("click",function(e){ if(e.target===back) back.remove(); });
+  document.getElementById("tplCancel").addEventListener("click",function(){ back.remove(); });
+  document.getElementById("tplOk").addEventListener("click",function(){
+    var nm=(document.getElementById("tplName").value||"").trim()||"Standaard";
+    var asDef=document.getElementById("tplDef").checked;
+    var t2=store.get("vp_ob_templates")||{};
+    if(t2[nm] && !confirm('Sjabloon "'+nm+'" bestaat al. Overschrijven?')) return;
+    t2[nm]={depts:cur, saved:new Date().toISOString().slice(0,10)};
+    store.set("vp_ob_templates", t2);
+    if(asDef){
+      var prev=store.get("vp_ob_template"); if(prev) store.set("vp_ob_template_prev", prev);
+      store.set("vp_ob_template", cur);
+      try{ store.set("vp_ob_tplday", (typeof curDateISO==="function"&&curDateISO())||new Date().toISOString().slice(0,10)); }catch(e){}
+    }
+    scheduleSyncWrite();
+    back.remove();
+    toast('\ud83d\udccc Sjabloon "'+nm+'" opgeslagen ('+nSec+' sectoren, '+nMen+' mensen)'+(asDef?" \u2014 dit is nu de dagelijkse standaard":""));
+  });
+}
 ﻿function obLoadTemplate(){
   if(window.WL_blockWrite && window.WL_blockWrite()){ toast("Klik eerst op Bewerken"); return; }
-  var t=store.get("vp_ob_template"); if(!t){ toast("Nog geen standaard opgeslagen"); return; }
-  var std=JSON.parse(JSON.stringify(t));
-  if(obTplMode){
-    if(!confirm("Volledige standaard laden (iedereen, ook afwezigen) om te bewerken?")) return;
-    obDepts=std; obSyncRosterToDepts(); obSave(); toast("Standaard geladen - bewerken"); return;
-  }
-  if(!confirm("Start van standaard: outbound vullen met enkel wie vandaag aanwezig is? Dit vervangt de huidige plaatsing.")) return;
-  var present={}; (obRoster||[]).forEach(function(p){ if(p && p.status==="aanwezig") present[p.name]=1; });
-  std.forEach(function(d){ d.names=(d.names||[]).filter(function(n){ return present[n]; }); });
-  obDepts=std; obSyncRosterToDepts(); obSave();
-  toast("Start van standaard - aanwezigen geplaatst");
+  var oldp=document.getElementById("tplLoadPop"); if(oldp&&oldp.parentNode) oldp.parentNode.removeChild(oldp);
+  var def=store.get("vp_ob_template");
+  var prev=store.get("vp_ob_template_prev");
+  var tpls=store.get("vp_ob_templates")||{};
+  var names=Object.keys(tpls).sort();
+  function cnt(depts){ var c=0; (depts||[]).forEach(function(d){ c+=(d.names||[]).length; }); return c; }
+  var rows="";
+  if(def) rows+='<label class="tpl-row"><input type="radio" name="tplPick" value="def" checked> \u2605 Dagelijkse standaard <span class="tpl-meta">'+cnt(def)+' mensen</span></label>';
+  names.forEach(function(n,i){ var e2=tpls[n]||{}; rows+='<label class="tpl-row"><input type="radio" name="tplPick" value="i'+i+'"'+((!def&&i===0)?" checked":"")+'> '+esc(n)+' <span class="tpl-meta">'+cnt(e2.depts)+' mensen'+(e2.saved?" \u00b7 "+esc(e2.saved):"")+'</span><span class="tpl-del" data-idx="'+i+'" title="Dit sjabloon verwijderen">\u00d7</span></label>'; });
+  if(prev) rows+='<label class="tpl-row"><input type="radio" name="tplPick" value="prev"> \u21a9 Vorige standaard (backup) <span class="tpl-meta">'+cnt(prev)+' mensen</span></label>';
+  if(!rows){ toast("Nog geen sjabloon opgeslagen"); return; }
+  var back=document.createElement("div"); back.id="tplLoadPop"; back.className="tpl-back";
+  back.innerHTML='<div class="tpl-pop"><h3>\u21a9 Sjabloon laden</h3><div class="tpl-rows">'+rows+'</div>'
+    +'<div class="tpl-btns"><button class="save" id="tplLoadOk">Laden</button><button id="tplLoadCancel">Annuleren</button></div></div>';
+  document.body.appendChild(back);
+  back.addEventListener("click",function(e){
+    if(e.target===back){ back.remove(); return; }
+    var del=(e.target&&e.target.closest)?e.target.closest(".tpl-del"):null;
+    if(del){
+      e.preventDefault(); e.stopPropagation();
+      var nm=names[+del.getAttribute("data-idx")];
+      if(nm==null) return;
+      if(!confirm('Sjabloon "'+nm+'" definitief verwijderen?')) return;
+      var t2=store.get("vp_ob_templates")||{}; delete t2[nm];
+      store.set("vp_ob_templates", t2); scheduleSyncWrite();
+      toast('Sjabloon "'+nm+'" verwijderd');
+      back.remove(); obLoadTemplate();
+    }
+  });
+  document.getElementById("tplLoadCancel").addEventListener("click",function(){ back.remove(); });
+  document.getElementById("tplLoadOk").addEventListener("click",function(){
+    var pick=back.querySelector('input[name="tplPick"]:checked'); if(!pick){ toast("Kies eerst een sjabloon"); return; }
+    var v=pick.value, src=null, lbl="";
+    if(v==="def"){ src=def; lbl="dagelijkse standaard"; }
+    else if(v==="prev"){ src=prev; lbl="vorige standaard (backup)"; }
+    else { var nm2=names[+v.slice(1)]; src=(tpls[nm2]||{}).depts; lbl='sjabloon "'+nm2+'"'; }
+    if(!src){ toast("Sjabloon niet gevonden"); return; }
+    var std=JSON.parse(JSON.stringify(src));
+    if(obTplMode){
+      if(!confirm("Volledig laden (iedereen, ook afwezigen) om te bewerken: "+lbl+"?")) return;
+      obDepts=std; obSyncRosterToDepts(); obSave();
+      back.remove(); toast("Geladen om te bewerken: "+lbl);
+      if(typeof obRender==="function") obRender();
+      return;
+    }
+    if(!confirm("Outbound vullen vanaf "+lbl+" (enkel wie vandaag aanwezig is)? Dit vervangt de huidige plaatsing.")) return;
+    try{ store.set("vp_ob_tplday", (typeof curDateISO==="function"&&curDateISO())||new Date().toISOString().slice(0,10)); }catch(e){}
+    back.remove();
+    window.obApplyTemplate(std, false);
+  });
 }
 
   function obRolePip(rol){
@@ -2741,6 +2833,7 @@ document.getElementById("obTplSave").addEventListener("click",obSaveTemplate);
 document.getElementById("obTplMode").addEventListener("click",function(){
   obTplMode=!obTplMode;
   this.classList.toggle("primary",obTplMode);
+  document.body.classList.toggle("tplmode",obTplMode);
   obRefreshFromExcel();
   toast(obTplMode?"🧩 Template-modus AAN — ook afwezigen staan nu in de pool; plaats iedereen en klik 📌 Sjabloon":"🧩 Template-modus UIT — afwezigen verdwijnen weer van het bord");
 });
@@ -2981,7 +3074,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.36";
+  var APP_VERSION="v3.37";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3060,7 +3153,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.36";
+  var LOCAL=window.__APP_VERSION||"v3.37";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3637,8 +3730,8 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       +'<div class="obset-sec"><h4>Kleuren van ploegen &amp; statussen</h4>'+rows+'<button class="obset-btn" id="obColReset">↩ Standaardkleuren</button></div>'
       +'<div class="obset-sec"><h4>Sjabloon — hoe werkt het?</h4>'
       +'<p>Een <span class="k">sjabloon</span> is je vaste basis-indeling: welke mensen standaard in welke sector horen.</p>'
-      +'<p><span class="k">📌 Sjabloon</span> — bewaart de huidige indeling als standaard.</p>'
-      +'<p><span class="k">↩ Herstel</span> — zet die opgeslagen standaard terug (handig aan het begin van de dag).</p>'
+      +'<p><span class="k">\ud83d\udccc Sjabloon</span> \u2014 enkel in Template-modus: bewaart de indeling onder een naam, optioneel als dagelijkse standaard.</p>'
+      +'<p><span class="k">\u21a9 Herstel</span> \u2014 kies een opgeslagen sjabloon en zet het terug. \u2019s Morgens gebeurt dit automatisch met de dagelijkse standaard.</p>'
       +'<p><span class="k">Sjabloon-modus</span> — toont ook afwezigen in de pool, zodat je iedereen in zijn vaste sector kunt zetten; zet die modus daarna weer uit.</p>'
       +'</div></div>';
     document.body.appendChild(back);
@@ -3967,14 +4060,14 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   var ok=false;
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   document.addEventListener("click",function(e){
-    var t=(e.target&&e.target.closest)?e.target.closest("#obTplSave, #obTplMode"):null;
+    var t=(e.target&&e.target.closest)?e.target.closest("#obTplSave, #obTplMode, .tpl-del"):null;
     if(!t) return;
     if(ok) return;                         // al ontgrendeld deze sessie
     e.stopPropagation(); e.preventDefault();
     var a=prompt("Wachtwoord voor sjabloon-beheer (Sjabloon / Template-modus):");
     if(a===null) return;                   // geannuleerd
-    if(a===PW){ ok=true; toast("ðŸ”“ Sjabloon-beheer ontgrendeld"); setTimeout(function(){ try{ t.click(); }catch(_){}} ,20); }
-    else { toast("âŒ Fout wachtwoord"); }
+    if(a===PW){ ok=true; toast("\ud83d\udd13 Sjabloon-beheer ontgrendeld"); setTimeout(function(){ try{ t.click(); }catch(_){}} ,20); }
+    else { toast("\u274c Fout wachtwoord"); }
   }, true);
 })();
 </script>
@@ -4061,6 +4154,50 @@ body.board #outboundView .chip .sw-pill{flex:0 0 auto;font-size:.6vw;padding:0 .
   try{ new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]}); }catch(e){}
   setInterval(function(){ if(document.body.classList.contains("board")) schedule(); },5000);
   if(document.readyState!=="loading") setTimeout(schedule,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(schedule,1500); });
+})();
+</script>
+<!-- ============ sjabloon-systeem: stijl + automatische dagstart (v3.37) ============ -->
+<style>
+#obTplSave{display:none !important}
+body.tplmode #obTplSave{display:inline-block !important}
+.tpl-back{position:fixed;inset:0;background:rgba(4,10,22,.6);z-index:9500;display:flex;align-items:center;justify-content:center}
+.tpl-pop{background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.35));border-radius:14px;padding:16px 18px;width:360px;max-width:92vw;box-shadow:0 16px 44px rgba(0,0,0,.55);color:var(--txt,#e9f1ff);font:500 13px/1.5 system-ui,sans-serif}
+.tpl-pop h3{margin:0 0 8px;font-size:15px}
+.tpl-sum{color:#9db3d9;font-size:12px;margin-bottom:8px}
+.tpl-pop label{display:flex;align-items:center;gap:8px;margin:6px 0}
+.tpl-pop input[type=text]{flex:1;background:var(--inset,#0b1830);color:inherit;border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:5px 8px;font-size:13px}
+.tpl-chk{font-size:12px;color:#c7d6f2}
+.tpl-rows{max-height:45vh;overflow:auto;margin:4px 0}
+.tpl-row{position:relative;padding-right:22px;cursor:pointer}
+.tpl-meta{color:#9db3d9;font-size:11px;margin-left:auto}
+.tpl-del{position:absolute;right:2px;cursor:pointer;color:#ff6b6b;font-weight:800;padding:0 3px}
+.tpl-btns{display:flex;gap:8px;margin-top:12px}
+.tpl-btns button{flex:1;background:var(--inset,#0b1830);color:inherit;border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 8px;font-size:13px;cursor:pointer}
+.tpl-btns .save{border-color:var(--green,#3ddc97);color:var(--green,#3ddc97)}
+</style>
+<script>
+(function(){
+  "use strict";
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return true; } }
+  function realToday(){ var n=new Date(); return n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2); }
+  function check(){
+    try{
+      if(blocked()) return;
+      if(typeof obDepts==="undefined" || typeof window.obApplyTemplate!=="function") return;
+      var td=realToday();
+      var sel=null; try{ if(typeof curDateISO==="function") sel=curDateISO(); }catch(e){}
+      if(sel && sel!==td) return;                      // enkel op de echte vandaag
+      if((store.get("vp_ob_tplday")||"") >= td) return; // al gebeurd vandaag
+      var t=store.get("vp_ob_template"); if(!t) return;
+      store.set("vp_ob_tplday", td);
+      var loose=window.obApplyTemplate(JSON.parse(JSON.stringify(t)), true);
+      if(typeof scheduleSyncWrite==="function") scheduleSyncWrite();
+      toast("\ud83c\udf05 Nieuwe dag \u2014 standaard sjabloon geladen"+(loose.length?(" \u00b7 geen vaste plek: "+loose.slice(0,8).join(", ")+(loose.length>8?" \u2026":"")):""));
+    }catch(e){}
+  }
+  setInterval(check, 20000);
+  setTimeout(check, 4000);
 })();
 </script>
 </body>
