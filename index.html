@@ -3076,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.52";
+  var APP_VERSION="v3.53";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.52";
+  var LOCAL=window.__APP_VERSION||"v3.53";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4386,22 +4386,6 @@ body.board #mpView{display:none}
     });
   }
 
-  function webPop(){
-    var old=document.getElementById("mpWebPop"); if(old) old.remove();
-    var mp0=getMP(); var w=mp0.web||{url:"",min:5};
-    var back=document.createElement("div"); back.id="mpWebPop"; back.className="tpl-back";
-    back.innerHTML='<div class="tpl-pop"><h3>\ud83c\udf10 Webpaneel (live cijfers)</h3>'
-      +'<label>URL <input type="text" id="mpWebUrl" value="'+esc(w.url||"")+'" placeholder="https://..."></label>'
-      +'<label>Verversen elke <input type="number" id="mpWebMin" value="'+esc(w.min||5)+'" min="1" max="120"> min</label>'
-      +'<div class="tpl-sum">Let op: de pagina moet inladen in een kader toestaan. Blijft ze leeg, gebruik dan bv. een Power BI \u201cpubliceren op web\u201d-link i.p.v. een D365-scherm.</div>'
-      +'<div class="tpl-btns"><button class="save" id="mpWebOk">Bewaren</button><button id="mpWebDel">Verwijderen</button><button id="mpWebCancel">Annuleren</button></div></div>';
-    document.body.appendChild(back);
-    back.addEventListener("click",function(e){
-      if(e.target===back||e.target.id==="mpWebCancel"){ back.remove(); return; }
-      if(e.target.id==="mpWebOk"){ var u=document.getElementById("mpWebUrl").value.trim(); var mn=Math.max(1,+document.getElementById("mpWebMin").value||5); var mp=getMP(); if(u){ mp.web={url:u,min:mn}; } else { delete mp.web; } saveMP(mp); window.__mpWebLast=Date.now(); back.remove(); window.mpRender(); return; }
-      if(e.target.id==="mpWebDel"){ var mp2=getMP(); delete mp2.web; saveMP(mp2); back.remove(); window.mpRender(); return; }
-    });
-  }
   window.mpRender=function(){
     var view=document.getElementById("mpView"); if(!view||view.hidden) return;
     var mp=getMP(), SRC=srcLabel(), src=srcNames(), BN=byName();
@@ -4423,9 +4407,6 @@ body.board #mpView{display:none}
     var notes=mp.notes||[];
     var noteCards=notes.map(function(n,i){ return '<div class="mp-note">'+(mpTV?'':'<span class="mp-ndel" data-ni="'+i+'" title="Verwijderen">\u00d7</span>')+(n.img?('<img class="mp-nimg" src="'+n.img+'">'):"")+(n.text?('<div class="mp-ntext">'+esc(n.text).replace(/\n/g,"<br>")+'</div>'):"")+'</div>'; }).join("");
     var notesGroup=(notes.length||!mpTV)?('<div class="sec-group"><div class="sec-group-h">\ud83d\udce2 Mededelingen</div><div class="mp-notegrid">'+(noteCards||'<div class="sec-empty">Geen mededelingen</div>')+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddNote">+ mededeling (tekst of foto)</button>')+'</div>'):"";
-    var web=mp.web||null; var webGroup="";
-    if(web&&web.url){ webGroup='<div class="sec-group"><div class="sec-group-h">\ud83c\udf10 Live cijfers</div><div class="mp-webwrap"><iframe id="mpWebFrame" src="'+esc(web.url)+'"></iframe></div>'+(mpTV?'':'<button class="mp-add" id="mpWebSet">\u2699 webpaneel instellen</button>')+'</div>'; }
-    else if(!mpTV){ webGroup='<div class="sec-group"><div class="sec-group-h">\ud83c\udf10 Live cijfers</div><button class="mp-add" id="mpWebSet">+ webpaneel instellen (bv. Power BI / D365)</button></div>'; }
     var vals=(mp.valsDate===today())?(mp.vals||{}):{};
     var tasks=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice();
     var tiles=tasks.map(function(t,i){ var v=vals[t]; return '<div class="mp-task"><div class="mp-tl">'+esc(t)+(mpTV?'':'<span class="mp-tdel" data-ti="'+i+'" title="Verwijderen">\u00d7</span>')+'</div><div class="mp-tv" data-task="'+esc(t)+'">'+((v!=null&&v!=="")?esc(v):"\u2014")+'</div></div>'; }).join("");
@@ -4435,7 +4416,7 @@ body.board #mpView{display:none}
     var tvtitle='<div class="sec-tvtitle"><span>SECTOR M & P</span><span class="sec-clock"></span><button class="sec-tvbtn" id="mpTvExit">\u2715 Sluiten</button></div>';
     var _html=(mpTV?tvtitle:bar)
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC||"M & P")+'</div>'+poolHTML+'</aside>'
-      +'<div class="sec-board">'+notesGroup+webGroup
+      +'<div class="sec-board">'+notesGroup
       +'<div class="sec-group"><div class="sec-group-h">Cijfers (manueel in te vullen)</div><div class="mp-taskgrid">'+tiles+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddTask">+ cijfer toevoegen</button>')+'</div>'
       +'<div class="sec-group"><div class="sec-group-h">Toestellen \u00b7 bestuurders</div><div class="sec-grid mp-ekgrid">'+ekCards+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddEk">+ EK-12</button> <button class="mp-add" id="mpAddMx">+ MX-X 1.5</button>')+'</div>'
       +'</div></div>';
@@ -4466,7 +4447,6 @@ body.board #mpView{display:none}
     var ndel=e.target.closest(".mp-ndel");
     if(ndel){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+ndel.getAttribute("data-ni"); mp=getMP(); if(!(mp.notes||[])[i]) return; if(!confirm("Deze mededeling verwijderen?")) return; mp.notes.splice(i,1); saveMP(mp); window.mpRender(); return; }
     if(e.target.closest("#mpAddNote")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} notePop(); return; }
-    if(e.target.closest("#mpWebSet")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} webPop(); return; }
     if(e.target.closest("#mpAddEk")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr=prompt("Nummer van het EK-12 toestel (bv. 64):",""); if(nr===null) return; nr=(""+nr).trim(); if(!nr) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr,name:null,opdracht:"",kind:"EK"}); saveMP(mp); window.mpRender(); return; }
     if(e.target.closest("#mpAddMx")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr2=prompt("Nummer van de MX-X 1.5 (bv. 12):",""); if(nr2===null) return; nr2=(""+nr2).trim(); if(!nr2) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr2,name:null,opdracht:"",kind:"MX"}); saveMP(mp); window.mpRender(); return; }
     if(e.target.closest("#mpAddTask")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var tn=prompt("Naam van het cijfer (bv. Stock T400):",""); if(tn===null) return; tn=(""+tn).trim(); if(!tn) return; mp=getMP(); var ts2=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice(); if(ts2.indexOf(tn)<0) ts2.push(tn); mp.tasks=ts2; saveMP(mp); window.mpRender(); return; }
@@ -4547,30 +4527,6 @@ body.board #mpView{display:none}
 #mpView .chip.sec-chip .ob-nm,#sectorView .chip.sec-chip .ob-nm{flex:1 1 auto;min-width:0;white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word;line-height:1.2}
 #mpView.sec-tv .chip.sec-chip .ob-nm,#sectorView.sec-tv .chip.sec-chip .ob-nm{line-height:1.25}
 </style>
-<!-- ============ M & P webpaneel: stijl + auto-verversen (v3.52) ============ -->
-<style>
-#mpView .mp-webwrap{background:#fff;border:1px solid var(--line2,rgba(141,178,255,.25));border-radius:12px;overflow:hidden}
-#mpView .mp-webwrap iframe{width:100%;height:420px;border:0;display:block;background:#fff}
-#mpView.sec-tv .mp-webwrap iframe{height:62vh}
-#mpWebPop input[type=text]{flex:1;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:5px 8px;font-size:13px}
-#mpWebPop input[type=number]{width:70px;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:5px 8px;font-size:13px}
-</style>
-<script>
-(function(){
-  window.__mpWebLast=Date.now();
-  setInterval(function(){
-    try{
-      var f=document.getElementById("mpWebFrame"); if(!f) return;
-      var mp=(typeof store!=="undefined"&&store.get)?((store.get("vp_ob_place")||{}).mp||{}):{};
-      var min=(mp.web&&+mp.web.min)||5;
-      if(Date.now()-window.__mpWebLast >= min*60000){
-        window.__mpWebLast=Date.now();
-        var s=f.src; f.src=s;
-      }
-    }catch(e){}
-  },15000);
-})();
-</script>
 </body>
 
 
