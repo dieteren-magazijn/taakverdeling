@@ -3075,7 +3075,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.39";
+  var APP_VERSION="v3.40";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3154,7 +3154,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.39";
+  var LOCAL=window.__APP_VERSION||"v3.40";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4213,6 +4213,22 @@ body.tplmode #obTplSave{display:inline-block !important}
   setTimeout(check, 4000);
 })();
 </script>
+<!-- ============ sector-wissel popup: strakke layout (v3.40) ============ -->
+<style>
+#swPop{width:400px;max-width:94vw;padding:14px 16px}
+#swPop .swp-h{font-size:14px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(141,178,255,.18)}
+#swPop .swp-row{display:flex;align-items:center;gap:8px;margin:8px 0;padding:8px 10px;background:rgba(11,24,48,.55);border:1px solid rgba(141,178,255,.16);border-radius:10px}
+#swPop .swp-row label{margin:0;gap:6px;font-weight:600;color:#c7d6f2;white-space:nowrap}
+#swPop .swp-row label:first-of-type{flex:0 0 auto}
+#swPop .swp-row label:last-of-type{flex:1 1 auto;min-width:0}
+#swPop .swp-row input[type=time]{flex:0 0 auto;width:84px;text-align:center}
+#swPop .swp-row select{flex:1 1 auto;width:100%;min-width:0;max-width:100%;text-overflow:ellipsis}
+#swPop .swp-x{flex:0 0 auto;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;line-height:1;font-size:14px}
+#swPop .swp-x:hover{background:rgba(255,107,107,.15)}
+#swPop .swp-add{margin-top:8px}
+#swPop .swp-btns{margin-top:12px}
+#swPop .swp-btns button{padding:7px 8px;font-weight:700}
+</style>
 </body>
 
 
