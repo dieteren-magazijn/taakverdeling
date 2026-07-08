@@ -2819,6 +2819,7 @@ function switchView(v){
   document.getElementById("inboundView").hidden=(v!=="inbound");
   document.getElementById("outboundView").hidden=(v!=="outbound");
   var _sv=document.getElementById("sectorView"); if(_sv) _sv.hidden=(v!=="sector");
+  var _mv=document.getElementById("mpView"); if(_mv) _mv.hidden=(v!=="mp");
   document.querySelectorAll(".vtab").forEach(function(t){ t.classList.toggle("active", t.dataset.view===v); });
   store.set("vp_view",v);
   if(v==="outbound"){ obRefreshFromExcel(); }
@@ -3075,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.40";
+  var APP_VERSION="v3.41";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3154,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.40";
+  var LOCAL=window.__APP_VERSION||"v3.41";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4229,6 +4230,169 @@ body.tplmode #obTplSave{display:inline-block !important}
 #swPop .swp-btns{margin-top:12px}
 #swPop .swp-btns button{padding:7px 8px;font-weight:700}
 </style>
+<!-- ============ Sector M & P sub-bord: EK-12 + cijfers (v3.41) ============ -->
+<style>
+#mpView .sec-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;flex-wrap:wrap}
+#mpView .sec-title{font-size:15px;font-weight:800;color:var(--txt,#e9f1ff)}
+#mpView .sec-hint{color:var(--muted,#8fa6c9);font-size:12px}
+#mpView .sec-tvbtn{margin-left:auto;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}
+#mpView .sec-tvbtn:hover{border-color:var(--cyan,#2dd4ee);color:var(--cyan,#2dd4ee)}
+#mpView .sec-layout{display:grid;grid-template-columns:230px 1fr;gap:14px;padding:0 14px 24px;align-items:start}
+#mpView .sec-pool{display:flex;flex-direction:column;gap:4px;position:sticky;top:70px;max-height:calc(100vh - 120px);overflow:auto}
+#mpView .sec-pool .sec-h{color:var(--muted,#8fa6c9);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:2px 0 4px}
+#mpView .sec-group{margin-bottom:18px}
+#mpView .sec-group-h{font-size:13px;font-weight:800;color:var(--cyan,#2dd4ee);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px;border-bottom:1px solid var(--line2,rgba(141,178,255,.22));padding-bottom:4px}
+#mpView .sec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+#mpView .sec-card{background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:8px 10px;min-height:60px}
+#mpView .sec-card.drop{outline:2px dashed var(--cyan,#2dd4ee);outline-offset:2px;cursor:pointer}
+#mpView .sec-card-h{font-weight:700;font-size:13px;color:var(--txt,#e9f1ff);margin-bottom:6px;display:flex;justify-content:space-between;gap:6px}
+#mpView .chip.sec-chip{display:flex;align-items:center;gap:6px;background:var(--inset,#0b1830);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:8px;padding:5px 8px;cursor:pointer;font-size:13px;color:var(--txt,#e9f1ff)}
+#mpView .chip.sec-chip.sel{border-color:var(--cyan,#2dd4ee);box-shadow:0 0 0 1px var(--cyan,#2dd4ee)}
+#mpView .sec-pl{font-size:10px;font-weight:800;border-radius:4px;padding:1px 5px;background:#5a6473;color:#fff}
+#mpView .sec-pl.a{background:#ff6b6b}
+#mpView .sec-pl.b{background:#2dd4ee;color:#06222b}
+#mpView .sec-empty{color:var(--muted,#8fa6c9);font-size:12px;opacity:.7;padding:6px}
+body.board #mpView{display:none}
+#mpView .mp-ek{display:flex;gap:10px;align-items:stretch}
+#mpView .mp-ekimg{flex:0 0 46px;display:flex;align-items:center;justify-content:center;background:rgba(242,140,0,.08);border:1px solid rgba(242,140,0,.35);border-radius:10px;padding:4px}
+#mpView .mp-ekimg svg{width:36px;height:50px}
+#mpView .mp-ekinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+#mpView .mp-ekdel{cursor:pointer;color:#ff6b6b;font-weight:800;padding:0 3px}
+#mpView .mp-free{color:var(--muted,#8fa6c9);font-size:12px;border:1px dashed rgba(141,178,255,.3);border-radius:8px;padding:5px 8px}
+#mpView .mp-opdr{font-size:11px;color:var(--muted,#8fa6c9);cursor:pointer;border-radius:6px;padding:2px 6px;border:1px dashed transparent;align-self:flex-start}
+#mpView .mp-opdr:hover{border-color:rgba(141,178,255,.3)}
+#mpView .mp-opdr.set{color:#f6c945;font-weight:700;border:1px solid rgba(246,201,69,.35);background:rgba(246,201,69,.08)}
+#mpView .mp-taskgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+#mpView .mp-task{background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.22));border-radius:12px;padding:8px 10px;text-align:center}
+#mpView .mp-tl{font-size:11px;font-weight:700;color:var(--muted,#8fa6c9);text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:center;gap:6px;align-items:center}
+#mpView .mp-tdel{cursor:pointer;color:#ff6b6b;font-weight:800}
+#mpView .mp-tv{font-size:24px;font-weight:800;color:var(--txt,#e9f1ff);cursor:pointer;margin-top:2px;font-variant-numeric:tabular-nums}
+#mpView .mp-tv:hover{color:var(--cyan,#2dd4ee)}
+#mpView .mp-add{background:none;border:1px dashed rgba(141,178,255,.45);color:#9db3d9;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:8px}
+#mpView .mp-add:hover{color:#e9f1ff}
+#mpView.sec-tv{position:fixed;inset:0;z-index:9000;background:var(--bg,#070f1f);overflow:auto;padding:18px 22px}
+#mpView.sec-tv .sec-layout{grid-template-columns:1fr;padding:0}
+#mpView.sec-tv .sec-pool{display:none}
+#mpView.sec-tv .sec-bar{display:none}
+#mpView.sec-tv .sec-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+#mpView.sec-tv .sec-card{min-height:84px;padding:11px 13px}
+#mpView.sec-tv .sec-card-h{font-size:17px}
+#mpView.sec-tv .sec-group-h{font-size:18px}
+#mpView.sec-tv .chip.sec-chip{font-size:15px;padding:6px 10px}
+#mpView.sec-tv .mp-tv{font-size:34px}
+#mpView.sec-tv .mp-taskgrid{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+#mpView.sec-tv .sec-tvtitle{display:flex;align-items:center;gap:14px;font-size:24px;font-weight:800;color:var(--txt,#e9f1ff);margin:0 0 14px}
+</style>
+<script>
+(function(){
+  "use strict";
+  var DEF_TASKS=["Picking Nacht","Stock 01039","Stock T400","Stock 04805","Stock HEKLA","Stock Carglass","Uitdragen P","Uitdragen M","Tellingen P","Tellingen M"];
+  var mpSel=null, mpTV=false;
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function getMP(){ try{ var p=store.get("vp_ob_place")||{}; return p.mp||{}; }catch(e){ return {}; } }
+  function saveMP(mp){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.mp=mp; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
+  function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
+  function srcLabel(){ try{ var f=null; (obDepts||[]).forEach(function(d){ if(!f && /M\s*[&+]\s*P/i.test(""+d.label)) f=d.label; }); return f; }catch(e){ return null; } }
+  function srcNames(){ try{
+    var SRC=srcLabel(); if(!SRC) return [];
+    var d=obDepts.filter(function(x){return x.label===SRC;})[0];
+    var base=d?(d.names||[]).slice():[];
+    try{
+      var hm=(typeof obHoursMap==="function")?obHoursMap():(store.get("vp_ob_hours")||{});
+      var nw=(typeof obNowMin==="function")?obNowMin():0;
+      var td=(typeof curDateISO==="function")?curDateISO():null;
+      base=base.filter(function(n){ var o=hm[n]; if(o&&o.wisselDate===td&&window.obWisselCur){ var cw=window.obWisselCur(o,nw); if(cw && cw!==SRC) return false; } return true; });
+      obDepts.forEach(function(dep){ (dep.names||[]).forEach(function(n){ var o=hm[n]; if(o&&o.wisselDate===td&&window.obWisselCur){ var cw=window.obWisselCur(o,nw); if(cw===SRC && base.indexOf(n)<0) base.push(n); } }); });
+    }catch(e){}
+    return base;
+  }catch(e){ return []; } }
+  function byName(){ var m={}; try{ (obRoster||[]).forEach(function(p){m[p.name]=p;}); }catch(e){} return m; }
+  function isGone(p){ try{ if(!p||typeof obWindowFor!=="function"||typeof obNowMin!=="function"||typeof obParseHM!=="function") return false; var w=obWindowFor(p); var tot=(w&&w.tot)?obParseHM(w.tot):null; return tot!=null && obNowMin()>=tot; }catch(e){ return false; } }
+  function chipHTML(n,BN,sel){ var p=BN[n], pl=p?(p.ploeg||""):""; var cls=pl==="A"?"a":(pl==="B"?"b":""); var badge=pl?('<span class="sec-pl '+cls+'">'+esc(pl)+'</span>'):''; return '<div class="chip sec-chip'+(sel?' sel':'')+'" data-name="'+esc(n)+'">'+badge+'<span class="ob-nm">'+esc(n)+'</span></div>'; }
+  var EKSVG='<svg viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="2" width="5" height="46" fill="#4a5568"/><rect x="27" y="6" width="3" height="42" fill="#718096"/><rect x="8" y="26" width="24" height="22" rx="3" fill="#f28c00"/><rect x="11" y="29" width="10" height="9" rx="1" fill="#0b1830"/><rect x="6" y="48" width="30" height="8" rx="2" fill="#2d3748"/><circle cx="13" cy="59" r="4.5" fill="#111"/><circle cx="29" cy="59" r="4.5" fill="#111"/><rect x="33" y="50" width="13" height="3" rx="1" fill="#a0aec0"/><rect x="33" y="57" width="13" height="3" rx="1" fill="#a0aec0"/></svg>';
+
+  window.mpRender=function(){
+    var view=document.getElementById("mpView"); if(!view||view.hidden) return;
+    var mp=getMP(), SRC=srcLabel(), src=srcNames(), BN=byName();
+    var assigned={}; (mp.ek||[]).forEach(function(m){ if(m&&m.name) assigned[m.name]=1; });
+    var pool=src.filter(function(n){ return !assigned[n] && !isGone(BN[n]); });
+    var poolHTML=pool.length? pool.map(function(n){return chipHTML(n,BN,mpSel===n);}).join("") : '<div class="sec-empty">'+(SRC?("Geen vrije mensen in "+esc(SRC)):"Geen sector M & P gevonden op het hoofdbord")+'</div>';
+    var eks=mp.ek||[];
+    var ekCards=eks.map(function(m,i){
+      var nm=(m&&m.name&&src.indexOf(m.name)>=0&&!isGone(BN[m.name]))?m.name:null;
+      var chips=nm?chipHTML(nm,BN,false):'<div class="mp-free">'+((mpSel&&!mpTV)?("klik hier voor "+esc(mpSel)):"vrij")+'</div>';
+      var opdr=(m&&m.opdracht)?esc(m.opdracht):(mpTV?"":"+ opdracht");
+      var opdrHTML=(mpTV&&!(m&&m.opdracht))?"":('<div class="mp-opdr'+((m&&m.opdracht)?' set':'')+'" data-ek="'+i+'">'+opdr+'</div>');
+      return '<div class="sec-card mp-ek'+((mpSel&&!mpTV)?' drop':'')+'" data-ek="'+i+'">'
+        +'<div class="mp-ekimg">'+EKSVG+'</div>'
+        +'<div class="mp-ekinfo"><div class="sec-card-h"><span>EK-12 \u00b7 <b>'+esc((m&&m.nr)||"?")+'</b></span>'+(mpTV?'':'<span class="mp-ekdel" data-ek="'+i+'" title="Toestel verwijderen">\u00d7</span>')+'</div>'
+        +chips+opdrHTML+'</div></div>';
+    }).join("");
+    if(!eks.length) ekCards='<div class="sec-empty">Nog geen EK-12 toestellen \u2014 voeg er een toe</div>';
+    var vals=(mp.valsDate===today())?(mp.vals||{}):{};
+    var tasks=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice();
+    var tiles=tasks.map(function(t,i){ var v=vals[t]; return '<div class="mp-task"><div class="mp-tl">'+esc(t)+(mpTV?'':'<span class="mp-tdel" data-ti="'+i+'" title="Verwijderen">\u00d7</span>')+'</div><div class="mp-tv" data-task="'+esc(t)+'">'+((v!=null&&v!=="")?esc(v):"\u2014")+'</div></div>'; }).join("");
+    var bar='<div class="sec-bar"><span class="sec-title">M & P \u2014 EK-12 & cijfers</span>'
+      +'<span class="sec-hint">Klik een naam links en dan een EK-12 \u00b7 klik een cijfer om het in te vullen</span>'
+      +'<button class="sec-tvbtn" id="mpTvBtn">\ud83d\udcfa Bord</button></div>';
+    var tvtitle='<div class="sec-tvtitle"><span>SECTOR M & P</span><button class="sec-tvbtn" id="mpTvExit">\u2715 Sluiten</button></div>';
+    view.innerHTML=(mpTV?tvtitle:bar)
+      +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC||"M & P")+'</div>'+poolHTML+'</aside>'
+      +'<div class="sec-board">'
+      +'<div class="sec-group"><div class="sec-group-h">Cijfers (manueel in te vullen)</div><div class="mp-taskgrid">'+tiles+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddTask">+ cijfer toevoegen</button>')+'</div>'
+      +'<div class="sec-group"><div class="sec-group-h">EK-12 toestellen \u00b7 bestuurders</div><div class="sec-grid mp-ekgrid">'+ekCards+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddEk">+ EK-12 toevoegen</button>')+'</div>'
+      +'</div></div>';
+    var tb=document.getElementById("mpTvBtn"); if(tb) tb.addEventListener("click",enterTV);
+    var ex=document.getElementById("mpTvExit"); if(ex) ex.addEventListener("click",exitTV);
+  };
+  function enterTV(){ mpTV=true; mpSel=null; var v=document.getElementById("mpView"); if(v) v.classList.add("sec-tv"); try{ var el=document.documentElement; if(el.requestFullscreen){ var pr=el.requestFullscreen(); if(pr&&pr.catch) pr.catch(function(){}); } }catch(e){} window.mpRender(); }
+  function exitTV(){ mpTV=false; var v=document.getElementById("mpView"); if(v) v.classList.remove("sec-tv"); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} window.mpRender(); }
+  document.addEventListener("fullscreenchange",function(){ if(!document.fullscreenElement && mpTV){ mpTV=false; var v=document.getElementById("mpView"); if(v) v.classList.remove("sec-tv"); window.mpRender(); } });
+
+  document.addEventListener("click",function(e){
+    var view=document.getElementById("mpView"); if(!view||view.hidden) return;
+    if(!view.contains(e.target)) return;
+    if(e.target.closest("#mpTvBtn")||e.target.closest("#mpTvExit")) return;
+    if(mpTV) return;
+    var mp,i;
+    var del=e.target.closest(".mp-ekdel");
+    if(del){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+del.getAttribute("data-ek"); mp=getMP(); var m=(mp.ek||[])[i]; if(!m) return; if(!confirm("EK-12 "+(m.nr||"?")+" verwijderen?")) return; mp.ek.splice(i,1); saveMP(mp); window.mpRender(); return; }
+    var tdel=e.target.closest(".mp-tdel");
+    if(tdel){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+tdel.getAttribute("data-ti"); mp=getMP(); var ts=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice(); var tnm=ts[i]; if(tnm==null) return; if(!confirm('Cijfer "'+tnm+'" verwijderen?')) return; ts.splice(i,1); mp.tasks=ts; if(mp.vals) delete mp.vals[tnm]; saveMP(mp); window.mpRender(); return; }
+    var tv=e.target.closest(".mp-tv");
+    if(tv){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var t=tv.getAttribute("data-task"); mp=getMP(); var vals=(mp.valsDate===today())?(mp.vals||{}):{}; var cur=vals[t]||""; var nv=prompt(t+":", cur); if(nv===null) return; vals[t]=(""+nv).trim(); mp.vals=vals; mp.valsDate=today(); saveMP(mp); window.mpRender(); return; }
+    var opdr=e.target.closest(".mp-opdr");
+    if(opdr){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+opdr.getAttribute("data-ek"); mp=getMP(); var mo=(mp.ek||[])[i]; if(!mo) return; var no=prompt("Opdracht voor EK-12 "+(mo.nr||"?")+" (bv. Uitdragen M):", mo.opdracht||""); if(no===null) return; mo.opdracht=(""+no).trim(); saveMP(mp); window.mpRender(); return; }
+    if(e.target.closest("#mpAddEk")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr=prompt("Nummer van het EK-12 toestel (bv. 64):",""); if(nr===null) return; nr=(""+nr).trim(); if(!nr) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr,name:null,opdracht:""}); saveMP(mp); window.mpRender(); return; }
+    if(e.target.closest("#mpAddTask")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var tn=prompt("Naam van het cijfer (bv. Stock T400):",""); if(tn===null) return; tn=(""+tn).trim(); if(!tn) return; mp=getMP(); var ts2=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice(); if(ts2.indexOf(tn)<0) ts2.push(tn); mp.tasks=ts2; saveMP(mp); window.mpRender(); return; }
+    var chip=e.target.closest(".chip[data-name]");
+    var card=e.target.closest(".mp-ek");
+    if(chip){ var nm2=chip.getAttribute("data-name");
+      if(card){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} mp=getMP(); (mp.ek||[]).forEach(function(m){ if(m.name===nm2) m.name=null; }); saveMP(mp); window.mpRender(); return; }
+      e.stopPropagation(); mpSel=(mpSel===nm2)?null:nm2; window.mpRender(); return; }
+    if(card){ e.stopPropagation(); if(!mpSel) return; if(blocked()){toast("Klik eerst op Bewerken");return;} i=+card.getAttribute("data-ek"); mp=getMP(); var mc=(mp.ek||[])[i]; if(!mc) return; (mp.ek||[]).forEach(function(m){ if(m.name===mpSel) m.name=null; }); mc.name=mpSel; mpSel=null; saveMP(mp); window.mpRender(); return; }
+  }, true);
+
+  function ensureUI(){
+    var tabs=document.querySelector(".viewtabs");
+    if(tabs && !tabs.querySelector('[data-view="mp"]')){
+      var b=document.createElement("button"); b.className="vtab"; b.setAttribute("data-view","mp");
+      b.textContent="\ud83d\ude9c M & P";
+      b.addEventListener("click",function(){ if(typeof switchView==="function") switchView("mp"); setTimeout(function(){ window.mpRender(); },60); });
+      tabs.appendChild(b);
+    }
+    if(!document.getElementById("mpView")){
+      var sv=document.getElementById("sectorView")||document.getElementById("outboundView");
+      var v=document.createElement("div"); v.className="wrap"; v.id="mpView"; v.hidden=true;
+      if(sv && sv.parentNode) sv.parentNode.insertBefore(v, sv.nextSibling); else document.body.appendChild(v);
+    }
+  }
+  function init(){ ensureUI(); setInterval(function(){ var v=document.getElementById("mpView"); if(v && !v.hidden) window.mpRender(); }, 5000); }
+  if(document.readyState!=="loading") setTimeout(init,1300); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1300); });
+})();
+</script>
 </body>
 
 
