@@ -1164,7 +1164,7 @@ function odDirect(u){
   if(/api\.onedrive\.com/.test(u)) return u;
   if(/1drv\.ms|onedrive\.live\.com/.test(u)){
     var b = btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-    return "https://api.onedrive.com/v3.34/shares/u!" + b + "/root/content";
+    return "https://api.onedrive.com/v3.35/shares/u!" + b + "/root/content";
   }
   return u;
 }
@@ -2110,7 +2110,7 @@ function obClassify(vm,nm){
   if(isAll("X")) return {kol:"verlof"};
   if(isAll("Z")) return {kol:"afwezig", badge:"ziek"};
   if(isAll("TK")) return {kol:"tk"};
-  if(a==="TK"||b==="TK") return {kol:"tk"};            // halve dag TK -> tijdskrediet
+  if(a==="TK"||b==="TK"){ var _ot=(a==="TK")?b:a; var _ABT={X:1,Z:1,TR:1,SYN:1,HT:1,TK:1}; if(!_ABT[_ot]) return {kol:"ploeg", halfFree:(a==="TK"?"VM":"NM")}; return {kol:"tk"}; }            // halve dag TK -> tijdskrediet
   // halve dag verlof: één helft X, andere helft werkt -> blijf in ploeg (halve dag)
   if(a==="X"||b==="X"){
     var _o = (a==="X") ? b : a;
@@ -2463,7 +2463,7 @@ function obApplyHours(){
     var h=obWindowFor(p); if(!h) return;
     p._origBadge=p.badge;
     var van=obParseHM(h.van), tot=obParseHM(h.tot);
-    var binnen = isVandaag ? (( van==null || nowMin>=van ) && ( tot==null || nowMin<tot )) : true;
+    var binnen = isVandaag ? (( van==null || nowMin>=(van-20) ) && ( tot==null || nowMin<tot )) : true;
     if(p.status==="aanwezig"){
       var win=(h.van||"")+(h.van&&h.tot?"–":"")+(h.tot||"");
       var aftrek=(p._origBadge && /^-\d/.test(p._origBadge)) ? p._origBadge : "";
@@ -2963,7 +2963,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.34";
+  var APP_VERSION="v3.35";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3041,7 +3041,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.34";
+  var LOCAL=window.__APP_VERSION||"v3.35";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
