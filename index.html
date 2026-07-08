@@ -3076,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.46";
+  var APP_VERSION="v3.47";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.46";
+  var LOCAL=window.__APP_VERSION||"v3.47";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3461,9 +3461,12 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       +'<span class="sec-hint">Klik een naam links, dan een taak · klik een geplaatste naam om hem terug te halen</span>'
       +'<button class="sec-tvbtn" id="secTvBtn">📺 Bord</button></div>';
     var tvtitle='<div class="sec-tvtitle"><span>SCHAEFER</span><span class="sec-clock"></span><button class="sec-tvbtn" id="secTvExit">✕ Sluiten</button></div>';
-    view.innerHTML=(secTV?tvtitle:bar)
+    var _html=(secTV?tvtitle:bar)
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC)+'</div>'+poolHTML+'</aside>'
       +'<div class="sec-board">'+groupsHTML+'</div></div>';
+    if(view.__secLast===_html) return;
+    view.__secLast=_html; view.innerHTML=_html;
+    if(window.__secTick) window.__secTick();
 
     var tb=document.getElementById("secTvBtn"); if(tb) tb.addEventListener("click",enterTV);
     var ex=document.getElementById("secTvExit"); if(ex) ex.addEventListener("click",exitTV);
@@ -4409,12 +4412,15 @@ body.board #mpView{display:none}
       +'<span class="sec-hint">Klik een naam links en dan een EK-12 \u00b7 klik een cijfer om het in te vullen</span>'
       +'<button class="sec-tvbtn" id="mpTvBtn">\ud83d\udcfa Bord</button></div>';
     var tvtitle='<div class="sec-tvtitle"><span>SECTOR M & P</span><span class="sec-clock"></span><button class="sec-tvbtn" id="mpTvExit">\u2715 Sluiten</button></div>';
-    view.innerHTML=(mpTV?tvtitle:bar)
+    var _html=(mpTV?tvtitle:bar)
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC||"M & P")+'</div>'+poolHTML+'</aside>'
       +'<div class="sec-board">'+notesGroup
       +'<div class="sec-group"><div class="sec-group-h">Cijfers (manueel in te vullen)</div><div class="mp-taskgrid">'+tiles+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddTask">+ cijfer toevoegen</button>')+'</div>'
       +'<div class="sec-group"><div class="sec-group-h">Toestellen \u00b7 bestuurders</div><div class="sec-grid mp-ekgrid">'+ekCards+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddEk">+ EK-12</button> <button class="mp-add" id="mpAddMx">+ MX-X 1.5</button>')+'</div>'
       +'</div></div>';
+    if(view.__mpLast===_html) return;
+    view.__mpLast=_html; view.innerHTML=_html;
+    if(window.__secTick) window.__secTick();
     var tb=document.getElementById("mpTvBtn"); if(tb) tb.addEventListener("click",enterTV);
     var ex=document.getElementById("mpTvExit"); if(ex) ex.addEventListener("click",exitTV);
   };
@@ -4490,7 +4496,7 @@ body.board #mpView{display:none}
 <!-- ============ sub-bord TV: volledige dekking + klok (v3.46) ============ -->
 <style>
 #mpView.sec-tv,#sectorView.sec-tv{max-width:none;margin:0}
-.sec-clock{margin-left:auto;font-size:28px;font-weight:800;color:var(--cyan,#2dd4ee);font-variant-numeric:tabular-nums;letter-spacing:.04em}
+.sec-clock{margin-left:auto;font-size:22px;font-weight:800;color:var(--cyan,#2dd4ee);font-variant-numeric:tabular-nums;letter-spacing:.03em;white-space:nowrap}
 .sec-tvtitle .sec-tvbtn{margin-left:16px}
 </style>
 <script>
@@ -4498,9 +4504,11 @@ body.board #mpView{display:none}
   function tick(){
     var els=document.querySelectorAll(".sec-clock"); if(!els.length) return;
     var n=new Date(); function p(x){ return ("0"+x).slice(-2); }
-    var s=p(n.getHours())+":"+p(n.getMinutes())+":"+p(n.getSeconds());
+    var D=["zondag","maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag"];
+    var s=D[n.getDay()]+" "+p(n.getDate())+"/"+p(n.getMonth()+1)+" \u00b7 "+p(n.getHours())+":"+p(n.getMinutes())+":"+p(n.getSeconds());
     els.forEach(function(e){ e.textContent=s; });
   }
+  window.__secTick=tick;
   setInterval(tick,1000);
   if(document.readyState!=="loading") tick(); else window.addEventListener("DOMContentLoaded",tick);
 })();
