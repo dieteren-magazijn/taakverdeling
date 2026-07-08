@@ -3075,7 +3075,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.38";
+  var APP_VERSION="v3.39";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3154,7 +3154,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.38";
+  var LOCAL=window.__APP_VERSION||"v3.39";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3809,9 +3809,17 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     closePop();
     var hm=getHM(), o=hm[name]||{};
     var blocks=(window.obWisselList?window.obWisselList(o):[]);
-    if(!blocks.length) blocks=[{at:"11:00",to:""}];
-    function optsFor(sel){ return '<option value="">\u2014 terug naar eigen sector \u2014</option>'+sectors().map(function(l){ return '<option value="'+esc(l)+'"'+((sel===l)?" selected":"")+'>'+esc(l)+'</option>'; }).join(""); }
-    function rowHTML(b){ return '<div class="swp-row"><label>Om <input type="time" class="swAt" value="'+esc(b.at||"")+'"></label><label>naar <select class="swTo2">'+optsFor(b.to||"")+'</select></label><span class="swp-x" title="Blok verwijderen">\u00d7</span></div>'; }
+    if(!blocks.length) blocks=[{at:"11:00",to:null,_new:1}];
+    function optsFor(sel){
+      var o='<option value=""'+(sel===""?" selected":"")+'>\u2014 kies \u2014</option>';
+      o+='<option value="__eigen"'+(sel==="__eigen"?" selected":"")+'>\u21a9 terug naar eigen sector</option>';
+      o+=sectors().map(function(l){ return '<option value="'+esc(l)+'"'+((sel===l)?" selected":"")+'>'+esc(l)+'</option>'; }).join("");
+      return o;
+    }
+    function rowHTML(b){
+      var sel=b._new?"":(b.to?b.to:"__eigen");
+      return '<div class="swp-row"><label>Om <input type="time" class="swAt" value="'+esc(b.at||"")+'"></label><label>naar <select class="swTo2">'+optsFor(sel)+'</select></label><span class="swp-x" title="Blok verwijderen">\u00d7</span></div>';
+    }
     var pop=document.createElement("div"); pop.id="swPop";
     pop.innerHTML='<div class="swp-h">Sector-wissel \u2014 '+esc(name)+'</div>'
       +'<div id="swRows">'+blocks.map(rowHTML).join("")+'</div>'
@@ -3827,7 +3835,8 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
       var list=[];
       pop.querySelectorAll("#swRows .swp-row").forEach(function(row){
         var at=row.querySelector(".swAt").value, to=row.querySelector(".swTo2").value;
-        if(at) list.push({at:at,to:to});
+        if(!at || to==="") return;
+        list.push({at:at, to:(to==="__eigen"?"":to)});
       });
       list.sort(function(a,b){ return (""+a.at).localeCompare(""+b.at); });
       var hm2=getHM(), oo=hm2[name]||{};
