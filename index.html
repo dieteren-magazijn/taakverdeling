@@ -3076,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.44";
+  var APP_VERSION="v3.45";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.44";
+  var LOCAL=window.__APP_VERSION||"v3.45";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4327,6 +4327,59 @@ body.board #mpView{display:none}
   var EKURL="https://www.still.be/fileadmin/_processed_/1/a/csm_STILL_Produktbilder_EK-X_b6f1a4cb45.png";
   var MXURL="https://www.lectura-specs.nl/models/renamed/detail_max/hooglifters-mx-x-15-still.png";
   function ekIcon(m){ var u=(m&&m.kind==="MX")?MXURL:EKURL; var s=(m&&m.kind==="MX")?MXSVG:EKSVG; return '<img class="mp-ekphoto" src="'+u+'" alt="" loading="lazy" onerror="this.parentNode.classList.add(\'noimg\')">'+'<span class="mp-eksvg">'+s+'</span>'; }
+  var MP_OPDR=["Uitdragen M","Uitdragen P","Stock Carglass P","Stock Carglass M","Stock Nonglass","Stock 07578","Stock 103.9","Stock 0480.5","Stock Telling P","Stock Telling M","Carglass en nonglass","Picking Nacht","Collisage","Poorten","Dock","Karton/restafval"];
+  function opdrPop(i){
+    var mp0=getMP(); var m=(mp0.ek||[])[i]; if(!m) return;
+    var old=document.getElementById("mpOpdrPop"); if(old) old.remove();
+    var back=document.createElement("div"); back.id="mpOpdrPop"; back.className="tpl-back";
+    var btns=MP_OPDR.map(function(t){ return '<button class="mp-opdrbtn'+((m.opdracht===t)?' on':'')+'" data-t="'+esc(t)+'">'+esc(t)+'</button>'; }).join("");
+    back.innerHTML='<div class="tpl-pop"><h3>Opdracht \u2014 '+ekType(m)+' \u00b7 '+esc(m.nr||"?")+'</h3>'
+      +'<div class="mp-opdrgrid">'+btns+'</div>'
+      +'<label>Vrij: <input type="text" id="mpOpdrVrij" value="'+esc(m.opdracht||"")+'" placeholder="eigen tekst..."></label>'
+      +'<div class="tpl-btns"><button class="save" id="mpOpdrOk">Bewaren</button><button id="mpOpdrClear">Wissen</button><button id="mpOpdrCancel">Annuleren</button></div></div>';
+    document.body.appendChild(back);
+    function setOpdr(v){ var mp2=getMP(); var m2=(mp2.ek||[])[i]; if(m2){ m2.opdracht=v; saveMP(mp2); } back.remove(); window.mpRender(); }
+    back.addEventListener("click",function(e){
+      if(e.target===back||e.target.id==="mpOpdrCancel"){ back.remove(); return; }
+      var b=(e.target.closest)?e.target.closest(".mp-opdrbtn"):null;
+      if(b){ setOpdr(b.getAttribute("data-t")); return; }
+      if(e.target.id==="mpOpdrOk"){ setOpdr(document.getElementById("mpOpdrVrij").value.trim()); return; }
+      if(e.target.id==="mpOpdrClear"){ setOpdr(""); return; }
+    });
+  }
+  function notePop(){
+    var old=document.getElementById("mpNotePop"); if(old) old.remove();
+    var back=document.createElement("div"); back.id="mpNotePop"; back.className="tpl-back";
+    back.innerHTML='<div class="tpl-pop"><h3>\ud83d\udce2 Mededeling plaatsen</h3>'
+      +'<textarea id="mpNoteText" rows="4" placeholder="Tekst voor de mensen (mag leeg bij enkel een foto)"></textarea>'
+      +'<label class="mp-filelbl">\ud83d\udcf7 Foto toevoegen<input type="file" id="mpNoteFile" accept="image/*" hidden></label>'
+      +'<div id="mpNotePrev"></div>'
+      +'<div class="tpl-btns"><button class="save" id="mpNoteOk">Plaatsen</button><button id="mpNoteCancel">Annuleren</button></div></div>';
+    document.body.appendChild(back);
+    var img=null;
+    document.getElementById("mpNoteFile").addEventListener("change",function(){
+      var f=this.files&&this.files[0]; if(!f) return;
+      var r=new FileReader();
+      r.onload=function(){ var im=new Image(); im.onload=function(){
+        var mx=900, sc=Math.min(1,mx/Math.max(im.width,im.height));
+        var c=document.createElement("canvas"); c.width=Math.round(im.width*sc); c.height=Math.round(im.height*sc);
+        c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+        img=c.toDataURL("image/jpeg",0.72);
+        document.getElementById("mpNotePrev").innerHTML='<img src="'+img+'">';
+      }; im.src=r.result; };
+      r.readAsDataURL(f);
+    });
+    back.addEventListener("click",function(e){
+      if(e.target===back||e.target.id==="mpNoteCancel"){ back.remove(); return; }
+      if(e.target.id==="mpNoteOk"){
+        var tx=document.getElementById("mpNoteText").value.trim();
+        if(!tx && !img){ toast("Tekst of foto nodig"); return; }
+        var mp=getMP(); if(!mp.notes) mp.notes=[];
+        mp.notes.push({text:tx,img:img,ts:Date.now()});
+        saveMP(mp); back.remove(); window.mpRender();
+      }
+    });
+  }
 
   window.mpRender=function(){
     var view=document.getElementById("mpView"); if(!view||view.hidden) return;
@@ -4346,6 +4399,9 @@ body.board #mpView{display:none}
         +chips+opdrHTML+'</div></div>';
     }).join("");
     if(!eks.length) ekCards='<div class="sec-empty">Nog geen toestellen \u2014 voeg een EK-12 of MX-X toe</div>';
+    var notes=mp.notes||[];
+    var noteCards=notes.map(function(n,i){ return '<div class="mp-note">'+(mpTV?'':'<span class="mp-ndel" data-ni="'+i+'" title="Verwijderen">\u00d7</span>')+(n.img?('<img class="mp-nimg" src="'+n.img+'">'):"")+(n.text?('<div class="mp-ntext">'+esc(n.text).replace(/\n/g,"<br>")+'</div>'):"")+'</div>'; }).join("");
+    var notesGroup=(notes.length||!mpTV)?('<div class="sec-group"><div class="sec-group-h">\ud83d\udce2 Mededelingen</div><div class="mp-notegrid">'+(noteCards||'<div class="sec-empty">Geen mededelingen</div>')+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddNote">+ mededeling (tekst of foto)</button>')+'</div>'):"";
     var vals=(mp.valsDate===today())?(mp.vals||{}):{};
     var tasks=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice();
     var tiles=tasks.map(function(t,i){ var v=vals[t]; return '<div class="mp-task"><div class="mp-tl">'+esc(t)+(mpTV?'':'<span class="mp-tdel" data-ti="'+i+'" title="Verwijderen">\u00d7</span>')+'</div><div class="mp-tv" data-task="'+esc(t)+'">'+((v!=null&&v!=="")?esc(v):"\u2014")+'</div></div>'; }).join("");
@@ -4355,7 +4411,7 @@ body.board #mpView{display:none}
     var tvtitle='<div class="sec-tvtitle"><span>SECTOR M & P</span><button class="sec-tvbtn" id="mpTvExit">\u2715 Sluiten</button></div>';
     view.innerHTML=(mpTV?tvtitle:bar)
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC||"M & P")+'</div>'+poolHTML+'</aside>'
-      +'<div class="sec-board">'
+      +'<div class="sec-board">'+notesGroup
       +'<div class="sec-group"><div class="sec-group-h">Cijfers (manueel in te vullen)</div><div class="mp-taskgrid">'+tiles+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddTask">+ cijfer toevoegen</button>')+'</div>'
       +'<div class="sec-group"><div class="sec-group-h">Toestellen \u00b7 bestuurders</div><div class="sec-grid mp-ekgrid">'+ekCards+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddEk">+ EK-12</button> <button class="mp-add" id="mpAddMx">+ MX-X 1.5</button>')+'</div>'
       +'</div></div>';
@@ -4379,7 +4435,10 @@ body.board #mpView{display:none}
     var tv=e.target.closest(".mp-tv");
     if(tv){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var t=tv.getAttribute("data-task"); mp=getMP(); var vals=(mp.valsDate===today())?(mp.vals||{}):{}; var cur=vals[t]||""; var nv=prompt(t+":", cur); if(nv===null) return; vals[t]=(""+nv).trim(); mp.vals=vals; mp.valsDate=today(); saveMP(mp); window.mpRender(); return; }
     var opdr=e.target.closest(".mp-opdr");
-    if(opdr){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+opdr.getAttribute("data-ek"); mp=getMP(); var mo=(mp.ek||[])[i]; if(!mo) return; var no=prompt("Opdracht voor "+ekType(mo)+" "+(mo.nr||"?")+" (bv. Uitdragen M):", mo.opdracht||""); if(no===null) return; mo.opdracht=(""+no).trim(); saveMP(mp); window.mpRender(); return; }
+    if(opdr){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} opdrPop(+opdr.getAttribute("data-ek")); return; }
+    var ndel=e.target.closest(".mp-ndel");
+    if(ndel){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+ndel.getAttribute("data-ni"); mp=getMP(); if(!(mp.notes||[])[i]) return; if(!confirm("Deze mededeling verwijderen?")) return; mp.notes.splice(i,1); saveMP(mp); window.mpRender(); return; }
+    if(e.target.closest("#mpAddNote")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} notePop(); return; }
     if(e.target.closest("#mpAddEk")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr=prompt("Nummer van het EK-12 toestel (bv. 64):",""); if(nr===null) return; nr=(""+nr).trim(); if(!nr) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr,name:null,opdracht:"",kind:"EK"}); saveMP(mp); window.mpRender(); return; }
     if(e.target.closest("#mpAddMx")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr2=prompt("Nummer van de MX-X 1.5 (bv. 12):",""); if(nr2===null) return; nr2=(""+nr2).trim(); if(!nr2) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr2,name:null,opdracht:"",kind:"MX"}); saveMP(mp); window.mpRender(); return; }
     if(e.target.closest("#mpAddTask")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var tn=prompt("Naam van het cijfer (bv. Stock T400):",""); if(tn===null) return; tn=(""+tn).trim(); if(!tn) return; mp=getMP(); var ts2=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice(); if(ts2.indexOf(tn)<0) ts2.push(tn); mp.tasks=ts2; saveMP(mp); window.mpRender(); return; }
@@ -4409,6 +4468,25 @@ body.board #mpView{display:none}
   if(document.readyState!=="loading") setTimeout(init,1300); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,1300); });
 })();
 </script>
+<!-- ============ M & P: mededelingen + opdracht-kiezer stijl (v3.45) ============ -->
+<style>
+#mpView .mp-notegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+#mpView .mp-note{position:relative;background:var(--panel2,#0f1d35);border:1px solid rgba(246,201,69,.4);border-radius:12px;padding:10px 12px}
+#mpView .mp-note .mp-nimg{width:100%;border-radius:8px;display:block;max-height:260px;object-fit:contain;background:#fff}
+#mpView .mp-note .mp-ntext{font-size:14px;font-weight:600;color:var(--txt,#e9f1ff);margin-top:6px}
+#mpView .mp-ndel{position:absolute;top:6px;right:8px;cursor:pointer;color:#ff6b6b;font-weight:800;z-index:2}
+#mpView.sec-tv .mp-note .mp-ntext{font-size:19px}
+#mpView.sec-tv .mp-note .mp-nimg{max-height:420px}
+.mp-opdrgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:45vh;overflow:auto;margin:6px 0}
+.mp-opdrbtn{background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.3));border-radius:8px;padding:7px 8px;font-size:12px;cursor:pointer;text-align:left}
+.mp-opdrbtn:hover{border-color:var(--cyan,#2dd4ee)}
+.mp-opdrbtn.on{border-color:var(--green,#3ddc97);color:var(--green,#3ddc97)}
+#mpOpdrPop input[type=text]{flex:1;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:5px 8px;font-size:13px}
+#mpNotePop textarea{width:100%;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:8px;font:inherit;box-sizing:border-box}
+.mp-filelbl{display:inline-flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;border:1px dashed rgba(141,178,255,.45);border-radius:8px;padding:6px 10px;font-size:12px;color:#9db3d9}
+.mp-filelbl:hover{color:#e9f1ff}
+#mpNotePrev img{max-width:100%;max-height:180px;border-radius:8px;margin-top:8px}
+</style>
 </body>
 
 
