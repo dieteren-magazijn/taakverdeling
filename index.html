@@ -3076,7 +3076,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.41";
+  var APP_VERSION="v3.42";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3155,7 +3155,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.41";
+  var LOCAL=window.__APP_VERSION||"v3.42";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4312,6 +4312,9 @@ body.board #mpView{display:none}
   function isGone(p){ try{ if(!p||typeof obWindowFor!=="function"||typeof obNowMin!=="function"||typeof obParseHM!=="function") return false; var w=obWindowFor(p); var tot=(w&&w.tot)?obParseHM(w.tot):null; return tot!=null && obNowMin()>=tot; }catch(e){ return false; } }
   function chipHTML(n,BN,sel){ var p=BN[n], pl=p?(p.ploeg||""):""; var cls=pl==="A"?"a":(pl==="B"?"b":""); var badge=pl?('<span class="sec-pl '+cls+'">'+esc(pl)+'</span>'):''; return '<div class="chip sec-chip'+(sel?' sel':'')+'" data-name="'+esc(n)+'">'+badge+'<span class="ob-nm">'+esc(n)+'</span></div>'; }
   var EKSVG='<svg viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="2" width="5" height="46" fill="#4a5568"/><rect x="27" y="6" width="3" height="42" fill="#718096"/><rect x="8" y="26" width="24" height="22" rx="3" fill="#f28c00"/><rect x="11" y="29" width="10" height="9" rx="1" fill="#0b1830"/><rect x="6" y="48" width="30" height="8" rx="2" fill="#2d3748"/><circle cx="13" cy="59" r="4.5" fill="#111"/><circle cx="29" cy="59" r="4.5" fill="#111"/><rect x="33" y="50" width="13" height="3" rx="1" fill="#a0aec0"/><rect x="33" y="57" width="13" height="3" rx="1" fill="#a0aec0"/></svg>';
+  var MXSVG='<svg viewBox="0 0 48 80" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="2" width="6" height="62" fill="#4a5568"/><rect x="26" y="2" width="4" height="62" fill="#718096"/><rect x="14" y="3" width="18" height="4" rx="1" fill="#a0aec0"/><rect x="14" y="20" width="18" height="3" fill="#a0aec0"/><rect x="14" y="36" width="18" height="3" fill="#a0aec0"/><rect x="6" y="44" width="28" height="20" rx="3" fill="#f28c00"/><rect x="9" y="47" width="10" height="8" rx="1" fill="#0b1830"/><rect x="4" y="64" width="34" height="8" rx="2" fill="#2d3748"/><circle cx="12" cy="75" r="4.5" fill="#111"/><circle cx="30" cy="75" r="4.5" fill="#111"/><rect x="38" y="46" width="4" height="28" fill="#4a5568"/><rect x="40" y="66" width="8" height="3" rx="1" fill="#a0aec0"/><rect x="40" y="72" width="8" height="3" rx="1" fill="#a0aec0"/></svg>';
+  function ekType(m){ return (m&&m.kind==="MX")?"MX-X 1.5":"EK-12"; }
+  function ekIcon(m){ return (m&&m.kind==="MX")?MXSVG:EKSVG; }
 
   window.mpRender=function(){
     var view=document.getElementById("mpView"); if(!view||view.hidden) return;
@@ -4326,11 +4329,11 @@ body.board #mpView{display:none}
       var opdr=(m&&m.opdracht)?esc(m.opdracht):(mpTV?"":"+ opdracht");
       var opdrHTML=(mpTV&&!(m&&m.opdracht))?"":('<div class="mp-opdr'+((m&&m.opdracht)?' set':'')+'" data-ek="'+i+'">'+opdr+'</div>');
       return '<div class="sec-card mp-ek'+((mpSel&&!mpTV)?' drop':'')+'" data-ek="'+i+'">'
-        +'<div class="mp-ekimg">'+EKSVG+'</div>'
-        +'<div class="mp-ekinfo"><div class="sec-card-h"><span>EK-12 \u00b7 <b>'+esc((m&&m.nr)||"?")+'</b></span>'+(mpTV?'':'<span class="mp-ekdel" data-ek="'+i+'" title="Toestel verwijderen">\u00d7</span>')+'</div>'
+        +'<div class="mp-ekimg">'+ekIcon(m)+'</div>'
+        +'<div class="mp-ekinfo"><div class="sec-card-h"><span>'+ekType(m)+' \u00b7 <b>'+esc((m&&m.nr)||"?")+'</b></span>'+(mpTV?'':'<span class="mp-ekdel" data-ek="'+i+'" title="Toestel verwijderen">\u00d7</span>')+'</div>'
         +chips+opdrHTML+'</div></div>';
     }).join("");
-    if(!eks.length) ekCards='<div class="sec-empty">Nog geen EK-12 toestellen \u2014 voeg er een toe</div>';
+    if(!eks.length) ekCards='<div class="sec-empty">Nog geen toestellen \u2014 voeg een EK-12 of MX-X toe</div>';
     var vals=(mp.valsDate===today())?(mp.vals||{}):{};
     var tasks=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice();
     var tiles=tasks.map(function(t,i){ var v=vals[t]; return '<div class="mp-task"><div class="mp-tl">'+esc(t)+(mpTV?'':'<span class="mp-tdel" data-ti="'+i+'" title="Verwijderen">\u00d7</span>')+'</div><div class="mp-tv" data-task="'+esc(t)+'">'+((v!=null&&v!=="")?esc(v):"\u2014")+'</div></div>'; }).join("");
@@ -4342,7 +4345,7 @@ body.board #mpView{display:none}
       +'<div class="sec-layout"><aside class="sec-pool"><div class="sec-h">Mensen in '+esc(SRC||"M & P")+'</div>'+poolHTML+'</aside>'
       +'<div class="sec-board">'
       +'<div class="sec-group"><div class="sec-group-h">Cijfers (manueel in te vullen)</div><div class="mp-taskgrid">'+tiles+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddTask">+ cijfer toevoegen</button>')+'</div>'
-      +'<div class="sec-group"><div class="sec-group-h">EK-12 toestellen \u00b7 bestuurders</div><div class="sec-grid mp-ekgrid">'+ekCards+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddEk">+ EK-12 toevoegen</button>')+'</div>'
+      +'<div class="sec-group"><div class="sec-group-h">Toestellen \u00b7 bestuurders</div><div class="sec-grid mp-ekgrid">'+ekCards+'</div>'+(mpTV?'':'<button class="mp-add" id="mpAddEk">+ EK-12</button> <button class="mp-add" id="mpAddMx">+ MX-X 1.5</button>')+'</div>'
       +'</div></div>';
     var tb=document.getElementById("mpTvBtn"); if(tb) tb.addEventListener("click",enterTV);
     var ex=document.getElementById("mpTvExit"); if(ex) ex.addEventListener("click",exitTV);
@@ -4358,14 +4361,15 @@ body.board #mpView{display:none}
     if(mpTV) return;
     var mp,i;
     var del=e.target.closest(".mp-ekdel");
-    if(del){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+del.getAttribute("data-ek"); mp=getMP(); var m=(mp.ek||[])[i]; if(!m) return; if(!confirm("EK-12 "+(m.nr||"?")+" verwijderen?")) return; mp.ek.splice(i,1); saveMP(mp); window.mpRender(); return; }
+    if(del){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+del.getAttribute("data-ek"); mp=getMP(); var m=(mp.ek||[])[i]; if(!m) return; if(!confirm(ekType(m)+" "+(m.nr||"?")+" verwijderen?")) return; mp.ek.splice(i,1); saveMP(mp); window.mpRender(); return; }
     var tdel=e.target.closest(".mp-tdel");
     if(tdel){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+tdel.getAttribute("data-ti"); mp=getMP(); var ts=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice(); var tnm=ts[i]; if(tnm==null) return; if(!confirm('Cijfer "'+tnm+'" verwijderen?')) return; ts.splice(i,1); mp.tasks=ts; if(mp.vals) delete mp.vals[tnm]; saveMP(mp); window.mpRender(); return; }
     var tv=e.target.closest(".mp-tv");
     if(tv){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var t=tv.getAttribute("data-task"); mp=getMP(); var vals=(mp.valsDate===today())?(mp.vals||{}):{}; var cur=vals[t]||""; var nv=prompt(t+":", cur); if(nv===null) return; vals[t]=(""+nv).trim(); mp.vals=vals; mp.valsDate=today(); saveMP(mp); window.mpRender(); return; }
     var opdr=e.target.closest(".mp-opdr");
-    if(opdr){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+opdr.getAttribute("data-ek"); mp=getMP(); var mo=(mp.ek||[])[i]; if(!mo) return; var no=prompt("Opdracht voor EK-12 "+(mo.nr||"?")+" (bv. Uitdragen M):", mo.opdracht||""); if(no===null) return; mo.opdracht=(""+no).trim(); saveMP(mp); window.mpRender(); return; }
-    if(e.target.closest("#mpAddEk")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr=prompt("Nummer van het EK-12 toestel (bv. 64):",""); if(nr===null) return; nr=(""+nr).trim(); if(!nr) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr,name:null,opdracht:""}); saveMP(mp); window.mpRender(); return; }
+    if(opdr){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} i=+opdr.getAttribute("data-ek"); mp=getMP(); var mo=(mp.ek||[])[i]; if(!mo) return; var no=prompt("Opdracht voor "+ekType(mo)+" "+(mo.nr||"?")+" (bv. Uitdragen M):", mo.opdracht||""); if(no===null) return; mo.opdracht=(""+no).trim(); saveMP(mp); window.mpRender(); return; }
+    if(e.target.closest("#mpAddEk")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr=prompt("Nummer van het EK-12 toestel (bv. 64):",""); if(nr===null) return; nr=(""+nr).trim(); if(!nr) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr,name:null,opdracht:"",kind:"EK"}); saveMP(mp); window.mpRender(); return; }
+    if(e.target.closest("#mpAddMx")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var nr2=prompt("Nummer van de MX-X 1.5 (bv. 12):",""); if(nr2===null) return; nr2=(""+nr2).trim(); if(!nr2) return; mp=getMP(); if(!mp.ek) mp.ek=[]; mp.ek.push({nr:nr2,name:null,opdracht:"",kind:"MX"}); saveMP(mp); window.mpRender(); return; }
     if(e.target.closest("#mpAddTask")){ e.stopPropagation(); if(blocked()){toast("Klik eerst op Bewerken");return;} var tn=prompt("Naam van het cijfer (bv. Stock T400):",""); if(tn===null) return; tn=(""+tn).trim(); if(!tn) return; mp=getMP(); var ts2=(mp.tasks&&mp.tasks.length)?mp.tasks:DEF_TASKS.slice(); if(ts2.indexOf(tn)<0) ts2.push(tn); mp.tasks=ts2; saveMP(mp); window.mpRender(); return; }
     var chip=e.target.closest(".chip[data-name]");
     var card=e.target.closest(".mp-ek");
