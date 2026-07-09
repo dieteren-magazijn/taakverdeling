@@ -2648,6 +2648,13 @@ var obNamesTimer=null;
 /* per afwijker: einduur tonen indien bekend, anders de aftrek (zoals badge) */
 function obFmtAfwijker(p,h){
   if(h && h.eigen===true && h.tot) return {name:p.name, lab:"tot "+h.tot};
+  try{
+    var _w=obWindowFor(p), _d=obDefaultHours(p)||{};
+    if(_w && _w.van && _w.tot){
+      if(_d.tot && _w.tot===_d.tot && _d.van && _w.van!==_d.van) return {name:p.name, lab:"vanaf "+_w.van};
+      return {name:p.name, lab:"tot "+_w.tot};
+    }
+  }catch(e){}
   var m=(""+(p._origBadge||"")).match(/^-(\d+(?:[.,]\d+)?)/);
   if(m){
     var aft=parseFloat(m[1].replace(",",".")), defEnd=obParseHM(obDefaultHours(p).tot);
@@ -2684,7 +2691,7 @@ function obBuildTicker(){
   var tiles=[
     obTile("#ff6b6b","Late \u00b7 Ploeg "+_lp+" \u00b7 "+_hl.van+"\u2013"+_hl.tot, '<div class="ob-tn">'+nLaat+'</div>'),
     obTile("#3ddc97","Vroege \u00b7 Ploeg "+_vp+" \u00b7 "+_hv.van+"\u2013"+_hv.tot, '<div class="ob-tn">'+nVroeg+'</div>'),
-    obTile("#ff9f43","Stopt vroeger · "+early.length, earlyCell),
+    obTile("#ff9f43","Afwijkende uren · "+early.length, earlyCell),
     obTile("#ff7eb6","Afwezig", '<div class="ob-tn">'+nAfw+'</div>')
   ];
   var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(_wlist.length){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
@@ -3085,7 +3092,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.58";
+  var APP_VERSION="v3.59";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3164,7 +3171,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.58";
+  var LOCAL=window.__APP_VERSION||"v3.59";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
