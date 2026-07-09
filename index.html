@@ -3100,7 +3100,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.61";
+  var APP_VERSION="v3.62";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3179,7 +3179,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.61";
+  var LOCAL=window.__APP_VERSION||"v3.62";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4753,6 +4753,28 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
     busy=false;
   }
   setInterval(chk, 30000);
+})();
+</script>
+<!-- ============ waakhond: verkeerde sync-file gekoppeld (v3.62) ============ -->
+<style>
+#vpWrongFile{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:9995;background:#5a1212;color:#ffb3b3;border:1px solid #ff6b6b;border-bottom:none;border-radius:10px 10px 0 0;padding:8px 18px;font:700 13px/1.4 system-ui,sans-serif;box-shadow:0 -6px 18px rgba(0,0,0,.45);white-space:nowrap;pointer-events:none}
+</style>
+<script>
+(function(){
+  function chk(){
+    try{
+      var b=document.getElementById("vpWrongFile");
+      var hnd=(typeof sync!=="undefined" && sync && sync.handle)?sync.handle:null;
+      var bad=false, nm="";
+      if(hnd && hnd.name){ nm=""+hnd.name; if(nm.toLowerCase()!=="taakverdeling.json") bad=true; }
+      if(bad){
+        if(!b){ b=document.createElement("div"); b.id="vpWrongFile"; document.body.appendChild(b); }
+        b.textContent="\u26a0 Dit toestel is gekoppeld aan \u201c"+nm+"\u201d \u2014 dat is een KOPIE, niet het originele taakverdeling.json! Koppel opnieuw via \ud83d\udcc2";
+      } else if(b){ b.remove(); }
+    }catch(e){}
+  }
+  setInterval(chk,5000);
+  if(document.readyState!=="loading") setTimeout(chk,3000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(chk,3000); });
 })();
 </script>
 </body>
