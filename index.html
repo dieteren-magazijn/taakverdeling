@@ -2405,6 +2405,7 @@ function obPloegStart(ploeg){
 /* standaard ploeguren: start uit Excel + 8u werkdag; vrijdag 2u korter */
 function obDefaultHours(p){
   if(p && p._avond && p._kind==="interim"){ return {van:"13:00", tot:(state.dayKey==="VR"?"19:00":"21:00")}; }
+  if(p && p._avond){ var _se=(state.dayKey==="VR")?19*60:21*60; var _su=(p.hours&&p.hours>0&&p.hours<=12)?Math.round(p.hours*60):240; var _ss=Math.max(0,_se-_su); var _f=function(m){ return ("0"+Math.floor(m/60)).slice(-2)+":"+("0"+(m%60)).slice(-2); }; return {van:_f(_ss), tot:_f(_se)}; }
   var startMin = obPloegStart(p.ploeg);
   var vrij = (state.dayKey==="VR");
   var dur = vrij ? 6*60 : 8*60;
@@ -2471,7 +2472,7 @@ function obApplyHours(){
   var actief=obHoursOn();   /* knop bepaalt of mensen echt verschuiven */
   var nowMin=obNowMin();
   obRoster.forEach(function(p){
-    if(p._avond && p._kind!=="interim") return;   /* avondstudenten: eigen badge; interims volgen vaste-late venster */
+    /* avondmensen volgen hun venster: interims 13-21 (vr 13-19), studenten tot 21 (vr 19) min hun uren */
     if(p._buitenUren){ p.status="aanwezig"; p.badge=p._origBadge||null; delete p._buitenUren; }
     var h=obWindowFor(p); if(!h) return;
     p._origBadge=p.badge;
@@ -3092,7 +3093,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.59";
+  var APP_VERSION="v3.60";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3171,7 +3172,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.59";
+  var LOCAL=window.__APP_VERSION||"v3.60";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
