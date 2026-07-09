@@ -2676,10 +2676,10 @@ function obBuildTicker(){
   var eindA=obDefaultHours({ploeg:"A"}).tot, eindB=obDefaultHours({ploeg:"B"}).tot;
   var laatEind = (obParseHM(eindA)||0) >= (obParseHM(eindB)||0) ? eindA : eindB;
   var vroegEind = laatEind===eindA ? eindB : eindA; var _hA=obDefaultHours({ploeg:"A"}), _hB=obDefaultHours({ploeg:"B"}); var _lp=(obParseHM(_hA.tot)||0)>=(obParseHM(_hB.tot)||0)?"A":"B"; var _vp=_lp==="A"?"B":"A"; var _hl=_lp==="A"?_hA:_hB, _hv=_vp==="A"?_hA:_hB;
-  var nLaat=0, nVroeg=0, nAfw=0, nAvond=0, early=[];
+  var nLaat=0, nVroeg=0, nAfw=0, nAvond=0, early=[], _afwList=[];
   obRoster.forEach(function(p){
     if(p._avond){ nAvond++; return; }   /* avondstudenten/interims apart */
-    if(p.status!=="aanwezig" && !p._buitenUren){ nAfw++; return; }
+    if(p.status!=="aanwezig" && !p._buitenUren){ nAfw++; _afwList.push(p); return; }
     var h=obWindowFor(p); var tot=h&&h.tot?h.tot:null;
     if(p._afwijking){ early.push(obFmtAfwijker(p,h)); }
     else if(tot===laatEind){ nLaat++; }
@@ -2689,13 +2689,20 @@ function obBuildTicker(){
   var earlyCell = early.length
     ? '<div class="ob-names-wrap"><div class="ob-names" id="obEarlyNames">'+namesRows+'</div></div>'
     : '<div class="ob-tn">0</div>';
+  _afwList.sort(function(a,b){ var ma=(window.obReturnMs?window.obReturnMs(a.name):null), mb=(window.obReturnMs?window.obReturnMs(b.name):null); if(ma&&mb) return ma-mb; if(ma) return -1; if(mb) return 1; return a.name.localeCompare(b.name); });
+  var _afwRows=_afwList.map(function(p){
+    var reden=(p.status==="verlof")?"verlof":((p.status==="tk")?"TK":((p.badge==="ziek")?"ziek":"afwezig"));
+    var extra=""; try{ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); if(ms){ var d=new Date(ms); var DD=["zo","ma","di","wo","do","vr","za"]; extra=" \u00b7 \u21a9 "+DD[d.getDay()]+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); } }catch(e){}
+    return '<div class="ob-nrow">'+esc(p.name)+' <b>'+reden+extra+'</b></div>';
+  }).join("");
+  var _afwCell=_afwList.length?('<div class="ob-names-wrap"><div class="ob-names">'+_afwRows+'</div></div>'):'<div class="ob-tn">0</div>';
   var tiles=[
     obTile("#ff6b6b","Late \u00b7 Ploeg "+_lp+" \u00b7 "+_hl.van+"\u2013"+_hl.tot, '<div class="ob-tn">'+nLaat+'</div>'),
     obTile("#3ddc97","Vroege \u00b7 Ploeg "+_vp+" \u00b7 "+_hv.van+"\u2013"+_hv.tot, '<div class="ob-tn">'+nVroeg+'</div>'),
     obTile("#ff9f43","Afwijkende uren · "+early.length, earlyCell),
-    obTile("#ff7eb6","Afwezig", '<div class="ob-tn">'+nAfw+'</div>')
+    obTile("#ff7eb6","Afwezig \u00b7 "+nAfw, _afwCell)
   ];
-  var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(_wlist.length){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
+  var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(false){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
   bar.style.gridTemplateColumns="repeat("+tiles.length+",1fr)";
   bar.innerHTML=tiles.join("");
   /* laat namen doorlopen als ze niet passen (alle tegels) */
@@ -3093,7 +3100,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.60";
+  var APP_VERSION="v3.61";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3172,7 +3179,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.60";
+  var LOCAL=window.__APP_VERSION||"v3.61";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4710,6 +4717,42 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
   }
   setInterval(paint,2000);
   if(document.readyState!=="loading") setTimeout(paint,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(paint,2000); });
+})();
+</script>
+<!-- ============ Excel-wachter: planning + interims automatisch herlezen (v3.61) ============ -->
+<script>
+(function(){
+  "use strict";
+  var busy=false;
+  async function chk(){
+    if(busy) return; busy=true;
+    try{
+      if(typeof state!=="undefined" && state.handle){
+        try{
+          var p=await state.handle.queryPermission({mode:"read"});
+          if(p==="granted"){
+            var f=await state.handle.getFile();
+            if(window.__planTS && f.lastModified>window.__planTS && typeof reloadFromHandle==="function"){
+              await reloadFromHandle(false);
+            }
+          }
+        }catch(e){}
+      }
+      if(typeof siHandle!=="undefined" && siHandle){
+        try{
+          var p2=await siHandle.queryPermission({mode:"read"});
+          if(p2==="granted"){
+            var f2=await siHandle.getFile();
+            if(window.__siTS && f2.lastModified>window.__siTS && typeof siReloadFromHandle==="function"){
+              await siReloadFromHandle(false);
+            }
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+    busy=false;
+  }
+  setInterval(chk, 30000);
 })();
 </script>
 </body>
