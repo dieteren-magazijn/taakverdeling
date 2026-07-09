@@ -2425,7 +2425,7 @@ function obHalfWindow(p){
 /* effectief venster: handmatig (indien ingesteld) anders ploeg-standaard */
 function obWindowFor(p){
   var hm=obHoursMap();
-  if(hm[p.name]){ var _ov={van:hm[p.name].van, tot:hm[p.name].tot, eigen:true}; if(state.dayKey==="VR" && _ov.tot){ var _em=obParseHM(_ov.tot); if(_em!=null){ _em-=120; _ov.tot=("0"+Math.floor(_em/60)).slice(-2)+":"+("0"+(_em%60)).slice(-2); } } return _ov; }
+  if(hm[p.name] && (hm[p.name].van || hm[p.name].tot)){ var _ov={van:hm[p.name].van, tot:hm[p.name].tot, eigen:true}; if(state.dayKey==="VR" && _ov.tot){ var _em=obParseHM(_ov.tot); if(_em!=null){ _em-=120; _ov.tot=("0"+Math.floor(_em/60)).slice(-2)+":"+("0"+(_em%60)).slice(-2); } } return _ov; }
   var _hw=obHalfWindow(p); if(_hw) return _hw;
   var def=obDefaultHours(p);
   /* uren-aftrek (-X) uit de Excel: deze persoon stopt X uur VROEGER.
@@ -3085,7 +3085,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.57";
+  var APP_VERSION="v3.58";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3164,7 +3164,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.57";
+  var LOCAL=window.__APP_VERSION||"v3.58";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
