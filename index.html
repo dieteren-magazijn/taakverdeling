@@ -2490,7 +2490,7 @@ function obApplyHours(){
 function obPlacedSet(){ var s={}; obDepts.forEach(function(d){ d.names.forEach(function(n){ s[n]=1; }); }); return s; }
 function obSavePlace(){ var _pp=store.get("vp_ob_place")||{}; store.set("vp_ob_place",{depts:obDepts, sector:_pp.sector||{}, leveringen:_pp.leveringen||{}, statuscolors:_pp.statuscolors||{}}); try{ if(window.snapshotObHist) window.snapshotObHist(); }catch(e){} scheduleSyncWrite(); }
 function obSave(){ obSavePlace(); obRender(); }
-function obRefreshFromExcel(){ obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
+function obRefreshFromExcel(){ try{ var _pl=store.get("vp_ob_place"); if(_pl&&_pl.depts) obDepts=JSON.parse(JSON.stringify(_pl.depts)); }catch(e){} obRoster=obComposeRoster(); obSyncRosterToDepts(); obSel=null; if(!document.getElementById("outboundView").hidden) obRender(); }
 /* === sjabloon-helpers (v3.37) === */
 window.obNrm=function(s){ s=(""+s).toLowerCase().trim().replace(/\s+/g," "); try{ s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,""); }catch(e){} return s; };
 window.obApplyTemplate=function(std, silent){
@@ -3084,7 +3084,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.55";
+  var APP_VERSION="v3.56";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3163,7 +3163,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.55";
+  var LOCAL=window.__APP_VERSION||"v3.56";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4563,6 +4563,13 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
   if(typeof store==="undefined"||!store||!store.set) return;
   var origSet=store.set.bind(store);
   var UNDO=[];
+  window.vpViewingToday=function(){
+    try{
+      var s=(typeof curDateISO==="function")?curDateISO():null; if(!s) return true;
+      var n=new Date(); var r=n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2);
+      return s===r;
+    }catch(e){ return true; }
+  };
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
@@ -4604,6 +4611,10 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
   }
   store.set=function(k,v){
     try{
+      if(k==="vp_ob_place" && !window._applyingRemote && !window.__undoBusy && !window.vpViewingToday()){
+        if(!window.__roT || Date.now()-window.__roT>4000){ window.__roT=Date.now(); toast("\ud83d\udc41 Kijk-modus (andere dag) \u2014 wijzigingen worden niet bewaard"); }
+        return;
+      }
       if(!window._applyingRemote && !window.__undoBusy){
         if(k==="vp_ob_place"||k==="vp_ob_hours"){
           var prev=store.get(k);
@@ -4671,6 +4682,25 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
   }
   setInterval(ensure,3000);
   if(document.readyState!=="loading") setTimeout(ensure,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(ensure,1500); });
+})();
+</script>
+<!-- ============ kijk-modus banner andere dag (v3.56) ============ -->
+<style>
+#vpRoDayBanner{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9990;background:#5a3a12;color:#ffd479;border:1px solid #f6a800;border-top:none;border-radius:0 0 10px 10px;padding:6px 16px;font:700 13px/1.4 system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.4);pointer-events:none;white-space:nowrap}
+</style>
+<script>
+(function(){
+  function paint(){
+    try{
+      var other=(window.vpViewingToday && !window.vpViewingToday());
+      var b=document.getElementById("vpRoDayBanner");
+      if(other){
+        if(!b){ b=document.createElement("div"); b.id="vpRoDayBanner"; b.textContent="\ud83d\udc41 Je bekijkt een andere dag \u2014 kijk-modus: wijzigingen worden niet bewaard"; document.body.appendChild(b); }
+      } else if(b){ b.remove(); }
+    }catch(e){}
+  }
+  setInterval(paint,2000);
+  if(document.readyState!=="loading") setTimeout(paint,2000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(paint,2000); });
 })();
 </script>
 </body>
