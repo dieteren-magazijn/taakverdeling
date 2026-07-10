@@ -2630,17 +2630,19 @@ window.obWisselCur=function(o,nw){
   });
   return cur;
 };
-function obChipHTML(p, ctx){
+function obChipHTML(p, ctx, dept){
   var s=OB_STATUS[obStatKey(p)]||["?","#888"];
   if(p.rol==="late" && !p._avond) s=["L","#23262b"];
   var selCls=(obSel===p.name)?" sel":"";
   var afwCls=p._afwijking?" ob-afw":"";
   var dimCls=p._buitenUren?" ob-dim":"";
   var avPip=(p._avond && p._kind==="student") ? '<i class="ob-pip" style="--p:#16a085" title="Avondstudent'+(p._agency?" · "+esc(p._agency):"")+'"></i>' : "";
-  return '<div class="chip'+selCls+afwCls+dimCls+'" data-name="'+esc(p.name)+'"'+(p._agency?' title="'+esc(p._agency)+'"':'')+'>'+
+  var homeTag="", homeSty="";
+  try{ if(ctx==="dept" && dept && !p._avond && !(typeof obTplMode!=="undefined"&&obTplMode)){ var _hm=obHomeDept(p.name); if(_hm && _hm!==dept){ var _hc=obHomeColor(_hm); homeSty=' style="--hc:'+_hc+'"'; homeTag='<span class="ob-home" title="Vaste sector: '+esc(_hm)+'">'+esc((""+_hm).replace(/^SECTOR\s+/i,"").slice(0,10))+'</span>'; } } }catch(e){}
+  return '<div class="chip'+selCls+afwCls+dimCls+(homeTag?" ob-uit":"")+'"'+homeSty+' data-name="'+esc(p.name)+'"'+(p._agency?' title="'+esc(p._agency)+'"':'')+'>'+
     avPip+obRolePip(p.rol)+
     '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
-    '<span class="ob-nm">'+esc(p.name)+'</span>'+
+    '<span class="ob-nm">'+esc(p.name)+'</span>'+homeTag+
     (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
     (obEdit?'<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>':'')+
     (ctx==="dept"?'<span class="x" data-name="'+esc(p.name)+'">×</span>':'')+'</div>';
@@ -2648,6 +2650,11 @@ function obChipHTML(p, ctx){
 var OB_HUES=["#2dd4ee","#6fc3ff","#a78bfa","#3ddc97","#f6c945","#ff9f43","#ff7eb6","#34d4b8","#9ed36a","#ffd56b"];
 function obDeptColors(){ return store.get("vp_ob_deptcolors") || {}; }
 function obDeptColor(label, di){ var c=obDeptColors()[label]; return c || OB_HUES[di % OB_HUES.length]; }
+var _obHomeC=null,_obHomeT=0;
+function obHomeMap(){ var tpl=store.get("vp_ob_template")||[]; var m={},dup={}; tpl.forEach(function(d){ if(!d) return; (d.names||[]).forEach(function(nm){ var k=window.obNrm(nm); if(m[k]!==undefined&&m[k]!==d.label) dup[k]=1; else m[k]=d.label; }); }); Object.keys(dup).forEach(function(k){ delete m[k]; }); return m; }
+function obHomeDept(name){ try{ var now=Date.now(); if(!_obHomeC||now-_obHomeT>2000){ _obHomeC=obHomeMap(); _obHomeT=now; } return _obHomeC[window.obNrm(name)]||null; }catch(e){ return null; } }
+function obHomeColor(lbl){ var di=0; try{ (obDepts||[]).forEach(function(d,i){ if(d&&d.label===lbl) di=i; }); }catch(e){} return obDeptColor(lbl,di); }
+(function(){ try{ var st=document.createElement("style"); st.textContent=".chip.ob-uit{box-shadow:inset 3px 0 0 var(--hc,#f6c945)} .ob-home{font:700 8.5px/1 var(--fb,system-ui,sans-serif);color:var(--hc,#f6c945);border:1px solid var(--hc,#f6c945);border-radius:4px;padding:2px 4px;margin-left:4px;white-space:nowrap;opacity:.9} body.board .ob-home{font-size:.62vw;padding:.18vw .3vw;border-radius:.25vw}"; document.head.appendChild(st); }catch(e){} })();
 function obSetDeptColor(label, hex){ var c=obDeptColors(); c[label]=hex; store.set("vp_ob_deptcolors", c); scheduleSyncWrite(); obRender(); }
 /* scrollende statusbanner: late ploeg / vroege ploeg op standaard ploeg-einduur,
    wie daarvan afwijkt apart als 'stopt vroeger' met naam + uur, plus afwezigen */
@@ -2783,7 +2790,7 @@ function obRender(){
       '<div class="tbody" data-di="'+di+'">';
     if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
     else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
-    dn.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9e15; var zv=p&&(p.status==="verlof"||(p.status==="afwezig"&&p.badge==="ziek")); if(zv){ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); return ms?(1e12+ms/1e6):8e15; } if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept"); });
+    dn.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9e15; var zv=p&&(p.status==="verlof"||(p.status==="afwezig"&&p.badge==="ziek")); if(zv){ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); return ms?(1e12+ms/1e6):8e15; } if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept",d.label); });
     html+='</div></div>';
   });
   board.innerHTML=html;
@@ -3107,7 +3114,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.64d";
+  var APP_VERSION="v3.65b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3186,7 +3193,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.64d";
+  var LOCAL=window.__APP_VERSION||"v3.65b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
