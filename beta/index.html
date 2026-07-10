@@ -3107,7 +3107,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.64b";
+  var APP_VERSION="v3.64c";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3186,7 +3186,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.64b";
+  var LOCAL=window.__APP_VERSION||"v3.64c";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5052,7 +5052,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
       await w.write(JSON.stringify(doc)); await w.close();
       SIG=body;
       try{ console.log("pub: Excel-gegevens gepubliceerd ("+data.sheet+")"); }catch(e){}
-    }catch(e){ try{ console.error("pub push:",e); }catch(_){} }
+    }catch(e){ try{ console.error("pub push (opnieuw over 10 s):",e); }catch(_){} clearTimeout(T); T=setTimeout(push,10000); }
   }
   window.pubSchedule=function(){
     try{
@@ -5060,6 +5060,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
       clearTimeout(T); T=setTimeout(push,2500);
     }catch(e){}
   };
+  setInterval(function(){ try{ if(typeof state!=="undefined"&&state&&state.wb&&typeof sync!=="undefined"&&sync&&sync.handle&&!T) window.pubSchedule(); }catch(e){} },45000);
   /* ---- consumer: toestellen zonder Excel-koppeling ---- */
   window.pubRosterDay=function(){
     try{
@@ -5097,6 +5098,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
       if(typeof updateLinkBtn==="function") updateLinkBtn();
       if(typeof obRefreshFromExcel==="function") obRefreshFromExcel();
       if(typeof updSiStatus==="function") updSiStatus();
+      try{ if(typeof toast==="function") toast("\u2601 Planning uit database geladen (week "+(m.week!=null?m.week:m.sheet)+")"); }catch(e){}
     }catch(e){ try{ console.error("pubApply:",e); }catch(_){} }
   };
 })();
