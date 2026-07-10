@@ -872,6 +872,7 @@ async function syncRead(force){
     if(state.model) loadDayState();
     render();
     _applyingRemote = false; SYNC_LAST_READ = Date.now(); updateSyncTitle();
+    try{ if(doc.pub && window.pubApply) window.pubApply(doc.pub); }catch(_e){}
   }catch(e){ _applyingRemote = false; console.error("sync lezen:", e); }
 }
 function setSaveDot(state2, when){
@@ -1102,7 +1103,7 @@ function sheetForWeek(wk){
 }
 
 function setSheet(name){
-  var m = parseSheet(XLSX, state.wb, name);
+  if(!state.wb) return; var m = parseSheet(XLSX, state.wb, name);
   if(!m){ banner("err", "Kon blad “" + esc(name) + "” niet lezen — structuur niet herkend."); return; }
   state.model = m;
   $("#weekSel").value = name;
@@ -1123,6 +1124,7 @@ function setSheet(name){
   loadDayState();
   render();
   if(typeof obRefreshFromExcel === "function") obRefreshFromExcel();
+  if(window.pubSchedule) window.pubSchedule();
 }
 
 async function loadFile(file, viaHandle){
@@ -2162,6 +2164,7 @@ function avondActief(){
   return min>=18*60;                          // ma–do vanaf 18u
 }
 function siForDay(){
+  if(!siWb && !state.wb && window.__PUB && window.__PUB.si){ var _pl=window.__PUB.si[state.dayKey]; return _pl?JSON.parse(JSON.stringify(_pl)):[]; }
   if(!siWb || !state.model || state.model.week==null) return [];
   /* tolerante bladnaam: KW26, "KW 26", "WEEK 26", "26" */
   var wk = state.model.week, sheet = null, NN = siWb.SheetNames;
@@ -2218,7 +2221,7 @@ function siRosterEntries(){
 }
 /* basis-roster (dagploeg) + eventueel avondmensen samenvoegen */
 function obComposeRoster(){
-  var base=obFromExcel()||[];
+  var base=obFromExcel(); if(!base&&window.pubRosterDay) base=window.pubRosterDay(); base=base||[];
   if(avondActief()){
     var have={}; base.forEach(function(p){ have[p.name]=1; });
     siRosterEntries().forEach(function(s){ if(!have[s.name]) base.push(s); });
@@ -2232,6 +2235,7 @@ async function siLoadFile(file){
     siWb=XLSX.read(buf,{type:"array",bookFiles:true,cellStyles:true});
     updSiBtn();
     obRefreshFromExcel();
+    if(window.pubSchedule) window.pubSchedule();
     var lijst=siForDay();
     var nS=lijst.filter(function(x){return x.kind==="student";}).length;
     var nI=lijst.filter(function(x){return x.kind==="interim";}).length;
@@ -2401,6 +2405,7 @@ function obPloegStart(ploeg){
     var m = cell && cell.v ? (""+cell.v).match(/(\d{1,2}):(\d{2})/) : null;
     if(m) return (+m[1])*60 + (+m[2]);
   }catch(e){}
+  try{ if(!state.wb && window.__PUB && window.__PUB.ploegStart && window.__PUB.ploegStart[ploeg]!=null) return window.__PUB.ploegStart[ploeg]; }catch(e){}
   return ploeg==="A" ? 13*60 : 10*60;  /* fallback */
 }
 /* standaard ploeguren: start uit Excel + 8u werkdag; vrijdag 2u korter */
@@ -3102,7 +3107,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.63";
+  var APP_VERSION="v3.64b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3181,7 +3186,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.63";
+  var LOCAL=window.__APP_VERSION||"v3.64b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3307,7 +3312,7 @@ body.wl-ro .ob-return{cursor:default}
   }
   function _arCompute(name){
     try{
-      if(typeof state==="undefined"||!state||!state.model||!state.model.monday||!state.wb) return null;
+      if(typeof state==="undefined"||!state||!state.model||!state.model.monday) return null; if(!state.wb){ try{ var _P=window.__PUB; var _K=(""+name).trim().toUpperCase(); if(_P&&_P.terug&&_P.terug[_K]!=null) return _P.terug[_K]; }catch(_e){} return null; }
       if(typeof obClassify!=="function"||typeof obColLetter!=="function") return null;
       var curW=parseInt(state.model.sheet,10); if(isNaN(curW)) return null;
       var dk=state.model.dayKeys||[]; var curDi=dk.indexOf(state.dayKey); if(curDi<0) curDi=0;
@@ -5006,6 +5011,94 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     if(await authed()) activate(); else { enforce(); setInterval(function(){ if(!active) enforce(); },800); overlay(); }
   }
   if(document.readyState!=="loading") setTimeout(init,700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,700); });
+})();
+</script>
+<!-- ============ STAP 2 SUPABASE: Excel-gegevens publiceren (pub, v3.64b) ============ -->
+<script>
+(function(){
+  "use strict";
+  var T=null, SIG="";
+  function build(){
+    try{
+      if(typeof state==="undefined"||!state||!state.wb||!state.model) return null;
+      var m=state.model;
+      var model={sheet:m.sheet,week:m.week,monday:(m.monday?m.monday.getTime():null),dayKeys:m.dayKeys,blocks:m.blocks,grid:m.grid};
+      var roster={}, si={};
+      var keep=state.dayKey;
+      (m.dayKeys||[]).forEach(function(k){
+        state.dayKey=k;
+        try{ roster[k]=(typeof obFromExcel==="function"?obFromExcel():null)||[]; }catch(e){ roster[k]=[]; }
+        try{ si[k]=(typeof siForDay==="function"?siForDay():null)||[]; }catch(e){ si[k]=[]; }
+      });
+      state.dayKey=keep;
+      var terug={};
+      try{ (roster[keep]||[]).forEach(function(p){ if(p&&p.status!=="aanwezig"&&typeof window.obReturnMs==="function"){ var t=window.obReturnMs(p.name); if(t) terug[(""+p.name).trim().toUpperCase()]=t; } }); }catch(e){}
+      var ps=null; try{ ps={A:obPloegStart("A"),B:obPloegStart("B")}; }catch(e){}
+      return {v:1,updated:Date.now(),sheet:m.sheet,week:m.week,planTS:window.__planTS||null,siTS:window.__siTS||null,ploegStart:ps,terug:terug,model:model,roster:roster,si:si};
+    }catch(e){ return null; }
+  }
+  async function push(){
+    T=null;
+    try{
+      if(typeof sync==="undefined"||!sync||!sync.handle) return;
+      var data=build(); if(!data) return;
+      var body=JSON.stringify({s:data.sheet,p:data.planTS,i:data.siTS,r:data.roster,si:data.si,t:data.terug,ps:data.ploegStart,g:(data.model.grid||[]).length});
+      if(body===SIG) return;
+      var f=await sync.handle.getFile();
+      var t0=await f.text();
+      var doc=(t0&&t0.length>5)?(JSON.parse(t0)||{}):{};
+      doc.pub=data;
+      var w=await sync.handle.createWritable();
+      await w.write(JSON.stringify(doc)); await w.close();
+      SIG=body;
+      try{ console.log("pub: Excel-gegevens gepubliceerd ("+data.sheet+")"); }catch(e){}
+    }catch(e){ try{ console.error("pub push:",e); }catch(_){} }
+  }
+  window.pubSchedule=function(){
+    try{
+      if(typeof state==="undefined"||!state||!state.wb) return;
+      clearTimeout(T); T=setTimeout(push,2500);
+    }catch(e){}
+  };
+  /* ---- consumer: toestellen zonder Excel-koppeling ---- */
+  window.pubRosterDay=function(){
+    try{
+      if(state.wb) return null;
+      var P=window.__PUB; if(!P||!P.roster) return null;
+      var l=P.roster[state.dayKey];
+      return l?JSON.parse(JSON.stringify(l)):null;
+    }catch(e){ return null; }
+  };
+  window.pubApply=function(pub){
+    try{
+      if(typeof state==="undefined"||!state||state.wb) return;
+      if(!pub||!pub.model||!pub.model.blocks) return;
+      window.__PUB=pub;
+      if(window.__pubStamp===pub.updated && state.model) return;
+      window.__pubStamp=pub.updated;
+      var m=JSON.parse(JSON.stringify(pub.model));
+      m.monday=(pub.model.monday!=null)?new Date(pub.model.monday):null;
+      state.model=m;
+      state.weeks=[{sheet:m.sheet,week:m.week,monday:m.monday}];
+      state.fileInfo="\u2601 via database \u00b7 "+(typeof fmtDT==="function"?fmtDT(pub.updated):"");
+      state.lastLoad=Date.now();
+      var sel=document.getElementById("weekSel");
+      if(sel){ sel.innerHTML=""; var o=document.createElement("option"); o.value=m.sheet; o.textContent="Week "+(m.week!==null?m.week:m.sheet)+(m.monday?" \u00b7 "+fmtDate(m.monday):""); sel.appendChild(o); sel.value=m.sheet; }
+      var wc=document.getElementById("weekCtrl"); if(wc) wc.hidden=false;
+      var ds=document.getElementById("daySel");
+      if(ds){ ds.innerHTML=""; (m.dayKeys||[]).forEach(function(k,i){ var o2=document.createElement("option"); o2.value=k; o2.textContent=DAY_TOKENS[k]+(m.monday?" "+fmtDate(new Date(m.monday.getTime()+i*86400000)):""); ds.appendChild(o2); }); }
+      var dc=document.getElementById("dayCtrl"); if(dc) dc.hidden=false;
+      var todayKey=["MA","DI","WO","DO","VR","ZA","ZO"][(new Date().getDay()+6)%7];
+      state.dayKey=(state.dayKey&&m.dayKeys.indexOf(state.dayKey)>=0)?state.dayKey:(m.dayKeys.indexOf(todayKey)>=0?todayKey:m.dayKeys[0]);
+      if(ds) ds.value=state.dayKey;
+      if(typeof buildBlockChips==="function") buildBlockChips();
+      if(typeof loadDayState==="function") loadDayState();
+      if(typeof render==="function") render();
+      if(typeof updateLinkBtn==="function") updateLinkBtn();
+      if(typeof obRefreshFromExcel==="function") obRefreshFromExcel();
+      if(typeof updSiStatus==="function") updSiStatus();
+    }catch(e){ try{ console.error("pubApply:",e); }catch(_){} }
+  };
 })();
 </script>
 </body>
