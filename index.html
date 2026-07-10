@@ -887,7 +887,7 @@ function setSaveDot(state2, when){
   else if(state2 === "err"){ d.classList.add("err"); d.textContent = "Niet opgeslagen!"; }
 }
 async function syncWrite(){
-  if(window.WL_blockWrite && window.WL_blockWrite()){ if(typeof setSaveDot==="function") setSaveDot("err"); return; }
+  if(window.WL_blockWrite && window.WL_blockWrite("any")){ if(typeof setSaveDot==="function") setSaveDot("err"); return; }
   if(window.__verOutdated && window.__verOutdated()){ return; }
   sync.timer = null;
   if(!sync.handle || !(await syncPerm(true))){ setSaveDot("err"); return; }
@@ -907,9 +907,10 @@ async function syncWrite(){
       days:(old.days && typeof old.days==="object") ? old.days : {},
       hist:(old.hist && typeof old.hist==="object") ? old.hist : {},
       tasks:pick("tasks"), order:pick("order"), obPlace:pick("obPlace"),
-      obTpl:pick("obTpl"), obHours:pick("obHours"), obColors:pick("obColors")
+      obTpl:pick("obTpl"), obTpls:pick("obTpls"), obTplDay:pick("obTplDay"), obLog:pick("obLog"), obHours:pick("obHours"), obColors:pick("obColors")
     };
     if(old.presence) doc.presence = old.presence;
+    Object.keys(old).forEach(function(k){ if(doc[k]===undefined) doc[k]=old[k]; });
     Object.keys(D.days||{}).forEach(function(k){ if(local.days[k]!==undefined) doc.days[k]=local.days[k]; });
     if(D.fields.hist){ Object.keys(local.hist||{}).forEach(function(d){ doc.hist[d]=local.hist[d]; }); }
     if(t0 && t0.length>5){ try{ var baks=(await idb.get("vp_baks"))||[]; baks.push({ts:Date.now(),txt:t0}); while(baks.length>5) baks.shift(); await idb.set("vp_baks",baks); }catch(e){} }
@@ -2509,7 +2510,7 @@ window.obApplyTemplate=function(std, silent){
 };
 var obTplMode=false;
 function obSaveTemplate(){
-  if(window.WL_blockWrite && window.WL_blockWrite()){ toast("Klik eerst op Bewerken"); return; }
+  if(window.WL_blockWrite && window.WL_blockWrite("out")){ toast("Klik eerst op Bewerken"); return; }
   if(!obTplMode){ toast("\u26a0 Sjabloon opslaan kan enkel in Template-modus \u2014 zo blijft je standaard zuiver"); return; }
   var oldp=document.getElementById("tplSavePop"); if(oldp&&oldp.parentNode) oldp.parentNode.removeChild(oldp);
   var cur=JSON.parse(JSON.stringify(obDepts));
@@ -2546,7 +2547,7 @@ function obSaveTemplate(){
   });
 }
 ﻿function obLoadTemplate(){
-  if(window.WL_blockWrite && window.WL_blockWrite()){ toast("Klik eerst op Bewerken"); return; }
+  if(window.WL_blockWrite && window.WL_blockWrite("out")){ toast("Klik eerst op Bewerken"); return; }
   var oldp=document.getElementById("tplLoadPop"); if(oldp&&oldp.parentNode) oldp.parentNode.removeChild(oldp);
   var def=store.get("vp_ob_template");
   var prev=store.get("vp_ob_template_prev");
@@ -3031,9 +3032,10 @@ if(store.get("vp_view")==="outbound") switchView("outbound");
       var perm=await dir.queryPermission({mode:"readwrite"});
       if(perm!=="granted"){ _dir=null; render(null); return; }
       if(document.visibilityState==="visible" && (Date.now()-lastWrite>=BEAT-1500)){
-        try{ var fh=await dir.getFileHandle("presence-"+CID+".json",{create:true}); var w=await fh.createWritable(); await w.write(JSON.stringify({id:CID,label:label(),view:viewMode(),ts:Date.now()})); await w.close(); lastWrite=Date.now(); }catch(e){}
+        try{ var _sub=await dir.getDirectoryHandle("wie-is-bezig",{create:true}); try{ await dir.removeEntry("presence-"+CID+".json"); }catch(e){} var fh=await _sub.getFileHandle("presence-"+CID+".json",{create:true}); var w=await fh.createWritable(); await w.write(JSON.stringify({id:CID,label:label(),view:viewMode(),ts:Date.now()})); await w.close(); lastWrite=Date.now(); }catch(e){}
       }
       var list=[];
+      try{ var _sub2=await dir.getDirectoryHandle("wie-is-bezig"); for await (var e2 of _sub2.values()){ if(e2.kind==="file" && /^presence-.*\.json$/i.test(e2.name)){ try{ var f9=await e2.getFile(); var t9=await f9.text(); if(t9){ var o9=JSON.parse(t9); if(o9&&o9.id) list.push(o9); } }catch(e){} } } }catch(e){}
       for await (var entry of dir.values()){
         if(entry.kind==="file" && /^presence-.*\.json$/i.test(entry.name)){
           try{ var f=await entry.getFile(); var t=await f.text(); if(t){ var o=JSON.parse(t); if(o&&o.id) list.push(o); } }catch(e){}
@@ -3049,8 +3051,8 @@ if(store.get("vp_view")==="outbound") switchView("outbound");
 
 ﻿<!-- ================= SCHRIJF-SLOT (write-lock) v1 ================= -->
 <style>
-#wlBtn{order:99;margin-left:auto;min-width:250px;white-space:nowrap;text-align:center}
-body.wl-ro .pool, body.wl-ro .tasks, body.wl-ro #obBoard, body.wl-ro #absGrid{ opacity:.92; } body.wl-ro .pool .chip, body.wl-ro .tasks .chip, body.wl-ro #obBoard .chip, body.wl-ro #obBoard .tcard, body.wl-ro #absGrid .chip, body.wl-ro .obl-chip{ pointer-events:none; }
+#wlBtn{display:none !important}
+/* wl-ro pointer-blokkade vervangen door wl-ro-in / wl-ro-out (slot v2) */
 body.wl-ro::after{ content:"LEES-MODUS - klik Bewerken om te wijzigen"; position:fixed; left:50%; bottom:10px; transform:translateX(-50%); z-index:9997; background:rgba(246,201,69,.14); border:1px solid #f6c945; color:#f6c945; font:600 12px/1 var(--fb,sans-serif); padding:7px 14px; border-radius:999px; pointer-events:none; }
 body.wl-ro.board::after{ display:none; }
 </style>
@@ -3089,8 +3091,8 @@ body.wl-ro.board::after{ display:none; }
   async function doRenew(){ if(!iHold) return; var r=await readDoc(); if(!r) return; var lock=r.doc.lock; if(lock && lock.holder && lock.holder!==CID && fresh(lock)){ iHold=false; stopRenew(); toast("Bewerk-rechten overgenomen door "+(lock.label||"iemand")); refresh(); return; } await writeLock({holder:CID,label:label(),ts:Date.now()}); }
   async function refresh(){ var r=await readDoc(); var lock=r?r.doc.lock:null; if(iHold && lock && lock.holder && lock.holder!==CID && fresh(lock)){ iHold=false; stopRenew(); toast("Bewerk-rechten overgenomen door "+(lock.label||"iemand")); } render(lock); }
   function start(){ render(null); refresh(); setInterval(refresh, TICK); }
-  if(document.readyState==="complete"||document.readyState==="interactive") setTimeout(start,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1600); });
-  window.addEventListener("focus", refresh);
+  /* slot v1 uitgeschakeld - vervangen door slot v2 per bord (v3.63) */
+  /* slot v1 focus-listener uit (v3.63) */
 })();
 </script>
 ﻿<!-- ============ versie-badge + animaties uit ============ -->
@@ -3100,7 +3102,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.62";
+  var APP_VERSION="v3.63";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3179,7 +3181,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.62";
+  var LOCAL=window.__APP_VERSION||"v3.63";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3195,7 +3197,7 @@ body.board #moreWrap{display:none}
       if(t==null) return; t=(""+t).trim();
       if(t && t!==LOCAL){
         outdated=true; window.__verLatest=t; showBanner();
-        var editing=((typeof window.WL_iHold==="function") && window.WL_iHold()) || ((typeof window.WL_blockWrite==="function") && !window.WL_blockWrite());
+        var editing=((typeof window.WL_iHold==="function") && window.WL_iHold()) || ((typeof window.WL_blockWrite==="function") && !window.WL_blockWrite("any"));
         if(!editing && !reloadT){ reloadT=setTimeout(function(){ doReload(t); }, 6000); }
       }
     }).catch(function(){});
@@ -3333,7 +3335,7 @@ body.wl-ro .ob-return{cursor:default}
   }
   window.obReturnMs=autoReturn;
   window.obSetReturn=function(name){
-    if(window.WL_blockWrite && window.WL_blockWrite()){ if(window.toast) window.toast("Klik eerst op Bewerken"); return; }
+    if(window.WL_blockWrite && window.WL_blockWrite("out")){ if(window.toast) window.toast("Klik eerst op Bewerken"); return; }
     var hm=hoursMap(); var cur=(hm[name]||{}).terug||"";
     var v=prompt("Eerste werkdag terug voor "+name+"\n(leeg = automatisch uit planning):", cur);
     if(v===null) return; v=(""+v).trim();
@@ -3436,7 +3438,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   ];
   var secSel=null, secTV=false;
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function secGetAll(){ try{ var p=store.get("vp_ob_place")||{}; return p.sector||{}; }catch(e){ return {}; } }
   function secSave(all){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.sector=all; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
@@ -3629,7 +3631,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   var MERK_COL={MSI:["#16a085","#eafff9"],VOTEX:["#e67e22","#2a1500"],SKODA:["#27ae60","#eafff1"],SEAT:["#c0392b","#ffecec"],VW:["#2980b9","#eaf4ff"],PORSCHE:["#f1c40f","#2a2400"],LKW:["#8e44ad","#f6eaff"]};
   function merkColor(m){ if(MERK_COL[m]) return MERK_COL[m]; var hh=0; for(var i=0;i<m.length;i++) hh=(hh*31+m.charCodeAt(i))%360; return ["hsl("+hh+",52%,44%)","#ffffff"]; }
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
   function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
   function levGet(date){ try{ var p=store.get("vp_ob_place")||{}; var v=p.leveringen&&p.leveringen[date];
       if(Array.isArray(v)) return v.map(function(it){ return {m:it.m||it.t||"", k:(it.k==="express"?"express":"stock")}; });
@@ -3820,7 +3822,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   "use strict";
   var obs=null, t=null;
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function inEdit(){ try{ return (typeof obEdit!=="undefined" && obEdit) && !blocked(); }catch(e){ return false; } }
   function getHM(){ try{ return store.get("vp_ob_hours")||{}; }catch(e){ return {}; } }
@@ -4219,7 +4221,7 @@ body.tplmode #obTplSave{display:inline-block !important}
 (function(){
   "use strict";
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return true; } }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return true; } }
   function realToday(){ var n=new Date(); return n.getFullYear()+"-"+("0"+(n.getMonth()+1)).slice(-2)+"-"+("0"+n.getDate()).slice(-2); }
   function check(){
     try{
@@ -4328,7 +4330,7 @@ body.board #mpView{display:none}
   var DEF_TASKS=["Picking Nacht","Stock 01039","Stock T400","Stock 04805","Stock HEKLA","Stock Carglass","Uitdragen P","Uitdragen M","Tellingen P","Tellingen M"];
   var mpSel=null, mpTV=false;
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
   function getMP(){ try{ var p=store.get("vp_ob_place")||{}; return p.mp||{}; }catch(e){ return {}; } }
   function saveMP(mp){ try{ var p=store.get("vp_ob_place")||{depts:(typeof obDepts!=="undefined"&&obDepts)?obDepts:[]}; p.mp=mp; store.set("vp_ob_place",p); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
@@ -4588,7 +4590,7 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
   };
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite()); }catch(e){ return false; } }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
   function logAdd(txts){
     if(!txts||!txts.length) return;
     try{
@@ -4775,6 +4777,122 @@ body.ob-edit #outboundView .ob-ddel{font-size:19px;padding:0 9px}
   }
   setInterval(chk,5000);
   if(document.readyState!=="loading") setTimeout(chk,3000); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(chk,3000); });
+})();
+</script>
+<!-- ============ SCHRIJF-SLOT v2: apart slot per bord (v3.63) ============ -->
+<style>
+#wlBtnIn,#wlBtnOut{white-space:nowrap;text-align:center;min-width:175px}
+#wlBtnIn{order:98;margin-left:auto}
+#wlBtnOut{order:99}
+body.wl-ro-in #inboundView .pool, body.wl-ro-in #inboundView .tasks, body.wl-ro-in #absGrid{opacity:.92}
+body.wl-ro-in #inboundView .pool .chip, body.wl-ro-in #inboundView .tasks .chip, body.wl-ro-in #absGrid .chip{pointer-events:none}
+body.wl-ro-out #outboundView .pool, body.wl-ro-out #obBoard{opacity:.92}
+body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl-ro-out #obBoard .tcard, body.wl-ro-out .obl-chip{pointer-events:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  var LEASE=75000, RENEW=20000, TICK=8000;
+  var hold={in:false,out:false};
+  var renewT=null;
+  function cid(){ try{ var v=localStorage.getItem("vp_client"); if(v) return JSON.parse(v); }catch(e){} return "pc"; }
+  var CID=cid();
+  function label(){ try{ var v=localStorage.getItem("vp_pc_label"); if(v) return JSON.parse(v); }catch(e){} return "PC "+CID; }
+  function toast(m){ try{ if(typeof window.toast==="function") window.toast(m); }catch(e){} }
+  function fresh(l){ return l && l.holder && (Date.now()-(l.ts||0)<LEASE); }
+  window.WL_iHold=function(){ return hold.in||hold.out; };
+  window.WL_blockWrite=function(kind){
+    if(kind==="in") return !hold.in;
+    if(kind==="out") return !hold.out;
+    return !(hold.in||hold.out);
+  };
+  async function readDoc(){
+    try{
+      if(typeof sync==="undefined"||!sync||!sync.handle) return null;
+      var p=await sync.handle.queryPermission({mode:"readwrite"});
+      if(p!=="granted") return null;
+      var f=await sync.handle.getFile();
+      var t=await f.text();
+      if(!t||t.length<5) return {doc:{},lm:f.lastModified};
+      return {doc:JSON.parse(t)||{},lm:f.lastModified};
+    }catch(e){ return null; }
+  }
+  async function writeLock(kind,val){
+    for(var i=0;i<3;i++){
+      var r=await readDoc(); if(!r) return false;
+      try{
+        var doc=r.doc; if(!doc.locks) doc.locks={};
+        doc.locks[kind]=val;
+        var f2=await sync.handle.getFile();
+        if(f2.lastModified!==r.lm) continue;
+        var w=await sync.handle.createWritable();
+        await w.write(JSON.stringify(doc)); await w.close();
+        return true;
+      }catch(e){}
+    }
+    return false;
+  }
+  function btn(id,kind){
+    var b=document.getElementById(id);
+    if(!b){
+      var host=document.querySelector(".topbar-in")||document.body;
+      b=document.createElement("button"); b.id=id; b.className="btn";
+      b.addEventListener("click",function(){ onClick(kind); });
+      host.appendChild(b);
+    }
+    return b;
+  }
+  function paint(kind,lock){
+    var b=btn(kind==="in"?"wlBtnIn":"wlBtnOut",kind);
+    var nm=(kind==="in"?"Inbound":"Outbound");
+    if(hold[kind]){ b.textContent="\u2705 "+nm+" \u00b7 jij bewerkt"; b.style.borderColor="#3ddc97"; b.style.color="#3ddc97"; }
+    else if(fresh(lock)&&lock.holder!==CID){ b.textContent="\ud83d\udd12 "+nm+" \u00b7 "+(lock.label||"?"); b.style.borderColor="#f6c945"; b.style.color="#f6c945"; }
+    else { b.textContent="\u270f "+nm+" bewerken"; b.style.borderColor=""; b.style.color=""; }
+    document.body.classList.toggle(kind==="in"?"wl-ro-in":"wl-ro-out", !hold[kind]);
+    document.body.classList.toggle("wl-ro", !hold.in && !hold.out);
+  }
+  async function claim(kind,force){
+    var r=await readDoc(); if(!r){ toast("Geen sync-koppeling op dit toestel"); return; }
+    var lock=(r.doc.locks||{})[kind];
+    if(fresh(lock)&&lock.holder!==CID&&!force){
+      if(!confirm((lock.label||"Iemand")+" bewerkt nu "+(kind==="in"?"inbound":"outbound")+". Toch overnemen? Dan kan die niet meer opslaan.")) return;
+      return claim(kind,true);
+    }
+    var ok=await writeLock(kind,{holder:CID,label:label(),ts:Date.now()});
+    if(ok){ hold[kind]=true; startRenew(); toast("Je bewerkt nu "+(kind==="in"?"inbound":"outbound")); }
+    else toast("Niet gelukt \u2014 probeer opnieuw");
+    refresh();
+  }
+  async function release(kind){ hold[kind]=false; if(!hold.in&&!hold.out) stopRenew(); await writeLock(kind,null); toast((kind==="in"?"Inbound":"Outbound")+" vrijgegeven"); refresh(); }
+  function onClick(kind){ if(hold[kind]) release(kind); else claim(kind,false); }
+  function startRenew(){ if(renewT) return; renewT=setInterval(doRenew,RENEW); }
+  function stopRenew(){ if(renewT){ clearInterval(renewT); renewT=null; } }
+  async function doRenew(){
+    if(!hold.in&&!hold.out){ stopRenew(); return; }
+    var r=await readDoc(); if(!r) return;
+    var kinds=["in","out"];
+    for(var i=0;i<kinds.length;i++){
+      var kind=kinds[i];
+      if(!hold[kind]) continue;
+      var lock=(r.doc.locks||{})[kind];
+      if(lock&&lock.holder&&lock.holder!==CID&&fresh(lock)){ hold[kind]=false; toast((kind==="in"?"Inbound":"Outbound")+"-bewerking overgenomen door "+(lock.label||"iemand")); continue; }
+      await writeLock(kind,{holder:CID,label:label(),ts:Date.now()});
+    }
+    if(!hold.in&&!hold.out) stopRenew();
+    refresh();
+  }
+  async function refresh(){
+    var r=await readDoc();
+    var locks=r?(r.doc.locks||{}):{};
+    ["in","out"].forEach(function(kind){
+      var lock=locks[kind];
+      if(hold[kind]&&lock&&lock.holder&&lock.holder!==CID&&fresh(lock)){ hold[kind]=false; toast((kind==="in"?"Inbound":"Outbound")+"-bewerking overgenomen door "+(lock.label||"iemand")); }
+      paint(kind,lock);
+    });
+  }
+  function start(){ paint("in",null); paint("out",null); refresh(); setInterval(refresh,TICK); }
+  if(document.readyState!=="loading") setTimeout(start,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1700); });
+  window.addEventListener("focus",refresh);
 })();
 </script>
 </body>
