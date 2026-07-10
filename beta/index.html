@@ -1105,7 +1105,7 @@ function sheetForWeek(wk){
 }
 
 function setSheet(name){
-  if(!state.wb) return; var m = parseSheet(XLSX, state.wb, name);
+  if(!state.wb){ if(window.pubSetWeek) window.pubSetWeek(name); return; } var m = parseSheet(XLSX, state.wb, name);
   if(!m){ banner("err", "Kon blad “" + esc(name) + "” niet lezen — structuur niet herkend."); return; }
   state.model = m;
   $("#weekSel").value = name;
@@ -2166,7 +2166,7 @@ function avondActief(){
   return min>=18*60;                          // ma–do vanaf 18u
 }
 function siForDay(){
-  if(!siWb && !state.wb && window.__PUB && window.__PUB.si){ var _pl=window.__PUB.si[state.dayKey]; return _pl?JSON.parse(JSON.stringify(_pl)):[]; }
+  if(!siWb && !state.wb && window.__PUB){ var _pw=window.__PUB.weeks?(window.__PUB.weeks[state.model&&state.model.sheet]||null):((window.__PUB.model&&state.model&&window.__PUB.model.sheet===state.model.sheet)?{si:window.__PUB.si}:null); var _pl=_pw&&_pw.si?_pw.si[state.dayKey]:null; return _pl?JSON.parse(JSON.stringify(_pl)):[]; }
   if(!siWb || !state.model || state.model.week==null) return [];
   /* tolerante bladnaam: KW26, "KW 26", "WEEK 26", "26" */
   var wk = state.model.week, sheet = null, NN = siWb.SheetNames;
@@ -2407,7 +2407,7 @@ function obPloegStart(ploeg){
     var m = cell && cell.v ? (""+cell.v).match(/(\d{1,2}):(\d{2})/) : null;
     if(m) return (+m[1])*60 + (+m[2]);
   }catch(e){}
-  try{ if(!state.wb && window.__PUB && window.__PUB.ploegStart && window.__PUB.ploegStart[ploeg]!=null) return window.__PUB.ploegStart[ploeg]; }catch(e){}
+  try{ if(!state.wb && window.__PUB){ var _pw2=window.__PUB.weeks?(window.__PUB.weeks[state.model&&state.model.sheet]||null):{ploegStart:window.__PUB.ploegStart}; if(_pw2&&_pw2.ploegStart&&_pw2.ploegStart[ploeg]!=null) return _pw2.ploegStart[ploeg]; } }catch(e){}
   return ploeg==="A" ? 13*60 : 10*60;  /* fallback */
 }
 /* standaard ploeguren: start uit Excel + 8u werkdag; vrijdag 2u korter */
@@ -3116,7 +3116,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.66b";
+  var APP_VERSION="v3.67b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3195,7 +3195,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.66b";
+  var LOCAL=window.__APP_VERSION||"v3.67b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5200,6 +5200,125 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     ref.parentNode.insertBefore(b, ref.nextSibling);
   }
   if(document.readyState!=="loading") setTimeout(btn,900); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(btn,900); });
+})();
+</script>
+<!-- ============ pub v2: huidige + volgende week publiceren (v3.67b) ============ -->
+<script>
+(function(){
+  "use strict";
+  var T=null, SIG="";
+  function buildWeek(sheetName){
+    var save=state.model, saveD=state.dayKey, out=null;
+    try{
+      var m=parseSheet(XLSX,state.wb,sheetName);
+      if(m){
+        state.model=m;
+        var roster={}, si={};
+        (m.dayKeys||[]).forEach(function(k){
+          state.dayKey=k;
+          try{ roster[k]=(typeof obFromExcel==="function"?obFromExcel():null)||[]; }catch(e){ roster[k]=[]; }
+          try{ si[k]=(typeof siForDay==="function"?siForDay():null)||[]; }catch(e){ si[k]=[]; }
+        });
+        var ps=null; try{ ps={A:obPloegStart("A"),B:obPloegStart("B")}; }catch(e){}
+        out={model:{sheet:m.sheet,week:m.week,monday:(m.monday?m.monday.getTime():null),dayKeys:m.dayKeys,blocks:m.blocks,grid:m.grid},roster:roster,si:si,ploegStart:ps};
+      }
+    }catch(e){ out=null; }
+    state.model=save; state.dayKey=saveD;
+    return out;
+  }
+  function build(){
+    try{
+      if(typeof state==="undefined"||!state||!state.wb||!state.model) return null;
+      var cur=state.model.sheet, weeks={};
+      var w0=buildWeek(cur); if(!w0) return null; weeks[cur]=w0;
+      var nn=parseInt(cur,10);
+      if(!isNaN(nn) && state.wb.Sheets[String(nn+1)]){ var w1=buildWeek(String(nn+1)); if(w1) weeks[String(nn+1)]=w1; }
+      var terug={};
+      try{ ((w0.roster||{})[state.dayKey]||[]).forEach(function(p){ if(p&&p.status!=="aanwezig"&&typeof window.obReturnMs==="function"){ var t=window.obReturnMs(p.name); if(t) terug[(""+p.name).trim().toUpperCase()]=t; } }); }catch(e){}
+      return {v:2,updated:Date.now(),cur:cur,planTS:window.__planTS||null,siTS:window.__siTS||null,terug:terug,weeks:weeks};
+    }catch(e){ return null; }
+  }
+  async function push(){
+    T=null;
+    try{
+      if(typeof sync==="undefined"||!sync||!sync.handle) return;
+      var data=build(); if(!data) return;
+      var sig=JSON.stringify({c:data.cur,p:data.planTS,i:data.siTS,w:Object.keys(data.weeks),r:data.weeks[data.cur].roster,s:data.weeks[data.cur].si,t:data.terug});
+      if(sig===SIG) return;
+      var f=await sync.handle.getFile();
+      var t0=await f.text();
+      var doc=(t0&&t0.length>5)?(JSON.parse(t0)||{}):{};
+      doc.pub=data;
+      var w=await sync.handle.createWritable();
+      await w.write(JSON.stringify(doc)); await w.close();
+      SIG=sig;
+      try{ console.log("pub v2: gepubliceerd (weken "+Object.keys(data.weeks).join(", ")+")"); }catch(e){}
+    }catch(e){ try{ console.error("pub push (opnieuw over 10 s):",e); }catch(_){} clearTimeout(T); T=setTimeout(push,10000); }
+  }
+  window.pubSchedule=function(){ try{ if(typeof state==="undefined"||!state||!state.wb) return; clearTimeout(T); T=setTimeout(push,2500); }catch(e){} };
+  /* ---- consumer ---- */
+  function wkOf(pub,sheet){
+    if(!pub||!sheet) return null;
+    if(pub.weeks) return pub.weeks[sheet]||null;
+    if(pub.model&&pub.model.sheet===sheet) return {model:pub.model,roster:pub.roster,si:pub.si,ploegStart:pub.ploegStart};
+    return null;
+  }
+  window.pubRosterDay=function(){
+    try{
+      if(state.wb) return null;
+      var w=wkOf(window.__PUB, state.model&&state.model.sheet); if(!w||!w.roster) return null;
+      var l=w.roster[state.dayKey];
+      return l?JSON.parse(JSON.stringify(l)):null;
+    }catch(e){ return null; }
+  };
+  function applyWeek(pub,sheet,keepDay){
+    var w=wkOf(pub,sheet); if(!w||!w.model||!w.model.blocks) return false;
+    var m=JSON.parse(JSON.stringify(w.model));
+    m.monday=(w.model.monday!=null)?new Date(w.model.monday):null;
+    state.model=m;
+    var ds=document.getElementById("daySel");
+    if(ds){ ds.innerHTML=""; (m.dayKeys||[]).forEach(function(k,i){ var o2=document.createElement("option"); o2.value=k; o2.textContent=DAY_TOKENS[k]+(m.monday?" "+fmtDate(new Date(m.monday.getTime()+i*86400000)):""); ds.appendChild(o2); }); }
+    var dc=document.getElementById("dayCtrl"); if(dc) dc.hidden=false;
+    var todayKey=["MA","DI","WO","DO","VR","ZA","ZO"][(new Date().getDay()+6)%7];
+    state.dayKey=(keepDay&&state.dayKey&&m.dayKeys.indexOf(state.dayKey)>=0)?state.dayKey:(m.dayKeys.indexOf(todayKey)>=0?todayKey:m.dayKeys[0]);
+    if(ds) ds.value=state.dayKey;
+    if(typeof buildBlockChips==="function") buildBlockChips();
+    if(typeof loadDayState==="function") loadDayState();
+    if(typeof render==="function") render();
+    if(typeof obRefreshFromExcel==="function") obRefreshFromExcel();
+    if(typeof updSiStatus==="function") updSiStatus();
+    return true;
+  }
+  window.pubSetWeek=function(sheet){
+    try{
+      if(state.wb) return;
+      var pub=window.__PUB; if(!pub) return;
+      if(applyWeek(pub,sheet,false)){ var sel=document.getElementById("weekSel"); if(sel) sel.value=sheet; }
+    }catch(e){}
+  };
+  window.pubApply=function(pub){
+    try{
+      if(typeof state==="undefined"||!state||state.wb) return;
+      if(!pub) return;
+      window.__PUB=pub;
+      if(window.__pubStamp===pub.updated && state.model) return;
+      window.__pubStamp=pub.updated;
+      var sheets=pub.weeks?Object.keys(pub.weeks):((pub.model&&pub.model.sheet)?[pub.model.sheet]:[]);
+      if(!sheets.length) return;
+      sheets.sort(function(a,b){ return parseInt(a,10)-parseInt(b,10); });
+      state.weeks=sheets.map(function(s){ var w=wkOf(pub,s); return {sheet:s,week:w.model.week,monday:(w.model.monday!=null?new Date(w.model.monday):null)}; });
+      var sel=document.getElementById("weekSel");
+      if(sel){ sel.innerHTML=""; state.weeks.forEach(function(w2){ var o=document.createElement("option"); o.value=w2.sheet; o.textContent="Week "+(w2.week!==null?w2.week:w2.sheet)+(w2.monday?" \u00b7 "+fmtDate(w2.monday):""); sel.appendChild(o); }); }
+      var wc=document.getElementById("weekCtrl"); if(wc) wc.hidden=false;
+      var act=(state.model&&wkOf(pub,state.model.sheet))?state.model.sheet:((pub.cur&&wkOf(pub,pub.cur))?pub.cur:sheets[0]);
+      applyWeek(pub,act,true);
+      if(sel) sel.value=act;
+      state.fileInfo="\u2601 via database \u00b7 "+(typeof fmtDT==="function"?fmtDT(pub.updated):"");
+      state.lastLoad=Date.now();
+      if(typeof updateLinkBtn==="function") updateLinkBtn();
+      try{ if(typeof toast==="function") toast("\u2601 Planning uit database geladen ("+state.weeks.map(function(w3){ return "wk "+(w3.week!=null?w3.week:w3.sheet); }).join(" + ")+")"); }catch(e){}
+    }catch(e){ try{ console.error("pubApply v2:",e); }catch(_){} }
+  };
 })();
 </script>
 </body>
