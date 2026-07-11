@@ -823,7 +823,8 @@ function onVpStoreSet(k){
   else if(k==="vp_ob_log") SYNC_DIRTY.fields.obLog=1;
   else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1; else if(k==="vp_ob_hist") SYNC_DIRTY.fields.obhist=1;
   else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
-  else if(k==="vp_ob_home") SYNC_DIRTY.fields.obHome=1;
+  else if(k==="vp_ob_home") SYNC_DIRTY.fields.obHome=1;
+  else if(k==="vp_ob_min") SYNC_DIRTY.fields.obMin=1;
   else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
 }
 function updateSyncTitle(){ try{ var d=document.getElementById("saveDot"); if(!d) return; function hm(t){ if(!t) return "-"; var x=new Date(t); return ("0"+x.getHours()).slice(-2)+":"+("0"+x.getMinutes()).slice(-2); } d.title="Sync - laatst gelezen "+hm(SYNC_LAST_READ)+" - laatst geschreven "+hm(SYNC_LAST_WRITE); }catch(e){} }
@@ -837,7 +838,7 @@ function collectLocal(){
       }
     }
   }catch(e){}
-  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obLog:store.get("vp_ob_log") || [], obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obHome:store.get("vp_ob_home") || null, obhist:store.get("vp_ob_hist") || {}};
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obLog:store.get("vp_ob_log") || [], obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obHome:store.get("vp_ob_home") || null, obMin:store.get("vp_ob_min") || null, obhist:store.get("vp_ob_hist") || {}};
 }
 async function syncPerm(ask){
   if(!sync.handle) return false;
@@ -870,6 +871,7 @@ async function syncRead(force){
     if(doc.obHours){ store.set("vp_ob_hours", doc.obHours); }
     if(doc.obColors){ store.set("vp_ob_deptcolors", doc.obColors); }
     if(doc.obHome){ store.set("vp_ob_home", doc.obHome); }
+    if(doc.obMin){ store.set("vp_ob_min", doc.obMin); }
     rebuildTasks();
     if(state.model) loadDayState();
     render();
@@ -910,7 +912,7 @@ async function syncWrite(){
       hist:(old.hist && typeof old.hist==="object") ? old.hist : {},
       obhist:(old.obhist && typeof old.obhist==="object") ? old.obhist : {},
       tasks:pick("tasks"), order:pick("order"), obPlace:pick("obPlace"),
-      obTpl:pick("obTpl"), obTpls:pick("obTpls"), obTplDay:pick("obTplDay"), obLog:pick("obLog"), obHours:pick("obHours"), obColors:pick("obColors"), obHome:pick("obHome")
+      obTpl:pick("obTpl"), obTpls:pick("obTpls"), obTplDay:pick("obTplDay"), obLog:pick("obLog"), obHours:pick("obHours"), obColors:pick("obColors"), obHome:pick("obHome"), obMin:pick("obMin")
     };
     if(old.presence) doc.presence = old.presence;
     Object.keys(old).forEach(function(k){ if(doc[k]===undefined) doc[k]=old[k]; });
@@ -1519,11 +1521,12 @@ function render(){
       } else {
         var hc = selCounts[t] || 0;
         body += '<div class="thint">+ ' + esc(state.selected) + " hier plaatsen" +
-                "<small>" + (hc ? "al " + hc + "× in laatste " + HIST_DAGEN + " dagen" : "nog niet gedaan recent") + "</small></div>";
+                "<small>" + (hc ? "al " + hc + "× in laatste " + HIST_DAGEN + " dagen" : "nog niet gedaan recent") + (window.rotLastIn?window.rotLastIn(state.selected,t):"") + "</small></div>";
       }
     } else if(!vis.length){
       body += '<div class="thint">Klik een naam links, daarna deze taak</div>';
     }
+    if(!state.selected && window.rotHintIn){ body += window.rotHintIn(t, planned); }
     var del = isCustomTask(t) ? '<button class="tdel" data-deltask="' + esc(t) + '" title="Taak verwijderen">×</button>' : "";
     card.innerHTML = "<header><span class='tname'>" + esc(t) + "</span>" + del + "<span class='tcount'>" + vis.length + "</span></header>" +
                      "<div class='tbody'>" + body + "</div>";
@@ -2781,13 +2784,14 @@ function obRender(){
        gaat de planning niet verloren. */
     var hideOff = !!state.board || laterOn; var dn=d.names.filter(function(n){ return !(SW[n] && SW[n]!==d.label); }); Object.keys(SW).forEach(function(n){ if(SW[n]===d.label && dn.indexOf(n)<0) dn.push(n); });
     var visNames = dn.filter(function(n){ var p=byName[n]; return p && !(hideOff && p._buitenUren); });
-    html+='<div class="tcard'+dropCls+'" data-di="'+di+'" style="--hue:'+hue+'">'+
+    var minCls=(window.obMinClass?window.obMinClass(d.label,visNames,byName):""); html+='<div class="tcard'+dropCls+minCls+'" data-di="'+di+'" style="--hue:'+hue+'">'+
       '<header><span class="tname" data-di="'+di+'">'+esc(d.label)+'</span>'+
-      '<span class="tcount">'+visNames.length+'</span>'+
+      '<span class="tcount">'+visNames.length+'</span>'+((window.obMinBadge)?window.obMinBadge(d.label,visNames,byName):"")+
       (obEdit?'<input type="color" class="ob-colpick" data-label="'+esc(d.label)+'" value="'+esc(hue)+'" title="Kleur van deze afdeling">':'')+
       (obEdit?'<span class="ob-ddel" data-di="'+di+'" title="Afdeling verwijderen">×</span>':'')+'</header>'+
       '<div class="tbody" data-di="'+di+'">';
-    if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen</div>'; }
+    if(obSel){ html+='<div class="thint">+ '+esc(obSel)+' hier plaatsen'+(window.rotLastOb?window.rotLastOb(obSel,d.label):'')+'</div>'; }
+    if(!obSel && window.rotHintOb){ html+=window.rotHintOb(d.label, placed, byName); }
     else if(!visNames.length){ html+='<div class="thint">Klik een naam links, dan deze afdeling</div>'; }
     dn.slice().sort(function(x,y){ function rk(n){ var p=byName[n]; if(!p) return 9e15; var zv=p&&(p.status==="verlof"||(p.status==="afwezig"&&p.badge==="ziek")); if(zv){ var ms=(window.obReturnMs?window.obReturnMs(p.name):null); return ms?(1e12+ms/1e6):8e15; } if(p._avond) return 3; return p.ploeg==="A"?0:(p.ploeg==="B"?1:2); } return rk(x)-rk(y); }).forEach(function(n){ var p=byName[n]; if(!p) return; if(hideOff && p._buitenUren){ if(laterOn) laterList.push({p:p,label:d.label,di:di,hue:hue}); return; } html+=obChipHTML(p,"dept",d.label); });
     html+='</div></div>';
@@ -3113,7 +3117,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.67";
+  var APP_VERSION="v3.68";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3192,7 +3196,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.67";
+  var LOCAL=window.__APP_VERSION||"v3.68";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4994,6 +4998,124 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     ref.parentNode.insertBefore(b, ref.nextSibling);
   }
   if(document.readyState!=="loading") setTimeout(btn,900); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(btn,900); });
+})();
+</script>
+<!-- ============ rotatie-hulp + bezettingswaarschuwing (v3.68) ============ -->
+<style>
+.rot-hint{font-size:10.5px;color:#8fa6c9;border-top:1px dashed rgba(141,178,255,.2);margin-top:4px;padding-top:4px;line-height:1.35}
+.rot-hint small,.rot-last{color:#6f86ab}
+body.board .rot-hint{display:none}
+.ob-min{font:700 10px/1 var(--fb,system-ui,sans-serif);border-radius:6px;padding:3px 6px;margin-left:6px;white-space:nowrap;cursor:pointer}
+.ob-min.warn{background:#ff6b6b;color:#fff;animation:obMinPulse 1.4s ease-in-out infinite}
+.ob-min.ok{border:1px solid rgba(141,178,255,.3);color:#8fa6c9}
+.ob-min.setb{opacity:.55}
+.tcard.ob-short{border-color:#ff6b6b !important;box-shadow:0 0 0 2px rgba(255,107,107,.3)}
+@keyframes obMinPulse{0%,100%{opacity:.72}50%{opacity:1}}
+body.board .ob-min{font-size:.85vw;padding:.2vw .45vw;cursor:default}
+body.board .ob-min.ok,body.board .ob-min.setb{display:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function fD(d){ return d.slice(8,10)+"/"+d.slice(5,7); }
+  function mkIdx(hist, cutCnt){
+    var idx={};
+    Object.keys(hist||{}).forEach(function(d){
+      var day=hist[d]||{};
+      Object.keys(day).forEach(function(lbl){
+        var m=idx[lbl]||(idx[lbl]={});
+        (day[lbl]||[]).forEach(function(nm){
+          var k=window.obNrm(nm), e2=m[k]||(m[k]={last:null,cnt:0});
+          if(!e2.last||d>e2.last) e2.last=d;
+          if(d>=cutCnt) e2.cnt++;
+        });
+      });
+    });
+    return idx;
+  }
+  var _oc=null,_ot=0,_ic=null,_it=0;
+  function cut(){ var dg=(typeof HIST_DAGEN!=="undefined")?HIST_DAGEN:28; return new Date(Date.now()-dg*86400000).toISOString().slice(0,10); }
+  function obIdx(){ var now=Date.now(); if(_oc&&now-_ot<3000) return _oc; _oc=mkIdx(store.get("vp_ob_hist")||{},cut()); _ot=now; return _oc; }
+  function inIdx(){ var now=Date.now(); if(_ic&&now-_it<3000) return _ic; _ic=mkIdx(store.get("vp_hist")||{},cut()); _it=now; return _ic; }
+  function pick2(pool, m){
+    pool.sort(function(a,b){
+      var ea=m[window.obNrm(a)], eb=m[window.obNrm(b)];
+      var la=ea?ea.last:null, lb=eb?eb.last:null;
+      if(!la&&lb) return -1; if(la&&!lb) return 1;
+      if(la&&lb&&la!==lb) return la<lb?-1:1;
+      var ca=ea?ea.cnt:0, cb2=eb?eb.cnt:0; if(ca!==cb2) return ca-cb2;
+      return a.localeCompare(b);
+    });
+    return pool.slice(0,2).map(function(nm){
+      var e2=m[window.obNrm(nm)];
+      return esc(nm)+' <small>('+(e2&&e2.last?"laatst "+fD(e2.last):"nooit")+')</small>';
+    });
+  }
+  function hintHTML(top){ return top.length?('<div class="rot-hint" title="Rotatietip: wie uit de pool stond hier het langst niet">\ud83d\udd01 '+top.join(" \u00b7 ")+'</div>'):""; }
+  /* --- outbound --- */
+  window.rotHintOb=function(label, placed, byName){
+    try{
+      if(document.body.classList.contains("board")) return "";
+      var pool=[]; (obRoster||[]).forEach(function(p){ if(p&&p.status==="aanwezig"&&!p._avond&&!p._buitenUren&&!placed[p.name]) pool.push(p.name); });
+      if(!pool.length) return "";
+      return hintHTML(pick2(pool,(obIdx()[label])||{}));
+    }catch(e){ return ""; }
+  };
+  window.rotLastOb=function(name,label){
+    try{ var e2=((obIdx()[label])||{})[window.obNrm(name)]; return ' <small class="rot-last">('+(e2&&e2.last?("hier laatst "+fD(e2.last)):"nog nooit hier")+')</small>'; }catch(e){ return ""; }
+  };
+  /* --- inbound --- */
+  window.rotHintIn=function(task, planned){
+    try{
+      if(document.body.classList.contains("board")) return "";
+      var pool=[], seen={};
+      eachMember(function(mm2){
+        var nm=mm2.name; if(seen[nm]||planned[nm]) return; seen[nm]=1;
+        try{ if(effective(nm).status==="afwezig") return; }catch(e){}
+        pool.push(nm);
+      });
+      if(!pool.length) return "";
+      return hintHTML(pick2(pool,(inIdx()[task])||{}));
+    }catch(e){ return ""; }
+  };
+  window.rotLastIn=function(name,task){
+    try{ var e2=((inIdx()[task])||{})[window.obNrm(name)]; return ' <small class="rot-last">\u00b7 '+(e2&&e2.last?("laatst "+fD(e2.last)):"nooit eerder")+'</small>'; }catch(e){ return ""; }
+  };
+  /* --- bezetting --- */
+  function actief(visNames, byName){ var a=0; (visNames||[]).forEach(function(nm){ var p=byName[nm]; if(p&&p.status==="aanwezig"&&!p._buitenUren) a++; }); return a; }
+  window.obMinClass=function(label, visNames, byName){
+    try{ var min=(store.get("vp_ob_min")||{})[label]||0; if(!min) return ""; return actief(visNames,byName)<min?" ob-short":""; }catch(e){ return ""; }
+  };
+  window.obMinBadge=function(label, visNames, byName){
+    try{
+      var min=(store.get("vp_ob_min")||{})[label]||0;
+      var act=actief(visNames,byName);
+      if(min>0){
+        if(act<min) return '<span class="ob-min warn" data-minlbl="'+esc(label)+'" title="Onderbezet! Minimum '+min+', nu '+act+' actief. In Indeling-modus: klik om aan te passen.">\u26a0 '+act+'/'+min+'</span>';
+        return '<span class="ob-min ok" data-minlbl="'+esc(label)+'" title="Minimumbezetting '+min+' \u2014 in Indeling-modus: klik om aan te passen">'+act+'/'+min+'</span>';
+      }
+      if(typeof obEdit!=="undefined"&&obEdit) return '<span class="ob-min setb" data-minlbl="'+esc(label)+'" title="Minimumbezetting instellen voor deze afdeling">\ud83c\udfaf min</span>';
+      return "";
+    }catch(e){ return ""; }
+  };
+  document.addEventListener("click",function(e){
+    var b=(e.target&&e.target.closest)?e.target.closest(".ob-min"):null; if(!b) return;
+    if(document.body.classList.contains("board")) return;
+    e.stopPropagation(); e.preventDefault();
+    if(typeof obEdit==="undefined"||!obEdit){ toast("Zet eerst \u270e Indeling aan om het minimum aan te passen"); return; }
+    if(window.WL_blockWrite && window.WL_blockWrite("out")){ toast("Klik eerst op Bewerken"); return; }
+    var lbl=b.getAttribute("data-minlbl"); if(!lbl) return;
+    var mm=store.get("vp_ob_min")||{};
+    var v=prompt("Minimumbezetting voor "+lbl+" (leeg of 0 = geen alarm):", mm[lbl]||"");
+    if(v===null) return;
+    v=parseInt((""+v).trim(),10);
+    if(!v||v<=0){ delete mm[lbl]; } else { mm[lbl]=v; }
+    store.set("vp_ob_min", mm);
+    if(typeof scheduleSyncWrite==="function") scheduleSyncWrite();
+    toast(v>0?("\ud83c\udfaf Minimum voor "+lbl+": "+v):("Minimum voor "+lbl+" verwijderd"));
+    try{ if(typeof obRender==="function") obRender(); }catch(e2){}
+  },true);
 })();
 </script>
 </body>
