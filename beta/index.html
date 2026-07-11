@@ -3122,7 +3122,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.69b";
+  var APP_VERSION="v3.70b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3201,7 +3201,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.69b";
+  var LOCAL=window.__APP_VERSION||"v3.70b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5332,6 +5332,8 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
 .rot-hint{font-size:10.5px;color:#8fa6c9;border-top:1px dashed rgba(141,178,255,.2);margin-top:4px;padding-top:4px;line-height:1.35}
 .rot-hint small,.rot-last{color:#6f86ab}
 body.board .rot-hint{display:none}
+#rotBtnIn,#rotBtnOut{white-space:nowrap}
+body.board #rotBtnIn,body.board #rotBtnOut{display:none}
 .ob-min{font:700 10px/1 var(--fb,system-ui,sans-serif);border-radius:6px;padding:3px 6px;margin-left:6px;white-space:nowrap;cursor:pointer}
 .ob-min.warn{background:#ff6b6b;color:#fff;animation:obMinPulse 1.4s ease-in-out infinite}
 .ob-min.ok{border:1px solid rgba(141,178,255,.3);color:#8fa6c9}
@@ -5362,6 +5364,12 @@ body.board .ob-min.ok,body.board .ob-min.setb{display:none}
     return idx;
   }
   var _oc=null,_ot=0,_ic=null,_it=0;
+  function rotOn(){ try{ return (store.get("vp_rot_hint")||"uit")==="aan"; }catch(e){ return false; } }
+  function updRotBtns(){ ["rotBtnIn","rotBtnOut"].forEach(function(id){ var b=document.getElementById(id); if(b){ b.textContent="\ud83d\udd01 Rotatie: "+(rotOn()?"aan":"uit"); b.classList.toggle("primary", rotOn()); } }); }
+  function mkRotBtn(id){ var b=document.createElement("button"); b.className="btn"; b.id=id; b.title="Rotatietips tonen/verbergen: wie uit de pool stond hier het langst niet (instelling geldt per toestel)"; b.addEventListener("click",function(){ store.set("vp_rot_hint", rotOn()?"uit":"aan"); updRotBtns(); try{ if(typeof render==="function") render(); }catch(e){} try{ if(typeof obRender==="function") obRender(); }catch(e){} }); return b; }
+  function ensureRotBtns(){ try{ if(!document.getElementById("rotBtnOut")){ var bar=document.querySelector("#outboundView .ob-bar"); if(bar) bar.appendChild(mkRotBtn("rotBtnOut")); } if(!document.getElementById("rotBtnIn")){ var tb=document.querySelector(".topbar-in"); if(tb) tb.appendChild(mkRotBtn("rotBtnIn")); } updRotBtns(); }catch(e){} }
+  if(document.readyState!=="loading") setTimeout(ensureRotBtns,1200); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(ensureRotBtns,1200); });
+  setInterval(ensureRotBtns,7000);
   function cut(){ var dg=(typeof HIST_DAGEN!=="undefined")?HIST_DAGEN:28; return new Date(Date.now()-dg*86400000).toISOString().slice(0,10); }
   function obIdx(){ var now=Date.now(); if(_oc&&now-_ot<3000) return _oc; _oc=mkIdx(store.get("vp_ob_hist")||{},cut()); _ot=now; return _oc; }
   function inIdx(){ var now=Date.now(); if(_ic&&now-_it<3000) return _ic; _ic=mkIdx(store.get("vp_hist")||{},cut()); _it=now; return _ic; }
@@ -5381,7 +5389,7 @@ body.board .ob-min.ok,body.board .ob-min.setb{display:none}
   }
   function hintHTML(top){ return top.length?('<div class="rot-hint" title="Rotatietip: wie uit de pool stond hier het langst niet">\ud83d\udd01 '+top.join(" \u00b7 ")+'</div>'):""; }
   /* --- outbound --- */
-  window.rotHintOb=function(label, placed, byName){
+  window.rotHintOb=function(label, placed, byName){ if(!rotOn()) return "";
     try{
       if(document.body.classList.contains("board")) return "";
       var pool=[]; (obRoster||[]).forEach(function(p){ if(p&&p.status==="aanwezig"&&!p._avond&&!p._buitenUren&&!placed[p.name]) pool.push(p.name); });
@@ -5389,11 +5397,11 @@ body.board .ob-min.ok,body.board .ob-min.setb{display:none}
       return hintHTML(pick2(pool,(obIdx()[label])||{}));
     }catch(e){ return ""; }
   };
-  window.rotLastOb=function(name,label){
+  window.rotLastOb=function(name,label){ if(!rotOn()) return "";
     try{ var e2=((obIdx()[label])||{})[window.obNrm(name)]; return ' <small class="rot-last">('+(e2&&e2.last?("hier laatst "+fD(e2.last)):"nog nooit hier")+')</small>'; }catch(e){ return ""; }
   };
   /* --- inbound --- */
-  window.rotHintIn=function(task, planned){
+  window.rotHintIn=function(task, planned){ if(!rotOn()) return "";
     try{
       if(document.body.classList.contains("board")) return "";
       var pool=[], seen={};
@@ -5406,7 +5414,7 @@ body.board .ob-min.ok,body.board .ob-min.setb{display:none}
       return hintHTML(pick2(pool,(inIdx()[task])||{}));
     }catch(e){ return ""; }
   };
-  window.rotLastIn=function(name,task){
+  window.rotLastIn=function(name,task){ if(!rotOn()) return "";
     try{ var e2=((inIdx()[task])||{})[window.obNrm(name)]; return ' <small class="rot-last">\u00b7 '+(e2&&e2.last?("laatst "+fD(e2.last)):"nooit eerder")+'</small>'; }catch(e){ return ""; }
   };
   /* --- bezetting --- */
