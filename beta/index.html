@@ -909,6 +909,7 @@ async function syncWrite(){
       v:1, updated:Date.now(), writer:CLIENT_ID,
       days:(old.days && typeof old.days==="object") ? old.days : {},
       hist:(old.hist && typeof old.hist==="object") ? old.hist : {},
+      obhist:(old.obhist && typeof old.obhist==="object") ? old.obhist : {},
       tasks:pick("tasks"), order:pick("order"), obPlace:pick("obPlace"),
       obTpl:pick("obTpl"), obTpls:pick("obTpls"), obTplDay:pick("obTplDay"), obLog:pick("obLog"), obHours:pick("obHours"), obColors:pick("obColors"), obHome:pick("obHome")
     };
@@ -916,6 +917,7 @@ async function syncWrite(){
     Object.keys(old).forEach(function(k){ if(doc[k]===undefined) doc[k]=old[k]; });
     Object.keys(D.days||{}).forEach(function(k){ if(local.days[k]!==undefined) doc.days[k]=local.days[k]; });
     if(D.fields.hist){ Object.keys(local.hist||{}).forEach(function(d){ doc.hist[d]=local.hist[d]; }); }
+    if(D.fields.obhist){ doc.obhist=(window.vpMergeHist?window.vpMergeHist(doc.obhist||{}, local.obhist||{}):Object.assign(doc.obhist||{}, local.obhist||{})); }
     if(t0 && t0.length>5){ try{ var baks=(await idb.get("vp_baks"))||[]; baks.push({ts:Date.now(),txt:t0}); while(baks.length>5) baks.shift(); await idb.set("vp_baks",baks); }catch(e){} }
     sync.lastWrite = doc.updated;
     var w = await sync.handle.createWritable();
@@ -3116,7 +3118,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.67b";
+  var APP_VERSION="v3.68b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3195,7 +3197,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.67b";
+  var LOCAL=window.__APP_VERSION||"v3.68b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4058,14 +4060,14 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   window.renderObHist=function(){
     var body=document.getElementById("obHistBody"), head=document.getElementById("obHistHead"); if(!body) return;
     var hist=store.get("vp_ob_hist")||{}, R=window.histRange(), cur=(typeof curDateISO==="function")?curDateISO():null;
-    var secs=obSectors(), seen={}, counts={};
-    Object.keys(hist).forEach(function(d){ if(d<R.start||d>R.end||d===cur) return; var day=hist[d]; Object.keys(day).forEach(function(sec){ if(secs.indexOf(sec)<0) secs.push(sec); (day[sec]||[]).forEach(function(nm){ seen[nm]=1; if(!counts[nm]) counts[nm]={}; counts[nm][sec]=(counts[nm][sec]||0)+1; }); }); });
+    var secs=obSectors(), seen={}, counts={}, dates={};
+    Object.keys(hist).forEach(function(d){ if(d<R.start||d>R.end||d===cur) return; var day=hist[d]; Object.keys(day).forEach(function(sec){ if(secs.indexOf(sec)<0) secs.push(sec); (day[sec]||[]).forEach(function(nm){ seen[nm]=1; if(!counts[nm]) counts[nm]={}; counts[nm][sec]=(counts[nm][sec]||0)+1; if(!dates[nm]) dates[nm]={}; if(!dates[nm][sec]) dates[nm][sec]=[]; dates[nm][sec].push(d); }); }); });
     var names=Object.keys(seen).sort();
     var hh="<tr><th>Naam</th>"; secs.forEach(function(s){ hh+="<th>"+esc(s)+"</th>"; }); hh+="<th>Tot.</th></tr>";
     if(head) head.innerHTML=hh;
     var rows="";
     if(!names.length){ rows='<tr><td colspan="'+(secs.length+2)+'" style="opacity:.6;padding:10px">Nog geen outbound-historiek voor '+esc(fmtP())+'.</td></tr>'; }
-    names.forEach(function(nm){ var c=counts[nm]||{}, tot=0, row="<td>"+esc(nm)+"</td>"; secs.forEach(function(s){ var n=c[s]||0; tot+=n; var bg=n?" style='background:rgba(45,212,238,"+Math.min(0.08*n,0.45)+")'":""; row+="<td class='num'"+bg+">"+(n||"")+"</td>"; }); row+="<td class='num'>"+(tot||"")+"</td>"; rows+="<tr>"+row+"</tr>"; });
+    names.forEach(function(nm){ var c=counts[nm]||{}, tot=0, row="<td>"+esc(nm)+"</td>"; secs.forEach(function(s){ var n=c[s]||0; tot+=n; var bg=n?" style='background:rgba(45,212,238,"+Math.min(0.08*n,0.45)+")'":""; var tt=""; try{ var dl=(dates[nm]||{})[s]||[]; if(dl.length){ var DD=["zo","ma","di","wo","do","vr","za"]; tt=' title="'+esc(nm+" \u2014 "+s)+'&#10;'+dl.slice().sort().map(function(d2){ var dt=new Date(d2+"T12:00:00"); return DD[dt.getDay()]+" "+d2.slice(8,10)+"/"+d2.slice(5,7)+"/"+d2.slice(0,4); }).join("&#10;")+'"'; } }catch(e){} row+="<td class='num'"+bg+tt+">"+(n||"")+"</td>"; }); row+="<td class='num'>"+(tot||"")+"</td>"; rows+="<tr>"+row+"</tr>"; });
     body.innerHTML=rows;
   };
 
