@@ -224,7 +224,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c9";
+  const COLI_VERSION = "c10";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -270,19 +270,21 @@
   function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
   function inGangen(name){ const n=tourNum(name); if(n===null) return false; return GANGEN_SEL.some(g=>(GANG_TOURS[g]||[]).indexOf(n)>=0); }
   /* banden-ticker: enkel de sluit-toeren (510-780) */
-  function bandenToer(t){ const n=tourNum(t.tour); return n!==null && n>=500 && n<=799; }
+  function bandenToer(t){ const n=tourNum(t.tour); return n!==null && n>=500 && n<=799 && focusAf.indexOf(t.tour)<0; }
   function schermFilter(tours){
     if(SCHERM_BRIG) return tours;
     if(SCHERM_SDD) return tours.filter(t=>isSDD(t.tour));
     if(GANGEN_SEL.length) return tours.filter(t=>inGangen(t.tour));
     return tours;
   }
+  let SCHERM_LBL = null;
   (function(){
     try{
       let lbl=null;
       if(SCHERM_BRIG) lbl="Brigadier";
       else if(SCHERM_SDD) lbl="SDD";
       else if(GANGEN_SEL.length) lbl="Gang "+GANGEN_SEL.join(" + ");
+      SCHERM_LBL = lbl;
       if(lbl){
         document.title="Colisage \u00b7 "+lbl+" \u2014 TV";
         const b=document.querySelector(".brand span");
@@ -342,11 +344,11 @@
     rowsPerPage = Math.max(1, Math.floor(h / sample));
   }
   function activeTours(){
-    return state.tours.filter(t=>rowTotal(t)>0).sort((a,b)=>rowTotal(b)-rowTotal(a));
+    return state.tours.filter(t=>rowTotal(t)>0 && focusAf.indexOf(t.tour)<0).sort((a,b)=>rowTotal(b)-rowTotal(a));
   }
   function renderKpis(){
     const agg = {open:0,xdock:0,groen:0,sectorMP:0,sectorH:0};
-    state.tours.forEach(t=>WORK_KEYS.forEach(k=>agg[k]+=t[k]||0));
+    state.tours.filter(t=>focusAf.indexOf(t.tour)<0).forEach(t=>WORK_KEYS.forEach(k=>agg[k]+=t[k]||0));
     KPI_DEFS.forEach(d=>countUp(kpiNums[d.key], agg[d.key]));
   }
   function detailFor(t){
@@ -440,10 +442,14 @@
     kpisEl.style.display=""; th.style.display=""; renderFocus._last=null;
     const b = buildPages();
     if(b.rows.length===0){
-      tbodyEl.innerHTML = '<div class="empty">Alles gescand ✓</div>';
+      const vz = schermFilter(focusAf.map(n=>({tour:n}))).length;
+      const sub = (vz?vz+" toeren verzonden \u00b7 ":"")+"niets meer te scannen";
+      const html = `<div class="fdone"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54"/><path d="M35 62 l17 17 l33 -38"/></svg><div class="t1">${SCHERM_LBL?SCHERM_LBL+" klaar":"Alles gescand"}</div><div class="t2">${sub}</div></div>`;
+      if(html!==renderTable._done){ renderTable._done=html; tbodyEl.innerHTML=html; }
       pageEl.textContent = "";
       return;
     }
+    renderTable._done=null;
     const maxT = rowTotal(b.rows[0]) || 1;
     if(page>=b.pages.length) page=0;
     tbodyEl.innerHTML = b.pages[page].map(L=>{
