@@ -165,6 +165,19 @@
   @keyframes fdDraw{to{stroke-dashoffset:0;}}
   @keyframes fdIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:scale(1);}}
   @keyframes fdPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
+  .bwrap{height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:1fr 1fr;gap:1px;background:var(--line);}
+  .bpan{background:var(--steel-850);padding:clamp(6px,.8vw,14px) clamp(10px,1.2vw,20px);overflow:hidden;display:flex;flex-direction:column;}
+  .bkop{font-size:clamp(13px,1.5vw,24px);letter-spacing:.18em;text-transform:uppercase;color:var(--amber);font-weight:600;margin-bottom:.35em;display:flex;justify-content:space-between;align-items:baseline;}
+  .bkop .bsub{color:var(--muted);font-size:.72em;letter-spacing:.12em;text-transform:none;}
+  .brow{display:flex;align-items:center;gap:.6em;padding:clamp(2px,.35vw,6px) .4em;border-bottom:1px solid rgba(47,55,66,.4);font-size:clamp(13px,1.6vw,26px);cursor:pointer;border-left:3px solid transparent;}
+  .brow:last-child{border-bottom:none;}
+  .brow .bn{flex:1;letter-spacing:.06em;font-weight:500;}
+  .brow .uur{color:var(--muted);font-size:.68em;letter-spacing:.06em;font-family:'JetBrains Mono',monospace;}
+  .brow .bv{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--text);}
+  .brow .bv.ok{color:var(--live);text-shadow:0 0 10px rgba(70,209,127,.4);}
+  .brow .bv.none{color:#41484f;}
+  .brow.done .bn{color:var(--muted);}
+  .brow.foc{border-left-color:var(--amber);background:rgba(255,178,62,.05);}
   @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;}
     .fdone svg{animation:none;}.fdone circle,.fdone path{animation:none;stroke-dashoffset:0;} }
 </style>
@@ -208,7 +221,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c7";
+  const COLI_VERSION = "c8";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -233,13 +246,14 @@
   const QS = new URLSearchParams(location.search);
   let SCHERM_SDD = (QS.get("scherm")||"").toLowerCase()==="sdd";
   let GANGEN_SEL = (QS.get("gangen")||"").split(",").map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+  let SCHERM_BRIG = (QS.get("scherm")||"").toLowerCase()==="brig";
   /* keuze per TV onthouden: URL wint en wordt bewaard; zonder URL geldt de bewaarde keuze */
   try{
     if(QS.has("scherm")||QS.has("gangen")){
-      localStorage.setItem("coli_kies", JSON.stringify({sdd:SCHERM_SDD, gangen:GANGEN_SEL}));
+      localStorage.setItem("coli_kies", JSON.stringify({sdd:SCHERM_SDD, gangen:GANGEN_SEL, brig:SCHERM_BRIG}));
     } else {
       const k=JSON.parse(localStorage.getItem("coli_kies")||"null");
-      if(k){ SCHERM_SDD=!!k.sdd; GANGEN_SEL=Array.isArray(k.gangen)?k.gangen:[]; }
+      if(k){ SCHERM_SDD=!!k.sdd; GANGEN_SEL=Array.isArray(k.gangen)?k.gangen:[]; SCHERM_BRIG=!!k.brig; }
     }
   }catch(e){}
   const GANG_TOURS = {0:[600,601,700],1:[510,511,512,710],2:[620,621,720],3:[530,531,730],4:[640,641,740],
@@ -254,6 +268,7 @@
   /* banden-ticker: enkel de sluit-toeren (510-780) */
   function bandenToer(t){ const n=tourNum(t.tour); return n!==null && n>=500 && n<=799; }
   function schermFilter(tours){
+    if(SCHERM_BRIG) return tours;
     if(SCHERM_SDD) return tours.filter(t=>isSDD(t.tour));
     if(GANGEN_SEL.length) return tours.filter(t=>inGangen(t.tour));
     return tours;
@@ -261,7 +276,8 @@
   (function(){
     try{
       let lbl=null;
-      if(SCHERM_SDD) lbl="SDD";
+      if(SCHERM_BRIG) lbl="Brigadier";
+      else if(SCHERM_SDD) lbl="SDD";
       else if(GANGEN_SEL.length) lbl="Gang "+GANGEN_SEL.join(" + ");
       if(lbl){
         document.title="Colisage \u00b7 "+lbl+" \u2014 TV";
@@ -380,9 +396,39 @@
     const html = `<div class="fwrap">${cols}</div>`;
     if(html!==renderFocus._last){ renderFocus._last=html; tbodyEl.innerHTML=html; }
   }
+  function renderBrig(){
+    pageEl.textContent = "BRIGADIER \u00b7 klik een toer = SLUIT aan/uit \u00b7 uren via \ud83c\udfaf";
+    const eff = {}; effectieveFocus().forEach(n=>{ eff[n]=1; });
+    const byName = {}; state.tours.forEach(t=>{ byName[t.tour]=t; });
+    function rij(name){
+      const t = byName[name];
+      const tot = t ? rowTotal(t) : null;
+      const klaar = tot===0;
+      const cls = "brow"+(klaar?" done":"")+(eff[name]?" foc":"");
+      const uur = focusSluit[name] ? `<span class="uur">\u23f1 ${focusSluit[name]}</span>` : "";
+      const val = (tot===null) ? `<span class="bv none">\u2013</span>`
+                : klaar ? `<span class="bv ok">\u2713</span>`
+                : `<span class="bv">${tot}</span>`;
+      return `<div class="${cls}" data-tour="${name}"><span class="bn">${name.replace("TOUR ","")}</span>${uur}${val}</div>`;
+    }
+    const panelen = [];
+    SCHERM_PAREN.forEach(p=>{
+      const namen = GANG_TOURS[p[0]].concat(GANG_TOURS[p[1]]).map(n=>"TOUR "+n);
+      const klaarN = namen.filter(n=>byName[n]&&rowTotal(byName[n])===0).length;
+      panelen.push(`<div class="bpan"><div class="bkop">Gang ${p[0]} + ${p[1]}<span class="bsub">${klaarN}/${namen.length} dicht</span></div>${namen.map(rij).join("")}</div>`);
+    });
+    const sdd = state.tours.filter(t=>isSDD(t.tour));
+    const sddOpen = sdd.filter(t=>rowTotal(t)>0).sort((a,b)=>rowTotal(b)-rowTotal(a));
+    const sddTot = sdd.reduce((s,t)=>s+rowTotal(t),0);
+    panelen.push(`<div class="bpan"><div class="bkop">SDD<span class="bsub">${sddOpen.length} toeren \u00b7 ${sddTot} stuks</span></div>`+
+      sddOpen.slice(0,8).map(t=>`<div class="brow"><span class="bn">${t.tour.replace("TOUR ","")}</span><span class="bv">${rowTotal(t)}</span></div>`).join("")+
+      (sddOpen.length===0?`<div class="brow done"><span class="bn">alles</span><span class="bv ok">\u2713</span></div>`:"")+`</div>`);
+    tbodyEl.innerHTML = `<div class="bwrap">${panelen.join("")}</div>`;
+  }
   function renderTable(){
-    const fo = focusOpScherm();
     const th = document.querySelector(".thead");
+    if(SCHERM_BRIG){ kpisEl.style.display="none"; th.style.display="none"; renderBrig(); return; }
+    const fo = focusOpScherm();
     if(fo.length){ kpisEl.style.display="none"; th.style.display="none"; renderFocus(fo); return; }
     kpisEl.style.display=""; th.style.display=""; renderFocus._last=null;
     const b = buildPages();
@@ -564,6 +610,7 @@
   /* ---- schermkeuze-menu ---- */
   const KIES_OPTS = [
     {lbl:"Alles",      v:null},
+    {lbl:"Brigadier-paneel", v:{brig:true}},
     {lbl:"SDD",        v:{sdd:true, gangen:[]}},
     {lbl:"Gang 0 + 9", v:{sdd:false, gangen:[0,9]}},
     {lbl:"Gang 1 + 2", v:{sdd:false, gangen:[1,2]}},
@@ -572,9 +619,10 @@
     {lbl:"Gang 7 + 8", v:{sdd:false, gangen:[7,8]}}
   ];
   function kiesActueel(o){
-    if(!o.v) return !SCHERM_SDD && GANGEN_SEL.length===0;
+    if(!o.v) return !SCHERM_SDD && !SCHERM_BRIG && GANGEN_SEL.length===0;
+    if(o.v.brig) return SCHERM_BRIG;
     if(o.v.sdd) return SCHERM_SDD;
-    return !SCHERM_SDD && GANGEN_SEL.join(",")===o.v.gangen.join(",");
+    return !SCHERM_SDD && !SCHERM_BRIG && GANGEN_SEL.join(",")===(o.v.gangen||[]).join(",");
   }
   function openKies(){
     const old=document.getElementById("kies"); if(old){ old.remove(); return; }
@@ -664,6 +712,16 @@
     }catch(e){}
   }
   setInterval(checkVersie, 5*60*1000);
+  /* brigadier-paneel: klik op een toer = SLUIT aan/uit */
+  tbodyEl.addEventListener("click", function(ev){
+    if(!SCHERM_BRIG || !ev.target.closest) return;
+    const r = ev.target.closest(".brow[data-tour]");
+    if(!r) return;
+    const name = r.getAttribute("data-tour");
+    const set = {}; focusTours.forEach(n=>{ set[n]=1; });
+    if(set[name]) delete set[name]; else set[name]=1;
+    zetFocus(Object.keys(set));
+  });
   function nextPage(){ page++; renderTable(); }
   function tickClock(){ clockEl.textContent = new Date().toLocaleTimeString('nl-BE',{hour12:false}); }
   window.addEventListener('resize', ()=>{ measureRows(); renderTable(); });
