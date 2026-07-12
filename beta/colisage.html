@@ -197,7 +197,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c4";
+  const COLI_VERSION = "c5";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -419,6 +419,15 @@
     {nr:"57A 955 425",    oms:"Wisserblad achter", loc:"M1025D1", lp:"0010000000045874077"},
     {nr:"2Q0 698 151 AB", oms:"Remblokkenset",     loc:"X0611A1", lp:"0010000000045874523"}
   ];
+  function demoStuks(tot){
+    const st=[]; let rest=tot, i=0;
+    while(rest>0 && st.length<CONFIG.DETAIL_MAX){
+      const a=Math.min(rest, 1+(i%3));
+      st.push(Object.assign({aantal:a}, DEMO_STUKS[i%DEMO_STUKS.length]));
+      rest-=a; i++;
+    }
+    return st;
+  }
   function demoData(){
     if(!demoBase){
       demoBase = {};
@@ -451,7 +460,7 @@
       const t=Object.assign({tour:name}, v);
       const tot=WORK_KEYS.reduce((s,k)=>s+t[k],0);
       if(tot>0 && tot<=CONFIG.DETAIL_DREMPEL){
-        t.stuks = DEMO_STUKS.slice(0, Math.min(tot,6)).map((s,i)=>Object.assign({aantal:1+(i%3)}, s));
+        t.stuks = demoStuks(tot);
       }
       tours.push(t);
     });
@@ -460,9 +469,7 @@
       let t = tours.find(x=>x.tour===name);
       if(!t){ t={tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:0}; tours.push(t); }
       if(rowTotal(t)===0) t.open = 4;
-      const n = Math.min(Math.max(rowTotal(t),4), CONFIG.DETAIL_MAX);
-      t.stuks = [];
-      for(let i=0;i<n;i++){ t.stuks.push(Object.assign({aantal:1+(i%3)}, DEMO_STUKS[i%DEMO_STUKS.length])); }
+      t.stuks = demoStuks(rowTotal(t));
     });
     return {tours};
   }
