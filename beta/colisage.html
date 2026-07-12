@@ -20,8 +20,13 @@
     "updated": "2026-06-09T14:32:00",
     "tours": [
       { "tour":"TOUR 113", "open":44, "xdock":12, "groen":28,
-        "sectorMP":9, "sectorH":4, "banden":28 }
+        "sectorMP":9, "sectorH":4, "banden":28,
+        "stuks": [   // optioneel: detail "laatste stukken" (max DETAIL_MAX)
+          { "nr":"1K0 615 301 T", "oms":"Remschijf voor", "loc":"H-03-112-4", "aantal":2 }
+        ] }
       // enkel tours met werk volstaan; rest = 0
+      // "stuks" enkel zinvol voor toeren die bijna klaar zijn (<= DETAIL_DREMPEL).
+      // Veldnamen mogen ook: item i.p.v. nr, naam i.p.v. oms, qty i.p.v. aantal.
     ]
   }
   Zolang er geen doc.colisage in de database staat: DEMO-modus.
@@ -79,7 +84,15 @@
   .row .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,178,62,.07);
     border-left:2px solid rgba(255,178,62,.35);z-index:0;}
   .row > *{position:relative;z-index:1;}
-  .empty{flex:1;display:flex;align-items:center;justify-content:center;
+  .srow{display:grid;grid-template-columns:2.2fr 5.1fr .7fr;align-items:center;
+    padding:clamp(3px,.5vw,9px) clamp(14px,1.6vw,26px);
+    border-bottom:1px solid rgba(47,55,66,.35);font-size:clamp(12px,1.35vw,21px);
+    background:rgba(255,178,62,.035);}
+  .srow .nr{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--amber-soft);letter-spacing:.05em;padding-left:1.2em;}
+  .srow .oms{color:var(--muted);letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .srow .oms b{color:var(--text);font-weight:500;}
+  .srow .qty{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);text-align:right;justify-self:end;}
+  .empty{flex:1;height:100%;display:flex;align-items:center;justify-content:center;
     font-size:clamp(22px,3vw,46px);letter-spacing:.2em;text-transform:uppercase;color:var(--live);}
   .footer{display:flex;align-items:center;gap:clamp(14px,2vw,30px);
     padding:clamp(8px,1.1vw,18px) 0 clamp(8px,1.1vw,18px) clamp(18px,2.6vw,40px);
@@ -134,7 +147,9 @@
     SB_URL: "https://gntaanclvusvhfkgjusz.supabase.co",
     SB_KEY: "sb_publishable_bZ6yeDauQb1md0bIOwCoJQ_KbQAc4qV",
     POLL_SECONDS: 30,      // verversfrequentie
-    PAGE_SECONDS: 8        // hoe lang elke pagina tours blijft staan
+    PAGE_SECONDS: 8,       // hoe lang elke pagina tours blijft staan
+    DETAIL_DREMPEL: 10,    // stukdetail zodra tour-totaal <= dit aantal (0 = uit)
+    DETAIL_MAX: 10         // max detailregels per tour
   };
   // ========================================================
   const TOURS = [
@@ -204,7 +219,13 @@
   function normalize(tours){
     return tours.map(t=>({
       tour:t.tour, open:+t.open||0, xdock:+t.xdock||0, groen:+t.groen||0,
-      sectorMP:+t.sectorMP||0, sectorH:+t.sectorH||0, banden:+t.banden||0
+      sectorMP:+t.sectorMP||0, sectorH:+t.sectorH||0, banden:+t.banden||0,
+      stuks: Array.isArray(t.stuks) ? t.stuks.slice(0,CONFIG.DETAIL_MAX).map(s=>({
+        nr:(""+(s.nr||s.item||"?")).trim(),
+        oms:(""+(s.oms||s.naam||"")).trim(),
+        loc:(""+(s.loc||"")).trim(),
+        aantal:+s.aantal||+s.qty||1
+      })) : []
     }));
   }
   function countUp(el, to){
@@ -233,19 +254,41 @@
     state.tours.forEach(t=>WORK_KEYS.forEach(k=>agg[k]+=t[k]||0));
     KPI_DEFS.forEach(d=>countUp(kpiNums[d.key], agg[d.key]));
   }
-  function renderTable(){
+  function detailFor(t){
+    if(!CONFIG.DETAIL_DREMPEL || !t.stuks || !t.stuks.length) return [];
+    if(rowTotal(t) > CONFIG.DETAIL_DREMPEL) return [];
+    return t.stuks.slice(0, CONFIG.DETAIL_MAX);
+  }
+  function buildPages(){
     const rows = activeTours();
-    if(rows.length===0){
+    const groups = rows.map(t=>{
+      const g=[{tp:"tour",t:t}];
+      detailFor(t).forEach(s=>g.push({tp:"stuk",s:s}));
+      return g;
+    });
+    const pages=[]; let cur=[];
+    groups.forEach(g=>{
+      if(cur.length && cur.length+g.length>rowsPerPage){ pages.push(cur); cur=[]; }
+      cur=cur.concat(g);
+    });
+    if(cur.length) pages.push(cur);
+    return {rows:rows, pages:pages};
+  }
+  function renderTable(){
+    const b = buildPages();
+    if(b.rows.length===0){
       tbodyEl.innerHTML = '<div class="empty">Alles gescand ✓</div>';
       pageEl.textContent = "";
       return;
     }
-    const maxT = rowTotal(rows[0]) || 1;
-    const pages = Math.ceil(rows.length / rowsPerPage);
-    if(page>=pages) page=0;
-    const slice = rows.slice(page*rowsPerPage, page*rowsPerPage+rowsPerPage);
-    tbodyEl.innerHTML = slice.map(t=>{
-      const tot = rowTotal(t);
+    const maxT = rowTotal(b.rows[0]) || 1;
+    if(page>=b.pages.length) page=0;
+    tbodyEl.innerHTML = b.pages[page].map(L=>{
+      if(L.tp==="stuk"){
+        const s=L.s;
+        return `<div class="srow"><span class="nr">${s.nr}</span><span class="oms">${s.oms}${s.loc?' · <b>'+s.loc+'</b>':''}</span><span class="qty">${s.aantal}×</span></div>`;
+      }
+      const t=L.t, tot=rowTotal(t);
       const cell=(v)=>`<span class="c${v?'':' zero'}">${v}</span>`;
       return `<div class="row">
         <span class="bar" style="width:${(tot/maxT*100).toFixed(1)}%"></span>
@@ -254,7 +297,7 @@
         <span class="c total">${tot}</span>
       </div>`;
     }).join("");
-    pageEl.textContent = pages>1 ? `Pagina ${page+1} / ${pages}` : "";
+    pageEl.textContent = b.pages.length>1 ? `Pagina ${page+1} / ${b.pages.length}` : "";
   }
   function renderTicker(){
     bandenTotalEl.textContent = state.banden;
@@ -271,6 +314,14 @@
     state.banden = state.tours.reduce((s,t)=>s+t.banden,0);
     renderKpis(); renderTable(); renderTicker();
   }
+  const DEMO_STUKS = [
+    {nr:"1K0 615 301 T",  oms:"Remschijf voor",    loc:"H-03-112-4"},
+    {nr:"04E 115 561 H",  oms:"Oliefilter",        loc:"M-01-041-2"},
+    {nr:"5Q0 407 271 B",  oms:"Aandrijfas links",  loc:"P-07-233-1"},
+    {nr:"3V0 807 217 A",  oms:"Bumpersteun voor",  loc:"L-02-018-3"},
+    {nr:"57A 955 425",    oms:"Wisserblad achter", loc:"M-05-310-6"},
+    {nr:"2Q0 698 151 AB", oms:"Remblokkenset",     loc:"P-03-155-8"}
+  ];
   function demoData(){
     if(!demoBase){
       demoBase = {};
@@ -286,13 +337,22 @@
           };
         }
       });
+      Object.keys(demoBase).slice(0,3).forEach(name=>{
+        const v=demoBase[name];
+        WORK_KEYS.forEach(k=>{ v[k]=Math.min(v[k],2); });
+      });
     }
     const tours = [];
     Object.entries(demoBase).forEach(([name,v])=>{
       WORK_KEYS.concat("banden").forEach(k=>{
         v[k] = Math.max(0, v[k] + Math.round((Math.random()-0.55)*4));
       });
-      tours.push(Object.assign({tour:name}, v));
+      const t=Object.assign({tour:name}, v);
+      const tot=WORK_KEYS.reduce((s,k)=>s+t[k],0);
+      if(tot>0 && tot<=CONFIG.DETAIL_DREMPEL){
+        t.stuks = DEMO_STUKS.slice(0, Math.min(tot,6)).map((s,i)=>Object.assign({aantal:1+(i%3)}, s));
+      }
+      tours.push(t);
     });
     return {tours};
   }
