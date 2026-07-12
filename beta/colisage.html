@@ -208,7 +208,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c6";
+  const COLI_VERSION = "c7";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -480,8 +480,14 @@
     /* focus-toeren krijgen in demo een volledige stukkenlijst */
     effectieveFocus().forEach(name=>{
       let t = tours.find(x=>x.tour===name);
-      if(!t){ t={tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:0}; tours.push(t); }
-      if(rowTotal(t)===0) t.open = 4;
+      if(!t){
+        /* zaai in demoBase zodat de toer meedrift naar 0 -> dicht-animatie */
+        demoBase[name] = {open:4+Math.floor(Math.random()*6), xdock:Math.floor(Math.random()*3),
+          groen:Math.floor(Math.random()*4), sectorMP:Math.floor(Math.random()*3),
+          sectorH:Math.floor(Math.random()*2), banden:Math.floor(Math.random()*5)};
+        t = Object.assign({tour:name}, demoBase[name]);
+        tours.push(t);
+      }
       t.stuks = demoStuks(rowTotal(t));
     });
     return {tours};
