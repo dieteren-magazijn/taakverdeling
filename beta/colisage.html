@@ -148,7 +148,8 @@
   .fhead .ft{font-size:clamp(16px,1.9vw,30px);letter-spacing:.12em;text-transform:uppercase;font-weight:600;}
   .fhead .badge{background:var(--amber);color:var(--steel-900);border-radius:4px;padding:.1em .45em;font-size:.7em;letter-spacing:.2em;vertical-align:middle;margin-right:.5em;font-weight:700;}
   .fhead .fn{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--amber);font-size:clamp(34px,4.6vw,84px);line-height:1;text-shadow:0 0 16px rgba(255,178,62,.22);margin-top:.15em;}
-  .fhead .fsub{color:var(--muted);font-size:clamp(11px,1.2vw,18px);letter-spacing:.14em;text-transform:uppercase;margin-top:.4em;}
+  .fhead .fsub{color:var(--muted);font-size:clamp(16px,2vw,34px);letter-spacing:.1em;text-transform:uppercase;margin-top:.45em;}
+  .fhead .fsub b{color:var(--text);font-family:'JetBrains Mono',monospace;font-weight:800;}
   .fstuks{flex:1;min-height:0;overflow:hidden;}
   .fstuks .srow{font-size:clamp(16px,2vw,32px);padding:clamp(6px,.8vw,13px) clamp(14px,1.6vw,26px);}
   .fstuks .srow .lp{font-size:.72em;}
@@ -196,7 +197,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c3";
+  const COLI_VERSION = "c4";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -361,7 +362,7 @@
       return `<div class="fpan"><div class="fhead">`+
         `<div class="ft"><span class="badge">FOCUS</span>${t.tour}</div>`+
         `<div class="fn">${tot}</div>`+
-        `<div class="fsub">open ${t.open} · cross dock ${t.xdock} · groene bakken ${t.groen} · M+P ${t.sectorMP} · H&L ${t.sectorH}</div>`+
+        `<div class="fsub">open <b>${t.open}</b> · cross dock <b>${t.xdock}</b> · groene bakken <b>${t.groen}</b> · M+P <b>${t.sectorMP}</b> · H&L <b>${t.sectorH}</b></div>`+
         `</div><div class="fstuks">${rows}${meer}${leeg}</div></div>`;
     }).join("");
     tbodyEl.innerHTML = `<div class="fwrap">${cols}</div>`;
