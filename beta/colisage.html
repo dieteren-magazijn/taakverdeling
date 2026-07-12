@@ -156,6 +156,32 @@
     {key:"sectorH",  cap:"Sector H"}
   ];
   const WORK_KEYS = ["open","xdock","groen","sectorMP","sectorH"];
+  /* ---- schermkeuze via URL: ?scherm=sdd  of  ?gangen=1,2 (plan toeren CLIPS 2020) ---- */
+  const QS = new URLSearchParams(location.search);
+  const SCHERM_SDD = (QS.get("scherm")||"").toLowerCase()==="sdd";
+  const GANGEN_SEL = (QS.get("gangen")||"").split(",").map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+  const GANG_TOURS = {0:[600,601,700],1:[510,511,512,710],2:[620,621,720],3:[530,531,730],4:[640,641,740],
+                      5:[550,551,750],6:[660,661,760],7:[570,571,770],8:[680,681,780],9:[590,591]};
+  function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
+  function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
+  function inGangen(name){ const n=tourNum(name); if(n===null) return false; return GANGEN_SEL.some(g=>(GANG_TOURS[g]||[]).indexOf(n)>=0); }
+  function schermFilter(tours){
+    if(SCHERM_SDD) return tours.filter(t=>isSDD(t.tour));
+    if(GANGEN_SEL.length) return tours.filter(t=>inGangen(t.tour));
+    return tours;
+  }
+  (function(){
+    try{
+      let lbl=null;
+      if(SCHERM_SDD) lbl="SDD";
+      else if(GANGEN_SEL.length) lbl="Gang "+GANGEN_SEL.join(" + ");
+      if(lbl){
+        document.title="Colisage \u00b7 "+lbl+" \u2014 TV";
+        const b=document.querySelector(".brand span");
+        if(b) b.innerHTML="<b>Colisage</b> &middot; "+lbl;
+      }
+    }catch(e){}
+  })();
   let state = { tours: [], banden: 0 };
   let page = 0, rowsPerPage = 10, failures = 0;
   let demoBase = null;
@@ -241,7 +267,7 @@
     trackEl.style.animationDuration = Math.max(25, chars*0.22) + "s";
   }
   function update(payload){
-    state.tours = normalize(payload.tours||[]);
+    state.tours = schermFilter(normalize(payload.tours||[]));
     state.banden = state.tours.reduce((s,t)=>s+t.banden,0);
     renderKpis(); renderTable(); renderTicker();
   }
