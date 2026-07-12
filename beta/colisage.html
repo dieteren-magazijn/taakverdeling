@@ -155,7 +155,18 @@
   .fstuks .srow .lp{font-size:.72em;}
   .fmeer{padding:.6em clamp(14px,1.6vw,26px);color:var(--muted);font-size:clamp(12px,1.3vw,20px);letter-spacing:.14em;text-transform:uppercase;}
   #ver{font-size:.72em;color:var(--muted);letter-spacing:.1em;}
-  @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;} }
+  .fdone{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45em;animation:fdIn .6s ease both;}
+  .fdone svg{width:clamp(90px,11vw,200px);height:auto;filter:drop-shadow(0 0 14px rgba(70,209,127,.35));animation:fdPulse 2.8s 1.8s ease-in-out infinite;}
+  .fdone circle{fill:none;stroke:var(--live);stroke-width:6;stroke-linecap:round;stroke-dasharray:340;stroke-dashoffset:340;animation:fdDraw .9s .15s ease-out forwards;}
+  .fdone path{fill:none;stroke:var(--live);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:80;stroke-dashoffset:80;animation:fdDraw .5s .95s ease-out forwards;}
+  .fdone .t1{font-size:clamp(20px,2.4vw,40px);letter-spacing:.28em;text-transform:uppercase;color:var(--live);font-weight:600;}
+  .fdone .t2{font-size:clamp(13px,1.5vw,24px);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);}
+  .fpan.done .fhead .fn{color:var(--live);text-shadow:0 0 16px rgba(70,209,127,.35);}
+  @keyframes fdDraw{to{stroke-dashoffset:0;}}
+  @keyframes fdIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:scale(1);}}
+  @keyframes fdPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
+  @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;}
+    .fdone svg{animation:none;}.fdone circle,.fdone path{animation:none;stroke-dashoffset:0;} }
 </style>
 <div id="stage">
   <div class="header">
@@ -168,7 +179,7 @@
       <span class="state-label" id="stateLabel">Live</span>
       <span id="clock">--:--:--</span>
       <span id="ver"></span>
-      <button id="focusBtn" title="Focus-toeren (brigadier)">&#127919;</button>
+      <button id="focusBtn" title="Sluit-toeren (brigadier)">&#127919;</button>
       <button id="kiesBtn" title="Schermkeuze (per TV onthouden)">&#9881;</button>
     </div>
   </div>
@@ -197,7 +208,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c5";
+  const COLI_VERSION = "c6";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -350,7 +361,7 @@
     return schermFilter(effectieveFocus().map(n=>({tour:n}))).map(t=>t.tour);
   }
   function renderFocus(fo){
-    pageEl.textContent = "FOCUS actief";
+    pageEl.textContent = "SLUIT actief";
     const cols = fo.slice(0,3).map(name=>{
       const t = state.tours.find(x=>x.tour===name) || {tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,stuks:[]};
       const tot = rowTotal(t);
@@ -358,20 +369,22 @@
       const MAXR = 12;
       const rows = st.slice(0,MAXR).map(s=>`<div class="srow"><span class="nr">${s.nr}</span><span class="oms">${s.oms}${s.loc?' · <b>'+s.loc+'</b>':''}</span><span class="lp">${s.lp||""}</span><span class="qty">${s.aantal}×</span></div>`).join("");
       const meer = st.length>MAXR ? `<div class="fmeer">+ ${st.length-MAXR} meer…</div>` : "";
-      const leeg = (!st.length) ? `<div class="fmeer">${tot>0?"geen stukdetail beschikbaar":"alles gescand ✓"}</div>` : "";
-      return `<div class="fpan"><div class="fhead">`+
-        `<div class="ft"><span class="badge">FOCUS</span>${t.tour}</div>`+
+      const leeg = (!st.length && tot>0) ? `<div class="fmeer">geen stukdetail beschikbaar</div>` : "";
+      const dicht = tot===0 ? `<div class="fdone"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54"/><path d="M35 62 l17 17 l33 -38"/></svg><div class="t1">Alles gescand</div><div class="t2">Tour mag dicht</div></div>` : "";
+      return `<div class="fpan${tot===0?' done':''}"><div class="fhead">`+
+        `<div class="ft"><span class="badge">SLUIT</span>${t.tour}</div>`+
         `<div class="fn">${tot}</div>`+
         `<div class="fsub">open <b>${t.open}</b> · cross dock <b>${t.xdock}</b> · groene bakken <b>${t.groen}</b> · M+P <b>${t.sectorMP}</b> · H&L <b>${t.sectorH}</b></div>`+
-        `</div><div class="fstuks">${rows}${meer}${leeg}</div></div>`;
+        `</div><div class="fstuks">${rows}${meer}${leeg}${dicht}</div></div>`;
     }).join("");
-    tbodyEl.innerHTML = `<div class="fwrap">${cols}</div>`;
+    const html = `<div class="fwrap">${cols}</div>`;
+    if(html!==renderFocus._last){ renderFocus._last=html; tbodyEl.innerHTML=html; }
   }
   function renderTable(){
     const fo = focusOpScherm();
     const th = document.querySelector(".thead");
     if(fo.length){ kpisEl.style.display="none"; th.style.display="none"; renderFocus(fo); return; }
-    kpisEl.style.display=""; th.style.display="";
+    kpisEl.style.display=""; th.style.display=""; renderFocus._last=null;
     const b = buildPages();
     if(b.rows.length===0){
       tbodyEl.innerHTML = '<div class="empty">Alles gescand ✓</div>';
@@ -585,7 +598,7 @@
     const old=document.getElementById("kies"); if(old){ old.remove(); return; }
     const w=document.createElement("div"); w.id="kies";
     const box=document.createElement("div"); box.className="box"; box.style.maxWidth="min(94vw,760px)";
-    const h=document.createElement("h2"); h.textContent="Focus-toeren (sluiten)"; box.appendChild(h);
+    const h=document.createElement("h2"); h.textContent="Sluit-toeren"; box.appendChild(h);
     const sel = {}; focusTours.forEach(n=>{ sel[n]=true; });
     const uren = Object.assign({}, focusSluit||{});
     const lijst=document.createElement("div");
