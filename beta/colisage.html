@@ -34,6 +34,15 @@
 
   SCHERMKEUZE: via de ⚙-knop rechtsboven (keuze wordt per TV onthouden),
   of via URL ?scherm=sdd / ?gangen=0,9 (wordt dan ook onthouden).
+
+  FOCUS (brigadier): via de 🎯-knop toeren kiezen die dicht moeten (of preset
+  🌙 Avondsluiting). Keuze staat in database-rij id="coli_focus" en geldt voor
+  ALLE schermen (elk scherm toont enkel zijn eigen focus-toeren), vervalt bij
+  dagwissel. Focus-scherm = gesplitst per tour met alle stukken + totalen groot.
+  Flow-tip: stuur voor focus-toeren altijd de stuks mee.
+
+  VERSIE: badge in de header = COLI_VERSION; de pagina checkt elke 5 min
+  colisage-version.txt en herlaadt zichzelf bij een nieuwe versie.
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700;800&display=swap');
@@ -118,9 +127,9 @@
   @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
   .pageind{font-size:clamp(11px,1.2vw,18px);letter-spacing:.2em;color:var(--muted);
     padding:clamp(6px,.8vw,12px) clamp(18px,2.6vw,40px);text-align:right; text-transform:uppercase;}
-  #kiesBtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
+  #kiesBtn,#focusBtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
     font:inherit;font-size:.9em;padding:.2em .55em;cursor:pointer;letter-spacing:0;}
-  #kiesBtn:hover{color:var(--amber);border-color:var(--amber-dim);}
+  #kiesBtn:hover,#focusBtn:hover{color:var(--amber);border-color:var(--amber-dim);}
   #kies{position:fixed;inset:0;background:rgba(10,12,16,.82);display:flex;align-items:center;justify-content:center;z-index:50;}
   #kies .box{background:var(--steel-850);border:1px solid var(--line);border-radius:12px;
     padding:clamp(18px,2.4vw,36px);display:flex;flex-direction:column;gap:.7em;min-width:min(90vw,420px);}
@@ -130,6 +139,17 @@
     padding:.45em .9em;cursor:pointer;text-align:left;}
   #kies button:hover{border-color:var(--amber);}
   #kies button.act{border-color:var(--amber);color:var(--amber);}
+  .fwrap{height:100%;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;}
+  .fpan{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);}
+  .fpan:last-child{border-right:none;}
+  .fhead{padding:clamp(10px,1.3vw,20px) clamp(14px,1.6vw,26px);border-bottom:1px solid var(--line);}
+  .fhead .ft{font-size:clamp(16px,1.9vw,30px);letter-spacing:.12em;text-transform:uppercase;font-weight:600;}
+  .fhead .badge{background:var(--amber);color:var(--steel-900);border-radius:4px;padding:.1em .45em;font-size:.7em;letter-spacing:.2em;vertical-align:middle;margin-right:.5em;font-weight:700;}
+  .fhead .fn{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--amber);font-size:clamp(34px,4.6vw,84px);line-height:1;text-shadow:0 0 16px rgba(255,178,62,.22);margin-top:.15em;}
+  .fhead .fsub{color:var(--muted);font-size:clamp(11px,1.2vw,18px);letter-spacing:.14em;text-transform:uppercase;margin-top:.4em;}
+  .fstuks{flex:1;min-height:0;overflow:hidden;}
+  .fmeer{padding:.6em clamp(14px,1.6vw,26px);color:var(--muted);font-size:clamp(12px,1.3vw,20px);letter-spacing:.14em;text-transform:uppercase;}
+  #ver{font-size:.72em;color:var(--muted);letter-spacing:.1em;}
   @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;} }
 </style>
 <div id="stage">
@@ -142,6 +162,8 @@
       <span class="dot"></span>
       <span class="state-label" id="stateLabel">Live</span>
       <span id="clock">--:--:--</span>
+      <span id="ver"></span>
+      <button id="focusBtn" title="Focus-toeren (brigadier)">&#127919;</button>
       <button id="kiesBtn" title="Schermkeuze (per TV onthouden)">&#9881;</button>
     </div>
   </div>
@@ -169,6 +191,7 @@
     DETAIL_DREMPEL: 10,    // stukdetail zodra tour-totaal <= dit aantal (0 = uit)
     DETAIL_MAX: 10         // max detailregels per tour
   };
+  const COLI_VERSION = "c1";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -204,6 +227,8 @@
   }catch(e){}
   const GANG_TOURS = {0:[600,601,700],1:[510,511,512,710],2:[620,621,720],3:[530,531,730],4:[640,641,740],
                       5:[550,551,750],6:[660,661,760],7:[570,571,770],8:[680,681,780],9:[590,591]};
+  const FOCUS_PRESET = ["TOUR 510","TOUR 511","TOUR 512","TOUR 530","TOUR 531","TOUR 550","TOUR 551","TOUR 570","TOUR 571","TOUR 590","TOUR 591"];
+  let focusTours = [];
   function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
   function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
   function inGangen(name){ const n=tourNum(name); if(n===null) return false; return GANGEN_SEL.some(g=>(GANG_TOURS[g]||[]).indexOf(n)>=0); }
@@ -302,7 +327,32 @@
     if(cur.length) pages.push(cur);
     return {rows:rows, pages:pages};
   }
+  function focusOpScherm(){
+    return schermFilter(focusTours.map(n=>({tour:n}))).map(t=>t.tour);
+  }
+  function renderFocus(fo){
+    pageEl.textContent = "FOCUS actief";
+    const cols = fo.slice(0,3).map(name=>{
+      const t = state.tours.find(x=>x.tour===name) || {tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,stuks:[]};
+      const tot = rowTotal(t);
+      const st = t.stuks||[];
+      const MAXR = 14;
+      const rows = st.slice(0,MAXR).map(s=>`<div class="srow"><span class="nr">${s.nr}</span><span class="oms">${s.oms}${s.loc?' · <b>'+s.loc+'</b>':''}</span><span class="lp">${s.lp||""}</span><span class="qty">${s.aantal}×</span></div>`).join("");
+      const meer = st.length>MAXR ? `<div class="fmeer">+ ${st.length-MAXR} meer…</div>` : "";
+      const leeg = (!st.length) ? `<div class="fmeer">${tot>0?"geen stukdetail beschikbaar":"alles gescand ✓"}</div>` : "";
+      return `<div class="fpan"><div class="fhead">`+
+        `<div class="ft"><span class="badge">FOCUS</span>${t.tour}</div>`+
+        `<div class="fn">${tot}</div>`+
+        `<div class="fsub">open ${t.open} · xdock ${t.xdock} · groen ${t.groen} · M+P ${t.sectorMP} · H ${t.sectorH}</div>`+
+        `</div><div class="fstuks">${rows}${meer}${leeg}</div></div>`;
+    }).join("");
+    tbodyEl.innerHTML = `<div class="fwrap">${cols}</div>`;
+  }
   function renderTable(){
+    const fo = focusOpScherm();
+    const th = document.querySelector(".thead");
+    if(fo.length){ kpisEl.style.display="none"; th.style.display="none"; renderFocus(fo); return; }
+    kpisEl.style.display=""; th.style.display="";
     const b = buildPages();
     if(b.rows.length===0){
       tbodyEl.innerHTML = '<div class="empty">Alles gescand ✓</div>';
@@ -386,7 +436,48 @@
       }
       tours.push(t);
     });
+    /* focus-toeren krijgen in demo een volledige stukkenlijst */
+    focusTours.forEach(name=>{
+      let t = tours.find(x=>x.tour===name);
+      if(!t){ t={tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:0}; tours.push(t); }
+      if(rowTotal(t)===0) t.open = 4;
+      const n = Math.min(Math.max(rowTotal(t),4), CONFIG.DETAIL_MAX);
+      t.stuks = [];
+      for(let i=0;i<n;i++){ t.stuks.push(Object.assign({aantal:1+(i%3)}, DEMO_STUKS[i%DEMO_STUKS.length])); }
+    });
     return {tours};
+  }
+  /* ---- focus (brigadier): gedeeld via database-rij coli_focus, vervalt bij dagwissel ---- */
+  function vandaag(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function leesFocus(doc){
+    try{ focusTours = (doc && Array.isArray(doc.tours) && doc.dag===vandaag()) ? doc.tours : []; }
+    catch(e){ focusTours=[]; }
+  }
+  function leesFocusLokaal(){
+    try{ const k=JSON.parse(localStorage.getItem("coli_focus_demo")||"null");
+      focusTours = (k && k.dag===vandaag() && Array.isArray(k.tours)) ? k.tours : [];
+    }catch(e){ focusTours=[]; }
+  }
+  async function zetFocus(tours){
+    focusTours = tours;
+    const t = tok();
+    if(!t){
+      try{ localStorage.setItem("coli_focus_demo", JSON.stringify({tours:tours,dag:vandaag()})); }catch(e){}
+      poll(); return;
+    }
+    const doc = {tours:tours, dag:vandaag(), updated:new Date().toISOString()};
+    const H = {apikey:CONFIG.SB_KEY, Authorization:"Bearer "+t, "Content-Type":"application/json"};
+    try{
+      let r = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?on_conflict=id",
+        {method:"POST", headers:Object.assign({Prefer:"resolution=merge-duplicates"},H),
+         body:JSON.stringify([{id:"coli_focus", doc:doc}])});
+      if(!r.ok){
+        r = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?id=eq.coli_focus",
+          {method:"PATCH", headers:H, body:JSON.stringify({doc:doc})});
+      }
+      if(!r.ok) alert("Focus opslaan mislukt ("+r.status+") - geen schrijfrechten?");
+    }catch(e){ alert("Focus opslaan mislukt: "+e); }
+    poll();
   }
   /* ---- planbord-database (zelfde teamlogin als de beta) ---- */
   function tok(){
@@ -395,13 +486,15 @@
   }
   async function poll(){
     const t = tok();
-    if(!t){ setStatus("demo","Demo · log in op de beta"); update(demoData()); return; }
+    if(!t){ leesFocusLokaal(); setStatus("demo","Demo · log in op de beta"); update(demoData()); return; }
     try{
-      const res = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?id=eq.cijfers&select=doc",
+      const res = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?id=in.(cijfers,coli_focus)&select=id,doc",
         {headers:{apikey:CONFIG.SB_KEY,Authorization:"Bearer "+t},cache:"no-store"});
       if(!res.ok) throw new Error(res.status);
       const a = await res.json();
-      const d = (a && a.length && a[0].doc) ? a[0].doc.colisage : null;
+      const rij = {}; (a||[]).forEach(r=>{ rij[r.id]=r.doc; });
+      leesFocus(rij["coli_focus"]);
+      const d = rij["cijfers"] ? rij["cijfers"].colisage : null;
       if(d && Array.isArray(d.tours)){
         failures=0;
         let lbl="Live";
@@ -458,6 +551,49 @@
     document.getElementById("stage").appendChild(w);
   }
   document.getElementById("kiesBtn").addEventListener("click", openKies);
+  /* ---- focus-kiezer (brigadier) ---- */
+  function openFocus(){
+    const old=document.getElementById("kies"); if(old){ old.remove(); return; }
+    const w=document.createElement("div"); w.id="kies";
+    const box=document.createElement("div"); box.className="box"; box.style.maxWidth="min(94vw,900px)";
+    const h=document.createElement("h2"); h.textContent="Focus-toeren (sluiten)"; box.appendChild(h);
+    const sel = {}; focusTours.forEach(n=>{ sel[n]=true; });
+    const grid=document.createElement("div");
+    grid.style.cssText="display:flex;flex-wrap:wrap;gap:.45em;max-height:55vh;overflow:auto;";
+    TOURS.forEach(name=>{
+      const b=document.createElement("button");
+      b.textContent=name.replace("TOUR ","");
+      b.style.cssText="font-size:clamp(13px,1.3vw,20px);padding:.35em .6em;text-align:center;";
+      function paint(){ b.classList.toggle("act", !!sel[name]); }
+      paint();
+      b.addEventListener("click",function(){ sel[name]=!sel[name]; paint(); });
+      grid.appendChild(b);
+    });
+    box.appendChild(grid);
+    const rij=document.createElement("div");
+    rij.style.cssText="display:flex;gap:.6em;flex-wrap:wrap;margin-top:.4em;";
+    function knop(lbl,fn){ const b=document.createElement("button"); b.textContent=lbl; b.addEventListener("click",fn); rij.appendChild(b); }
+    knop("\ud83c\udf19 Avondsluiting",function(){ zetFocus(FOCUS_PRESET.slice()); w.remove(); });
+    knop("\u2714 Zet focus",function(){ zetFocus(TOURS.filter(n=>sel[n])); w.remove(); });
+    knop("\u2716 Focus uit",function(){ zetFocus([]); w.remove(); });
+    box.appendChild(rij);
+    w.appendChild(box);
+    w.addEventListener("click",function(ev){ if(ev.target===w) w.remove(); });
+    document.getElementById("stage").appendChild(w);
+  }
+  document.getElementById("focusBtn").addEventListener("click", openFocus);
+  /* ---- versie-watcher: TV herlaadt zichzelf bij nieuwe versie ---- */
+  document.getElementById("ver").textContent = COLI_VERSION;
+  async function checkVersie(){
+    try{
+      const r = await fetch("colisage-version.txt?cb="+Date.now(), {cache:"no-store"});
+      if(r.ok){
+        const v = (await r.text()).trim();
+        if(v && v!==COLI_VERSION) location.reload();
+      }
+    }catch(e){}
+  }
+  setInterval(checkVersie, 5*60*1000);
   function nextPage(){ page++; renderTable(); }
   function tickClock(){ clockEl.textContent = new Date().toLocaleTimeString('nl-BE',{hour12:false}); }
   window.addEventListener('resize', ()=>{ measureRows(); renderTable(); });
