@@ -40,6 +40,8 @@
   ALLE schermen (elk scherm toont enkel zijn eigen focus-toeren), vervalt bij
   dagwissel. Focus-scherm = gesplitst per tour met alle stukken + totalen groot.
   Flow-tip: stuur voor focus-toeren altijd de stuks mee.
+  Sluituren per toer (in het \ud83c\udfaf-menu): focus gaat automatisch aan vanaf
+  FOCUS_VOORLOOP_MIN minuten voor het sluituur; sluituren blijven dag na dag staan.
 
   VERSIE: badge in de header = COLI_VERSION; de pagina checkt elke 5 min
   colisage-version.txt en herlaadt zichzelf bij een nieuwe versie.
@@ -148,6 +150,8 @@
   .fhead .fn{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--amber);font-size:clamp(34px,4.6vw,84px);line-height:1;text-shadow:0 0 16px rgba(255,178,62,.22);margin-top:.15em;}
   .fhead .fsub{color:var(--muted);font-size:clamp(11px,1.2vw,18px);letter-spacing:.14em;text-transform:uppercase;margin-top:.4em;}
   .fstuks{flex:1;min-height:0;overflow:hidden;}
+  .fstuks .srow{font-size:clamp(16px,2vw,32px);padding:clamp(6px,.8vw,13px) clamp(14px,1.6vw,26px);}
+  .fstuks .srow .lp{font-size:.72em;}
   .fmeer{padding:.6em clamp(14px,1.6vw,26px);color:var(--muted);font-size:clamp(12px,1.3vw,20px);letter-spacing:.14em;text-transform:uppercase;}
   #ver{font-size:.72em;color:var(--muted);letter-spacing:.1em;}
   @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;} }
@@ -170,7 +174,7 @@
   <div class="kpis" id="kpis"></div>
   <div class="panel">
     <div class="thead">
-      <span>Tour</span><span>Open</span><span>Xdock</span><span>Groen</span><span>M+P</span><span>H</span><span>Totaal</span>
+      <span>Tour</span><span>Open</span><span>Cross dock</span><span>Groen</span><span>M+P</span><span>H&amp;L</span><span>Totaal</span>
     </div>
     <div class="tbody" id="tbody"></div>
   </div>
@@ -189,9 +193,10 @@
     POLL_SECONDS: 30,      // verversfrequentie
     PAGE_SECONDS: 8,       // hoe lang elke pagina tours blijft staan
     DETAIL_DREMPEL: 10,    // stukdetail zodra tour-totaal <= dit aantal (0 = uit)
-    DETAIL_MAX: 10         // max detailregels per tour
+    DETAIL_MAX: 10,        // max detailregels per tour
+    FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c1";
+  const COLI_VERSION = "c2";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -206,10 +211,10 @@
   ];
   const KPI_DEFS = [
     {key:"open",     cap:"Open orders"},
-    {key:"xdock",    cap:"Xdock NEW+NC"},
+    {key:"xdock",    cap:"Cross dock NEW+NC"},
     {key:"groen",    cap:"Groene bakken"},
     {key:"sectorMP", cap:"Sector M+P"},
-    {key:"sectorH",  cap:"Sector H"}
+    {key:"sectorH",  cap:"Sector H & L"}
   ];
   const WORK_KEYS = ["open","xdock","groen","sectorMP","sectorH"];
   /* ---- schermkeuze via URL: ?scherm=sdd  of  ?gangen=1,2 (plan toeren CLIPS 2020) ---- */
@@ -229,6 +234,8 @@
                       5:[550,551,750],6:[660,661,760],7:[570,571,770],8:[680,681,780],9:[590,591]};
   const FOCUS_PRESET = ["TOUR 510","TOUR 511","TOUR 512","TOUR 530","TOUR 531","TOUR 550","TOUR 551","TOUR 570","TOUR 571","TOUR 590","TOUR 591"];
   let focusTours = [];
+  let focusSluit = {};   // {"TOUR 510":"18:00", ...} -> automatische focus vanaf voorloop
+  const SCHERM_PAREN = [[0,9],[1,2],[3,4],[5,6],[7,8]];
   function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
   function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
   function inGangen(name){ const n=tourNum(name); if(n===null) return false; return GANGEN_SEL.some(g=>(GANG_TOURS[g]||[]).indexOf(n)>=0); }
@@ -327,8 +334,17 @@
     if(cur.length) pages.push(cur);
     return {rows:rows, pages:pages};
   }
+  function effectieveFocus(){
+    const set = {}; focusTours.forEach(n=>{ set[n]=1; });
+    const nu = new Date(); const nuMin = nu.getHours()*60+nu.getMinutes();
+    Object.keys(focusSluit||{}).forEach(n=>{
+      const m = /^(\d{1,2}):(\d{2})$/.exec(focusSluit[n]||"");
+      if(m){ const t=(+m[1])*60+(+m[2]); if(nuMin >= t-CONFIG.FOCUS_VOORLOOP_MIN && nuMin <= t+180) set[n]=1; }
+    });
+    return Object.keys(set);
+  }
   function focusOpScherm(){
-    return schermFilter(focusTours.map(n=>({tour:n}))).map(t=>t.tour);
+    return schermFilter(effectieveFocus().map(n=>({tour:n}))).map(t=>t.tour);
   }
   function renderFocus(fo){
     pageEl.textContent = "FOCUS actief";
@@ -336,14 +352,14 @@
       const t = state.tours.find(x=>x.tour===name) || {tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,stuks:[]};
       const tot = rowTotal(t);
       const st = t.stuks||[];
-      const MAXR = 14;
+      const MAXR = 12;
       const rows = st.slice(0,MAXR).map(s=>`<div class="srow"><span class="nr">${s.nr}</span><span class="oms">${s.oms}${s.loc?' · <b>'+s.loc+'</b>':''}</span><span class="lp">${s.lp||""}</span><span class="qty">${s.aantal}×</span></div>`).join("");
       const meer = st.length>MAXR ? `<div class="fmeer">+ ${st.length-MAXR} meer…</div>` : "";
       const leeg = (!st.length) ? `<div class="fmeer">${tot>0?"geen stukdetail beschikbaar":"alles gescand ✓"}</div>` : "";
       return `<div class="fpan"><div class="fhead">`+
         `<div class="ft"><span class="badge">FOCUS</span>${t.tour}</div>`+
         `<div class="fn">${tot}</div>`+
-        `<div class="fsub">open ${t.open} · xdock ${t.xdock} · groen ${t.groen} · M+P ${t.sectorMP} · H ${t.sectorH}</div>`+
+        `<div class="fsub">open ${t.open} · cross dock ${t.xdock} · groene bakken ${t.groen} · M+P ${t.sectorMP} · H&L ${t.sectorH}</div>`+
         `</div><div class="fstuks">${rows}${meer}${leeg}</div></div>`;
     }).join("");
     tbodyEl.innerHTML = `<div class="fwrap">${cols}</div>`;
@@ -437,7 +453,7 @@
       tours.push(t);
     });
     /* focus-toeren krijgen in demo een volledige stukkenlijst */
-    focusTours.forEach(name=>{
+    effectieveFocus().forEach(name=>{
       let t = tours.find(x=>x.tour===name);
       if(!t){ t={tour:name,open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:0}; tours.push(t); }
       if(rowTotal(t)===0) t.open = 4;
@@ -450,22 +466,25 @@
   /* ---- focus (brigadier): gedeeld via database-rij coli_focus, vervalt bij dagwissel ---- */
   function vandaag(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
   function leesFocus(doc){
-    try{ focusTours = (doc && Array.isArray(doc.tours) && doc.dag===vandaag()) ? doc.tours : []; }
-    catch(e){ focusTours=[]; }
+    try{
+      focusSluit = (doc && doc.sluit) ? doc.sluit : {};
+      focusTours = (doc && Array.isArray(doc.tours) && doc.dag===vandaag()) ? doc.tours : [];
+    }catch(e){ focusTours=[]; focusSluit={}; }
   }
   function leesFocusLokaal(){
     try{ const k=JSON.parse(localStorage.getItem("coli_focus_demo")||"null");
+      focusSluit = (k && k.sluit) ? k.sluit : {};
       focusTours = (k && k.dag===vandaag() && Array.isArray(k.tours)) ? k.tours : [];
-    }catch(e){ focusTours=[]; }
+    }catch(e){ focusTours=[]; focusSluit={}; }
   }
-  async function zetFocus(tours){
-    focusTours = tours;
+  async function zetFocus(tours, sluit){
+    focusTours = tours; if(sluit) focusSluit = sluit;
     const t = tok();
     if(!t){
-      try{ localStorage.setItem("coli_focus_demo", JSON.stringify({tours:tours,dag:vandaag()})); }catch(e){}
+      try{ localStorage.setItem("coli_focus_demo", JSON.stringify({tours:tours,sluit:focusSluit,dag:vandaag()})); }catch(e){}
       poll(); return;
     }
-    const doc = {tours:tours, dag:vandaag(), updated:new Date().toISOString()};
+    const doc = {tours:tours, sluit:focusSluit, dag:vandaag(), updated:new Date().toISOString()};
     const H = {apikey:CONFIG.SB_KEY, Authorization:"Bearer "+t, "Content-Type":"application/json"};
     try{
       let r = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?on_conflict=id",
@@ -555,27 +574,49 @@
   function openFocus(){
     const old=document.getElementById("kies"); if(old){ old.remove(); return; }
     const w=document.createElement("div"); w.id="kies";
-    const box=document.createElement("div"); box.className="box"; box.style.maxWidth="min(94vw,900px)";
+    const box=document.createElement("div"); box.className="box"; box.style.maxWidth="min(94vw,760px)";
     const h=document.createElement("h2"); h.textContent="Focus-toeren (sluiten)"; box.appendChild(h);
     const sel = {}; focusTours.forEach(n=>{ sel[n]=true; });
-    const grid=document.createElement("div");
-    grid.style.cssText="display:flex;flex-wrap:wrap;gap:.45em;max-height:55vh;overflow:auto;";
-    TOURS.forEach(name=>{
-      const b=document.createElement("button");
-      b.textContent=name.replace("TOUR ","");
-      b.style.cssText="font-size:clamp(13px,1.3vw,20px);padding:.35em .6em;text-align:center;";
-      function paint(){ b.classList.toggle("act", !!sel[name]); }
-      paint();
-      b.addEventListener("click",function(){ sel[name]=!sel[name]; paint(); });
-      grid.appendChild(b);
+    const uren = Object.assign({}, focusSluit||{});
+    const lijst=document.createElement("div");
+    lijst.style.cssText="max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:.35em;";
+    SCHERM_PAREN.forEach(p=>{
+      const kop=document.createElement("div");
+      kop.textContent="Gang "+p[0]+" + "+p[1];
+      kop.style.cssText="color:var(--muted);letter-spacing:.2em;text-transform:uppercase;font-size:clamp(11px,1.1vw,16px);margin-top:.5em;";
+      lijst.appendChild(kop);
+      const rijen=document.createElement("div");
+      rijen.style.cssText="display:flex;flex-wrap:wrap;gap:.45em;";
+      GANG_TOURS[p[0]].concat(GANG_TOURS[p[1]]).forEach(nr=>{
+        const name="TOUR "+nr;
+        const cel=document.createElement("div");
+        cel.style.cssText="display:flex;align-items:center;gap:.3em;";
+        const b=document.createElement("button");
+        b.textContent=nr;
+        b.style.cssText="font-size:clamp(13px,1.3vw,20px);padding:.3em .55em;";
+        function paint(){ b.classList.toggle("act", !!sel[name]); }
+        paint();
+        b.addEventListener("click",function(){ sel[name]=!sel[name]; paint(); });
+        const u=document.createElement("input");
+        u.type="time"; u.value=uren[name]||"";
+        u.style.cssText="background:var(--steel-700);color:var(--text);border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:clamp(11px,1.1vw,16px);padding:.2em .3em;color-scheme:dark;";
+        u.addEventListener("change",function(){ if(u.value) uren[name]=u.value; else delete uren[name]; });
+        cel.appendChild(b); cel.appendChild(u);
+        rijen.appendChild(cel);
+      });
+      lijst.appendChild(rijen);
     });
-    box.appendChild(grid);
+    box.appendChild(lijst);
+    const uitleg=document.createElement("div");
+    uitleg.textContent="Sluituur ingesteld? Focus gaat voor die toer automatisch aan vanaf "+CONFIG.FOCUS_VOORLOOP_MIN+" min vooraf.";
+    uitleg.style.cssText="color:var(--muted);font-size:clamp(11px,1.1vw,16px);margin-top:.5em;";
+    box.appendChild(uitleg);
     const rij=document.createElement("div");
-    rij.style.cssText="display:flex;gap:.6em;flex-wrap:wrap;margin-top:.4em;";
+    rij.style.cssText="display:flex;gap:.6em;flex-wrap:wrap;margin-top:.5em;";
     function knop(lbl,fn){ const b=document.createElement("button"); b.textContent=lbl; b.addEventListener("click",fn); rij.appendChild(b); }
-    knop("\ud83c\udf19 Avondsluiting",function(){ zetFocus(FOCUS_PRESET.slice()); w.remove(); });
-    knop("\u2714 Zet focus",function(){ zetFocus(TOURS.filter(n=>sel[n])); w.remove(); });
-    knop("\u2716 Focus uit",function(){ zetFocus([]); w.remove(); });
+    knop("\ud83c\udf19 Avondsluiting nu",function(){ zetFocus(FOCUS_PRESET.slice(), uren); w.remove(); });
+    knop("\u2714 Bewaar",function(){ zetFocus(Object.keys(sel).filter(n=>sel[n]), uren); w.remove(); });
+    knop("\u2716 Focus uit",function(){ zetFocus([], uren); w.remove(); });
     box.appendChild(rij);
     w.appendChild(box);
     w.addEventListener("click",function(ev){ if(ev.target===w) w.remove(); });
