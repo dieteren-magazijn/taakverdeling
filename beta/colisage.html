@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Colisage · Kortenberg — TV</title>
+<link rel="icon" href="favicon.svg?v=2" type="image/svg+xml">
+</head>
+<body style="margin:0;background:#14171c">
+<!--
+  COLISAGE — TV dashboard (Kortenberg DC) — planbord-editie
+  ============================================================
+  Leest zijn data uit de planbord-database (Supabase), rij id="cijfers",
+  veld doc.colisage. Zelfde teamlogin als het planbord: log op dit toestel
+  één keer in op de beta (zelfde browser), daarna werkt deze pagina vanzelf.
+
+  DATA — wat de Power Automate-flow in doc.colisage moet zetten (JSON):
+  {
+    "updated": "2026-06-09T14:32:00",
+    "tours": [
+      { "tour":"TOUR 113", "open":44, "xdock":12, "groen":28,
+        "sectorMP":9, "sectorH":4, "banden":28 }
+      // enkel tours met werk volstaan; rest = 0
+    ]
+  }
+  Zolang er geen doc.colisage in de database staat: DEMO-modus.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700;800&display=swap');
+  :root{
+    --steel-900:#14171c; --steel-850:#181d24; --steel-800:#1b2027; --steel-700:#262d36;
+    --line:#2f3742; --seam:#0c0e12; --amber:#ffb23e; --amber-soft:#ffc977; --amber-dim:#5a4624;
+    --text:#e8eaed; --muted:#7c8794; --live:#46d17f; --warn:#f0883e; --down:#e5534b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  #stage{
+    position:fixed;inset:0;
+    background: radial-gradient(130% 70% at 50% -5%, rgba(255,178,62,.08), transparent 55%), var(--steel-900);
+    color:var(--text); font-family:'Oswald',sans-serif;
+    display:flex;flex-direction:column;overflow:hidden; -webkit-font-smoothing:antialiased;
+  }
+  .header{display:flex;align-items:center;justify-content:space-between;
+    padding:clamp(12px,1.6vw,24px) clamp(18px,2.6vw,40px); border-bottom:1px solid var(--line);}
+  .brand{font-size:clamp(16px,2vw,30px);letter-spacing:.34em;text-transform:uppercase;font-weight:600;}
+  .brand b{color:var(--amber);font-weight:700;}
+  .status{display:flex;align-items:center;gap:.7em;font-size:clamp(12px,1.4vw,20px);
+    letter-spacing:.28em;text-transform:uppercase;color:var(--muted);}
+  .dot{width:.7em;height:.7em;border-radius:50%;background:var(--live);color:var(--live);
+    box-shadow:0 0 0 0 currentColor;animation:pulse 2.4s infinite;}
+  .status[data-state="down"] .dot{background:var(--down);color:var(--down);}
+  .status[data-state="demo"] .dot{background:var(--warn);color:var(--warn);}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 currentColor;}70%{box-shadow:0 0 0 .9em rgba(0,0,0,0);}100%{box-shadow:0 0 0 0 rgba(0,0,0,0);}}
+  .state-label{min-width:7em;color:var(--text);}
+  .kpis{display:flex;gap:clamp(8px,1vw,16px);padding:clamp(12px,1.6vw,24px) clamp(18px,2.6vw,40px);}
+  .kpi{flex:1;position:relative;
+    background:linear-gradient(180deg,var(--steel-700),var(--steel-800) 49%,var(--steel-700) 51%,var(--steel-800));
+    border-radius:clamp(6px,.6vw,12px); padding:clamp(10px,1.3vw,22px) clamp(10px,1.4vw,24px);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.45),0 5px 18px rgba(0,0,0,.35); overflow:hidden;}
+  .kpi::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:var(--seam);}
+  .kpi .num{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--amber);
+    font-size:clamp(40px,6.2vw,108px);line-height:.95;text-shadow:0 0 16px rgba(255,178,62,.22);}
+  .kpi .cap{font-size:clamp(11px,1.25vw,19px);letter-spacing:.2em;text-transform:uppercase;
+    color:var(--muted);margin-top:.5em;font-weight:500;}
+  .panel{flex:1;display:flex;flex-direction:column;min-height:0; margin:0 clamp(18px,2.6vw,40px);
+    border:1px solid var(--line);border-radius:clamp(6px,.6vw,12px); background:var(--steel-850);overflow:hidden;}
+  .thead,.row{display:grid;grid-template-columns:2.2fr .8fr .9fr .9fr .8fr .7fr 1fr; align-items:center;}
+  .thead{padding:clamp(8px,1vw,16px) clamp(14px,1.6vw,26px); border-bottom:1px solid var(--line);color:var(--muted);
+    font-size:clamp(11px,1.2vw,18px);letter-spacing:.16em;text-transform:uppercase;font-weight:500;}
+  .thead span:not(:first-child),.row .c:not(:first-child){text-align:right;justify-self:end;}
+  .tbody{flex:1;min-height:0;overflow:hidden;}
+  .row{position:relative;padding:clamp(6px,.85vw,14px) clamp(14px,1.6vw,26px);
+    border-bottom:1px solid rgba(47,55,66,.55);font-size:clamp(15px,1.9vw,30px);}
+  .row:last-child{border-bottom:none;}
+  .row .tour{font-weight:500;letter-spacing:.04em;}
+  .row .c{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
+  .row .c.zero{color:#41484f;}
+  .row .total{color:var(--amber);}
+  .row .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,178,62,.07);
+    border-left:2px solid rgba(255,178,62,.35);z-index:0;}
+  .row > *{position:relative;z-index:1;}
+  .empty{flex:1;display:flex;align-items:center;justify-content:center;
+    font-size:clamp(22px,3vw,46px);letter-spacing:.2em;text-transform:uppercase;color:var(--live);}
+  .footer{display:flex;align-items:center;gap:clamp(14px,2vw,30px);
+    padding:clamp(8px,1.1vw,18px) 0 clamp(8px,1.1vw,18px) clamp(18px,2.6vw,40px);
+    margin-top:clamp(10px,1.4vw,20px); border-top:1px solid var(--line);background:var(--steel-850);}
+  .footer .tag{flex:none;font-size:clamp(12px,1.4vw,22px);letter-spacing:.22em;
+    text-transform:uppercase;color:var(--steel-900);background:var(--amber);
+    padding:.45em .9em;border-radius:4px;font-weight:600;}
+  .footer .banden-total{flex:none;font-family:'JetBrains Mono',monospace;font-weight:800;
+    color:var(--amber);font-size:clamp(20px,2.6vw,42px);line-height:1;
+    text-shadow:0 0 14px rgba(255,178,62,.2);}
+  .ticker{flex:1;overflow:hidden;white-space:nowrap;mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);}
+  .ticker-track{display:inline-block;animation:marquee linear infinite;}
+  .ticker-track .half{display:inline-block;}
+  .ticker .it{font-size:clamp(14px,1.7vw,26px);letter-spacing:.12em;text-transform:uppercase;
+    color:var(--text);padding:0 1.4em;}
+  .ticker .it b{color:var(--amber-soft);font-family:'JetBrains Mono',monospace;font-weight:800;}
+  .ticker .sep{color:var(--amber-dim);}
+  @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  .pageind{font-size:clamp(11px,1.2vw,18px);letter-spacing:.2em;color:var(--muted);
+    padding:clamp(6px,.8vw,12px) clamp(18px,2.6vw,40px);text-align:right; text-transform:uppercase;}
+  @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;} }
+</style>
+<div id="stage">
+  <div class="header">
+    <div class="brand"><b>Colisage</b> &middot; Kortenberg</div>
+    <div class="status" id="status" data-state="live">
+      <span class="dot"></span>
+      <span class="state-label" id="stateLabel">Live</span>
+      <span id="clock">--:--:--</span>
+    </div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="panel">
+    <div class="thead">
+      <span>Tour</span><span>Open</span><span>Xdock</span><span>Groen</span><span>M+P</span><span>H</span><span>Totaal</span>
+    </div>
+    <div class="tbody" id="tbody"></div>
+  </div>
+  <div class="pageind" id="pageind"></div>
+  <div class="footer">
+    <span class="tag">Banden</span>
+    <span class="banden-total" id="bandenTotal">0</span>
+    <div class="ticker"><div class="ticker-track" id="track"></div></div>
+  </div>
+</div>
+<script>
+  // ===================== INSTELLINGEN =====================
+  const CONFIG = {
+    SB_URL: "https://gntaanclvusvhfkgjusz.supabase.co",
+    SB_KEY: "sb_publishable_bZ6yeDauQb1md0bIOwCoJQ_KbQAc4qV",
+    POLL_SECONDS: 30,      // verversfrequentie
+    PAGE_SECONDS: 8        // hoe lang elke pagina tours blijft staan
+  };
+  // ========================================================
+  const TOURS = [
+    "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
+    "TOUR 230","TOUR 231","TOUR 232","TOUR 233","TOUR 234","TOUR 235","TOUR 236","TOUR 237","TOUR 238",
+    "TOUR 320","TOUR 321","TOUR 322","TOUR 323","TOUR 324","TOUR 325","TOUR 326","TOUR 327",
+    "TOUR 400","TOUR 510","TOUR 511","TOUR 512","TOUR 530","TOUR 531","TOUR 550","TOUR 551",
+    "TOUR 570","TOUR 571","TOUR 590","TOUR 591","TOUR 600","TOUR 601","TOUR 620","TOUR 621",
+    "TOUR 640","TOUR 641","TOUR 660","TOUR 661","TOUR 680","TOUR 681",
+    "TOUR 700","TOUR 710","TOUR 720","TOUR 730","TOUR 740","TOUR 750","TOUR 760","TOUR 770","TOUR 780",
+    "Pick Up","CVI","Carglass DEP","Hekla DEP","TOUR 990 (STOCK)","Tour Lokeren","Tour Coox 01039",
+    "Carglass Stock","Issue Load (Info Dieter)","Hekla STO","CAT"
+  ];
+  const KPI_DEFS = [
+    {key:"open",     cap:"Open orders"},
+    {key:"xdock",    cap:"Xdock NEW+NC"},
+    {key:"groen",    cap:"Groene bakken"},
+    {key:"sectorMP", cap:"Sector M+P"},
+    {key:"sectorH",  cap:"Sector H"}
+  ];
+  const WORK_KEYS = ["open","xdock","groen","sectorMP","sectorH"];
+  let state = { tours: [], banden: 0 };
+  let page = 0, rowsPerPage = 10, failures = 0;
+  let demoBase = null;
+  const kpisEl   = document.getElementById('kpis');
+  const tbodyEl  = document.getElementById('tbody');
+  const trackEl  = document.getElementById('track');
+  const bandenTotalEl = document.getElementById('bandenTotal');
+  const pageEl   = document.getElementById('pageind');
+  const statusEl = document.getElementById('status');
+  const stateLbl = document.getElementById('stateLabel');
+  const clockEl  = document.getElementById('clock');
+  const kpiNums = {};
+  KPI_DEFS.forEach(d=>{
+    const el = document.createElement('div'); el.className='kpi';
+    el.innerHTML = `<div class="num" data-k="${d.key}">0</div><div class="cap">${d.cap}</div>`;
+    kpisEl.appendChild(el);
+    kpiNums[d.key] = el.querySelector('.num');
+  });
+  function rowTotal(t){ return WORK_KEYS.reduce((s,k)=>s+(t[k]||0),0); }
+  function normalize(tours){
+    return tours.map(t=>({
+      tour:t.tour, open:+t.open||0, xdock:+t.xdock||0, groen:+t.groen||0,
+      sectorMP:+t.sectorMP||0, sectorH:+t.sectorH||0, banden:+t.banden||0
+    }));
+  }
+  function countUp(el, to){
+    const from = +el.dataset.val || 0;
+    if(from===to){ el.textContent=to; return; }
+    el.dataset.val = to;
+    const start = performance.now(), dur=700;
+    function step(now){
+      const p = Math.min(1,(now-start)/dur);
+      el.textContent = Math.round(from + (to-from)*(1-Math.pow(1-p,3)));
+      if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function setStatus(s,l){ statusEl.dataset.state=s; stateLbl.textContent=l; }
+  function measureRows(){
+    const h = tbodyEl.clientHeight;
+    const sample = 0.0185*window.innerHeight + 28;
+    rowsPerPage = Math.max(1, Math.floor(h / sample));
+  }
+  function activeTours(){
+    return state.tours.filter(t=>rowTotal(t)>0).sort((a,b)=>rowTotal(b)-rowTotal(a));
+  }
+  function renderKpis(){
+    const agg = {open:0,xdock:0,groen:0,sectorMP:0,sectorH:0};
+    state.tours.forEach(t=>WORK_KEYS.forEach(k=>agg[k]+=t[k]||0));
+    KPI_DEFS.forEach(d=>countUp(kpiNums[d.key], agg[d.key]));
+  }
+  function renderTable(){
+    const rows = activeTours();
+    if(rows.length===0){
+      tbodyEl.innerHTML = '<div class="empty">Alles gescand ✓</div>';
+      pageEl.textContent = "";
+      return;
+    }
+    const maxT = rowTotal(rows[0]) || 1;
+    const pages = Math.ceil(rows.length / rowsPerPage);
+    if(page>=pages) page=0;
+    const slice = rows.slice(page*rowsPerPage, page*rowsPerPage+rowsPerPage);
+    tbodyEl.innerHTML = slice.map(t=>{
+      const tot = rowTotal(t);
+      const cell=(v)=>`<span class="c${v?'':' zero'}">${v}</span>`;
+      return `<div class="row">
+        <span class="bar" style="width:${(tot/maxT*100).toFixed(1)}%"></span>
+        <span class="tour">${t.tour}</span>
+        ${cell(t.open)}${cell(t.xdock)}${cell(t.groen)}${cell(t.sectorMP)}${cell(t.sectorH)}
+        <span class="c total">${tot}</span>
+      </div>`;
+    }).join("");
+    pageEl.textContent = pages>1 ? `Pagina ${page+1} / ${pages}` : "";
+  }
+  function renderTicker(){
+    bandenTotalEl.textContent = state.banden;
+    const rows = state.tours.filter(t=>t.banden>0).sort((a,b)=>b.banden-a.banden);
+    const items = rows.map(t=>`<span class="it">${t.tour} <b>${t.banden}</b></span><span class="sep">◆</span>`);
+    if(items.length===0) items.push(`<span class="it">geen banden te scannen</span>`);
+    const half = `<span class="half">${items.join("")}</span>`;
+    trackEl.innerHTML = half + half;
+    const chars = trackEl.textContent.length || 1;
+    trackEl.style.animationDuration = Math.max(25, chars*0.22) + "s";
+  }
+  function update(payload){
+    state.tours = normalize(payload.tours||[]);
+    state.banden = state.tours.reduce((s,t)=>s+t.banden,0);
+    renderKpis(); renderTable(); renderTicker();
+  }
+  function demoData(){
+    if(!demoBase){
+      demoBase = {};
+      TOURS.forEach(name=>{
+        if(Math.random()<0.42){
+          demoBase[name] = {
+            open:Math.floor(Math.random()*55),
+            xdock:Math.floor(Math.random()*18),
+            groen:Math.floor(Math.random()*35),
+            sectorMP:Math.floor(Math.random()*14),
+            sectorH:Math.floor(Math.random()*10),
+            banden:Math.floor(Math.random()*30)
+          };
+        }
+      });
+    }
+    const tours = [];
+    Object.entries(demoBase).forEach(([name,v])=>{
+      WORK_KEYS.concat("banden").forEach(k=>{
+        v[k] = Math.max(0, v[k] + Math.round((Math.random()-0.55)*4));
+      });
+      tours.push(Object.assign({tour:name}, v));
+    });
+    return {tours};
+  }
+  /* ---- planbord-database (zelfde teamlogin als de beta) ---- */
+  function tok(){
+    try{ const s=JSON.parse(localStorage.getItem("vp_sb_sess")||"null"); return (s&&s.t)?s.t:null; }
+    catch(e){ return null; }
+  }
+  async function poll(){
+    const t = tok();
+    if(!t){ setStatus("demo","Demo · log in op de beta"); update(demoData()); return; }
+    try{
+      const res = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?id=eq.cijfers&select=doc",
+        {headers:{apikey:CONFIG.SB_KEY,Authorization:"Bearer "+t},cache:"no-store"});
+      if(!res.ok) throw new Error(res.status);
+      const a = await res.json();
+      const d = (a && a.length && a[0].doc) ? a[0].doc.colisage : null;
+      if(d && Array.isArray(d.tours)){
+        failures=0;
+        let lbl="Live";
+        try{
+          if(d.updated){
+            const m=Math.round((Date.now()-Date.parse(d.updated))/60000);
+            if(m>30){ setStatus("down","Data "+m+" min oud"); update(d); return; }
+            lbl="Live · "+(m<1?"zonet":m+" min");
+          }
+        }catch(e){}
+        setStatus("live",lbl); update(d);
+      } else {
+        setStatus("demo","Demo · wacht op data"); update(demoData());
+      }
+    }catch(e){
+      failures++; setStatus("down", failures>2 ? "Verbinding kwijt" : "Hapering");
+    }
+  }
+  function nextPage(){ page++; renderTable(); }
+  function tickClock(){ clockEl.textContent = new Date().toLocaleTimeString('nl-BE',{hour12:false}); }
+  window.addEventListener('resize', ()=>{ measureRows(); renderTable(); });
+  measureRows();
+  tickClock(); poll();
+  setInterval(tickClock, 1000);
+  setInterval(poll, CONFIG.POLL_SECONDS*1000);
+  setInterval(nextPage, CONFIG.PAGE_SECONDS*1000);
+</script>
+</body>
+</html>
