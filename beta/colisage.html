@@ -30,6 +30,9 @@
     ]
   }
   Zolang er geen doc.colisage in de database staat: DEMO-modus.
+
+  SCHERMKEUZE: via de ⚙-knop rechtsboven (keuze wordt per TV onthouden),
+  of via URL ?scherm=sdd / ?gangen=0,9 (wordt dan ook onthouden).
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700;800&display=swap');
@@ -113,6 +116,18 @@
   @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
   .pageind{font-size:clamp(11px,1.2vw,18px);letter-spacing:.2em;color:var(--muted);
     padding:clamp(6px,.8vw,12px) clamp(18px,2.6vw,40px);text-align:right; text-transform:uppercase;}
+  #kiesBtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
+    font:inherit;font-size:.9em;padding:.2em .55em;cursor:pointer;letter-spacing:0;}
+  #kiesBtn:hover{color:var(--amber);border-color:var(--amber-dim);}
+  #kies{position:fixed;inset:0;background:rgba(10,12,16,.82);display:flex;align-items:center;justify-content:center;z-index:50;}
+  #kies .box{background:var(--steel-850);border:1px solid var(--line);border-radius:12px;
+    padding:clamp(18px,2.4vw,36px);display:flex;flex-direction:column;gap:.7em;min-width:min(90vw,420px);}
+  #kies h2{font-size:clamp(14px,1.6vw,24px);letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:.3em;}
+  #kies button{font-family:inherit;font-size:clamp(15px,1.8vw,26px);letter-spacing:.12em;text-transform:uppercase;
+    background:var(--steel-700);color:var(--text);border:1px solid var(--line);border-radius:8px;
+    padding:.45em .9em;cursor:pointer;text-align:left;}
+  #kies button:hover{border-color:var(--amber);}
+  #kies button.act{border-color:var(--amber);color:var(--amber);}
   @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;} }
 </style>
 <div id="stage">
@@ -125,6 +140,7 @@
       <span class="dot"></span>
       <span class="state-label" id="stateLabel">Live</span>
       <span id="clock">--:--:--</span>
+      <button id="kiesBtn" title="Schermkeuze (per TV onthouden)">&#9881;</button>
     </div>
   </div>
   <div class="kpis" id="kpis"></div>
@@ -173,8 +189,17 @@
   const WORK_KEYS = ["open","xdock","groen","sectorMP","sectorH"];
   /* ---- schermkeuze via URL: ?scherm=sdd  of  ?gangen=1,2 (plan toeren CLIPS 2020) ---- */
   const QS = new URLSearchParams(location.search);
-  const SCHERM_SDD = (QS.get("scherm")||"").toLowerCase()==="sdd";
-  const GANGEN_SEL = (QS.get("gangen")||"").split(",").map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+  let SCHERM_SDD = (QS.get("scherm")||"").toLowerCase()==="sdd";
+  let GANGEN_SEL = (QS.get("gangen")||"").split(",").map(x=>parseInt(x,10)).filter(n=>!isNaN(n));
+  /* keuze per TV onthouden: URL wint en wordt bewaard; zonder URL geldt de bewaarde keuze */
+  try{
+    if(QS.has("scherm")||QS.has("gangen")){
+      localStorage.setItem("coli_kies", JSON.stringify({sdd:SCHERM_SDD, gangen:GANGEN_SEL}));
+    } else {
+      const k=JSON.parse(localStorage.getItem("coli_kies")||"null");
+      if(k){ SCHERM_SDD=!!k.sdd; GANGEN_SEL=Array.isArray(k.gangen)?k.gangen:[]; }
+    }
+  }catch(e){}
   const GANG_TOURS = {0:[600,601,700],1:[510,511,512,710],2:[620,621,720],3:[530,531,730],4:[640,641,740],
                       5:[550,551,750],6:[660,661,760],7:[570,571,770],8:[680,681,780],9:[590,591]};
   function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
@@ -388,6 +413,44 @@
       failures++; setStatus("down", failures>2 ? "Verbinding kwijt" : "Hapering");
     }
   }
+  /* ---- schermkeuze-menu ---- */
+  const KIES_OPTS = [
+    {lbl:"Alles",      v:null},
+    {lbl:"SDD",        v:{sdd:true, gangen:[]}},
+    {lbl:"Gang 0 + 9", v:{sdd:false, gangen:[0,9]}},
+    {lbl:"Gang 1 + 2", v:{sdd:false, gangen:[1,2]}},
+    {lbl:"Gang 3 + 4", v:{sdd:false, gangen:[3,4]}},
+    {lbl:"Gang 5 + 6", v:{sdd:false, gangen:[5,6]}},
+    {lbl:"Gang 7 + 8", v:{sdd:false, gangen:[7,8]}}
+  ];
+  function kiesActueel(o){
+    if(!o.v) return !SCHERM_SDD && GANGEN_SEL.length===0;
+    if(o.v.sdd) return SCHERM_SDD;
+    return !SCHERM_SDD && GANGEN_SEL.join(",")===o.v.gangen.join(",");
+  }
+  function openKies(){
+    const old=document.getElementById("kies"); if(old){ old.remove(); return; }
+    const w=document.createElement("div"); w.id="kies";
+    const box=document.createElement("div"); box.className="box";
+    const h=document.createElement("h2"); h.textContent="Welk scherm is dit?"; box.appendChild(h);
+    KIES_OPTS.forEach(o=>{
+      const b=document.createElement("button");
+      b.textContent=o.lbl+(kiesActueel(o)?" \u2713":"");
+      if(kiesActueel(o)) b.className="act";
+      b.addEventListener("click",function(){
+        try{
+          if(o.v) localStorage.setItem("coli_kies", JSON.stringify(o.v));
+          else localStorage.removeItem("coli_kies");
+        }catch(e){}
+        location.href=location.pathname;
+      });
+      box.appendChild(b);
+    });
+    w.appendChild(box);
+    w.addEventListener("click",function(ev){ if(ev.target===w) w.remove(); });
+    document.getElementById("stage").appendChild(w);
+  }
+  document.getElementById("kiesBtn").addEventListener("click", openKies);
   function nextPage(){ page++; renderTable(); }
   function tickClock(){ clockEl.textContent = new Date().toLocaleTimeString('nl-BE',{hour12:false}); }
   window.addEventListener('resize', ()=>{ measureRows(); renderTable(); });
