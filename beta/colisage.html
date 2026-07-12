@@ -178,6 +178,9 @@
   .brow .bv.none{color:#41484f;}
   .brow.done .bn{color:var(--muted);}
   .brow.foc{border-left-color:var(--amber);background:rgba(255,178,62,.05);}
+  .brow.afg{opacity:.55;border-left-color:var(--live);}
+  .brow.afg .bn{text-decoration:line-through;color:var(--muted);}
+  .bhelp{color:var(--muted);font-size:clamp(11px,1.2vw,17px);margin-top:auto;padding:.6em .4em;letter-spacing:.05em;line-height:1.5;}
   @media (prefers-reduced-motion: reduce){ .dot{animation:none;}.ticker-track{animation:none;}
     .fdone svg{animation:none;}.fdone circle,.fdone path{animation:none;stroke-dashoffset:0;} }
 </style>
@@ -221,7 +224,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c8";
+  const COLI_VERSION = "c9";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -261,6 +264,7 @@
   const FOCUS_PRESET = ["TOUR 510","TOUR 511","TOUR 512","TOUR 530","TOUR 531","TOUR 550","TOUR 551","TOUR 570","TOUR 571","TOUR 590","TOUR 591"];
   let focusTours = [];
   let focusSluit = {};   // {"TOUR 510":"18:00", ...} -> automatische focus vanaf voorloop
+  let focusAf = [];      // vandaag verzonden (outbound shipment gedaan) -> niet meer op de schermen
   const SCHERM_PAREN = [[0,9],[1,2],[3,4],[5,6],[7,8]];
   function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
   function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
@@ -289,6 +293,7 @@
   let state = { tours: [], banden: 0 };
   let page = 0, rowsPerPage = 10, failures = 0;
   let demoBase = null;
+  let demoNul = {};   // demo: deze toeren blijven op 0 (alles gescand)
   const kpisEl   = document.getElementById('kpis');
   const tbodyEl  = document.getElementById('tbody');
   const trackEl  = document.getElementById('track');
@@ -371,6 +376,7 @@
       const m = /^(\d{1,2}):(\d{2})$/.exec(focusSluit[n]||"");
       if(m){ const t=(+m[1])*60+(+m[2]); if(nuMin >= t-CONFIG.FOCUS_VOORLOOP_MIN && nuMin <= t+180) set[n]=1; }
     });
+    (focusAf||[]).forEach(n=>{ delete set[n]; });
     return Object.keys(set);
   }
   function focusOpScherm(){
@@ -404,9 +410,11 @@
       const t = byName[name];
       const tot = t ? rowTotal(t) : null;
       const klaar = tot===0;
-      const cls = "brow"+(klaar?" done":"")+(eff[name]?" foc":"");
+      const isAf = focusAf.indexOf(name)>=0;
+      const cls = "brow"+(klaar?" done":"")+(eff[name]?" foc":"")+(isAf?" afg":"");
       const uur = focusSluit[name] ? `<span class="uur">\u23f1 ${focusSluit[name]}</span>` : "";
-      const val = (tot===null) ? `<span class="bv none">\u2013</span>`
+      const val = isAf ? `<span class="bv ok">\ud83d\udce6\u2713</span>`
+                : (tot===null) ? `<span class="bv none">\u2013</span>`
                 : klaar ? `<span class="bv ok">\u2713</span>`
                 : `<span class="bv">${tot}</span>`;
       return `<div class="${cls}" data-tour="${name}"><span class="bn">${name.replace("TOUR ","")}</span>${uur}${val}</div>`;
@@ -417,12 +425,11 @@
       const klaarN = namen.filter(n=>byName[n]&&rowTotal(byName[n])===0).length;
       panelen.push(`<div class="bpan"><div class="bkop">Gang ${p[0]} + ${p[1]}<span class="bsub">${klaarN}/${namen.length} dicht</span></div>${namen.map(rij).join("")}</div>`);
     });
-    const sdd = state.tours.filter(t=>isSDD(t.tour));
-    const sddOpen = sdd.filter(t=>rowTotal(t)>0).sort((a,b)=>rowTotal(b)-rowTotal(a));
-    const sddTot = sdd.reduce((s,t)=>s+rowTotal(t),0);
-    panelen.push(`<div class="bpan"><div class="bkop">SDD<span class="bsub">${sddOpen.length} toeren \u00b7 ${sddTot} stuks</span></div>`+
-      sddOpen.slice(0,8).map(t=>`<div class="brow"><span class="bn">${t.tour.replace("TOUR ","")}</span><span class="bv">${rowTotal(t)}</span></div>`).join("")+
-      (sddOpen.length===0?`<div class="brow done"><span class="bn">alles</span><span class="bv ok">\u2713</span></div>`:"")+`</div>`);
+    panelen.push(`<div class="bpan"><div class="bkop">Legende</div>`+
+      `<div class="brow foc"><span class="bn">sluit actief</span><span class="bv">7</span></div>`+
+      `<div class="brow done"><span class="bn">alles gescand</span><span class="bv ok">\u2713</span></div>`+
+      `<div class="brow afg"><span class="bn">verzonden</span><span class="bv ok">\ud83d\udce6\u2713</span></div>`+
+      `<div class="bhelp">Klik een toer: sluit aan \u2192 verzonden \u2192 uit.<br>Sluituren via \ud83c\udfaf. Verzonden = weg van het gang-scherm.</div></div>`);
     tbodyEl.innerHTML = `<div class="bwrap">${panelen.join("")}</div>`;
   }
   function renderTable(){
@@ -502,9 +509,14 @@
           };
         }
       });
-      /* per gang + SDD een paar bijna-klare toeren, zodat het stukdetail op elk scherm te zien is */
+      /* demo: 1e toer per gang vast op nul (alles gescand), 2e toer bijna klaar; SDD paar bijna-klare */
       const bijnaKlaar=["TOUR 110","TOUR 234","TOUR 323"];
-      Object.keys(GANG_TOURS).forEach(g=>{ bijnaKlaar.push("TOUR "+GANG_TOURS[g][0]); });
+      Object.keys(GANG_TOURS).forEach(g=>{
+        const nul="TOUR "+GANG_TOURS[g][0];
+        demoBase[nul]={open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:0};
+        demoNul[nul]=1;
+        if(GANG_TOURS[g][1]!==undefined) bijnaKlaar.push("TOUR "+GANG_TOURS[g][1]);
+      });
       bijnaKlaar.forEach(name=>{
         const v = demoBase[name] || (demoBase[name]={open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:Math.floor(Math.random()*8)});
         WORK_KEYS.forEach(k=>{ v[k]=Math.min(v[k]||0,2); });
@@ -513,7 +525,7 @@
     }
     const tours = [];
     Object.entries(demoBase).forEach(([name,v])=>{
-      WORK_KEYS.concat("banden").forEach(k=>{
+      if(!demoNul[name]) WORK_KEYS.concat("banden").forEach(k=>{
         v[k] = Math.max(0, v[k] + Math.round((Math.random()-0.55)*4));
       });
       const t=Object.assign({tour:name}, v);
@@ -544,22 +556,24 @@
     try{
       focusSluit = (doc && doc.sluit) ? doc.sluit : {};
       focusTours = (doc && Array.isArray(doc.tours) && doc.dag===vandaag()) ? doc.tours : [];
-    }catch(e){ focusTours=[]; focusSluit={}; }
+      focusAf = (doc && Array.isArray(doc.af) && doc.dag===vandaag()) ? doc.af : [];
+    }catch(e){ focusTours=[]; focusSluit={}; focusAf=[]; }
   }
   function leesFocusLokaal(){
     try{ const k=JSON.parse(localStorage.getItem("coli_focus_demo")||"null");
       focusSluit = (k && k.sluit) ? k.sluit : {};
       focusTours = (k && k.dag===vandaag() && Array.isArray(k.tours)) ? k.tours : [];
-    }catch(e){ focusTours=[]; focusSluit={}; }
+      focusAf = (k && k.dag===vandaag() && Array.isArray(k.af)) ? k.af : [];
+    }catch(e){ focusTours=[]; focusSluit={}; focusAf=[]; }
   }
-  async function zetFocus(tours, sluit){
-    focusTours = tours; if(sluit) focusSluit = sluit;
+  async function zetFocus(tours, sluit, af){
+    focusTours = tours; if(sluit) focusSluit = sluit; if(af) focusAf = af;
     const t = tok();
     if(!t){
-      try{ localStorage.setItem("coli_focus_demo", JSON.stringify({tours:tours,sluit:focusSluit,dag:vandaag()})); }catch(e){}
+      try{ localStorage.setItem("coli_focus_demo", JSON.stringify({tours:tours,sluit:focusSluit,af:focusAf,dag:vandaag()})); }catch(e){}
       poll(); return;
     }
-    const doc = {tours:tours, sluit:focusSluit, dag:vandaag(), updated:new Date().toISOString()};
+    const doc = {tours:tours, sluit:focusSluit, af:focusAf, dag:vandaag(), updated:new Date().toISOString()};
     const H = {apikey:CONFIG.SB_KEY, Authorization:"Bearer "+t, "Content-Type":"application/json"};
     try{
       let r = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?on_conflict=id",
@@ -718,9 +732,13 @@
     const r = ev.target.closest(".brow[data-tour]");
     if(!r) return;
     const name = r.getAttribute("data-tour");
-    const set = {}; focusTours.forEach(n=>{ set[n]=1; });
-    if(set[name]) delete set[name]; else set[name]=1;
-    zetFocus(Object.keys(set));
+    const man = {}; focusTours.forEach(n=>{ man[n]=1; });
+    const af = focusAf.slice();
+    const iAf = af.indexOf(name);
+    if(iAf>=0){ af.splice(iAf,1); }
+    else if(effectieveFocus().indexOf(name)>=0){ delete man[name]; af.push(name); }
+    else { man[name]=1; }
+    zetFocus(Object.keys(man), null, af);
   });
   function nextPage(){ page++; renderTable(); }
   function tickClock(){ clockEl.textContent = new Date().toLocaleTimeString('nl-BE',{hour12:false}); }
