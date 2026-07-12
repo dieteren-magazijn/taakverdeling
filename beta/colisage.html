@@ -351,9 +351,9 @@
     if(!demoBase){
       demoBase = {};
       TOURS.forEach(name=>{
-        if(Math.random()<0.42){
+        if(Math.random()<0.9){
           demoBase[name] = {
-            open:Math.floor(Math.random()*55),
+            open:1+Math.floor(Math.random()*55),
             xdock:Math.floor(Math.random()*18),
             groen:Math.floor(Math.random()*35),
             sectorMP:Math.floor(Math.random()*14),
@@ -362,9 +362,13 @@
           };
         }
       });
-      Object.keys(demoBase).slice(0,3).forEach(name=>{
-        const v=demoBase[name];
-        WORK_KEYS.forEach(k=>{ v[k]=Math.min(v[k],2); });
+      /* per gang + SDD een paar bijna-klare toeren, zodat het stukdetail op elk scherm te zien is */
+      const bijnaKlaar=["TOUR 110","TOUR 234","TOUR 323"];
+      Object.keys(GANG_TOURS).forEach(g=>{ bijnaKlaar.push("TOUR "+GANG_TOURS[g][0]); });
+      bijnaKlaar.forEach(name=>{
+        const v = demoBase[name] || (demoBase[name]={open:0,xdock:0,groen:0,sectorMP:0,sectorH:0,banden:Math.floor(Math.random()*8)});
+        WORK_KEYS.forEach(k=>{ v[k]=Math.min(v[k]||0,2); });
+        if(WORK_KEYS.every(k=>!v[k])) v.open=2;
       });
     }
     const tours = [];
