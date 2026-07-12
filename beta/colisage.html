@@ -174,7 +174,7 @@
   <div class="kpis" id="kpis"></div>
   <div class="panel">
     <div class="thead">
-      <span>Tour</span><span>Open</span><span>Cross dock</span><span>Groen</span><span>M+P</span><span>H&amp;L</span><span>Totaal</span>
+      <span>Tour</span><span>Open</span><span>Cross dock</span><span>Groene bakken</span><span>M+P</span><span>H&amp;L</span><span>Totaal</span>
     </div>
     <div class="tbody" id="tbody"></div>
   </div>
@@ -196,7 +196,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c2";
+  const COLI_VERSION = "c3";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -239,6 +239,8 @@
   function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
   function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
   function inGangen(name){ const n=tourNum(name); if(n===null) return false; return GANGEN_SEL.some(g=>(GANG_TOURS[g]||[]).indexOf(n)>=0); }
+  /* banden-ticker: enkel de sluit-toeren (510-780) */
+  function bandenToer(t){ const n=tourNum(t.tour); return n!==null && n>=500 && n<=799; }
   function schermFilter(tours){
     if(SCHERM_SDD) return tours.filter(t=>isSDD(t.tour));
     if(GANGEN_SEL.length) return tours.filter(t=>inGangen(t.tour));
@@ -395,7 +397,7 @@
   }
   function renderTicker(){
     bandenTotalEl.textContent = state.banden;
-    const rows = state.tours.filter(t=>t.banden>0).sort((a,b)=>b.banden-a.banden);
+    const rows = state.tours.filter(t=>bandenToer(t)&&t.banden>0).sort((a,b)=>b.banden-a.banden);
     const items = rows.map(t=>`<span class="it">${t.tour} <b>${t.banden}</b></span><span class="sep">◆</span>`);
     if(items.length===0) items.push(`<span class="it">geen banden te scannen</span>`);
     const half = `<span class="half">${items.join("")}</span>`;
@@ -405,7 +407,7 @@
   }
   function update(payload){
     state.tours = schermFilter(normalize(payload.tours||[]));
-    state.banden = state.tours.reduce((s,t)=>s+t.banden,0);
+    state.banden = state.tours.filter(bandenToer).reduce((s,t)=>s+t.banden,0);
     renderKpis(); renderTable(); renderTicker();
   }
   const DEMO_STUKS = [
