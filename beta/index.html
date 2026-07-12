@@ -2722,7 +2722,7 @@ function obBuildTicker(){
     obTile("#ff9f43","Afwijkende uren · "+early.length, earlyCell),
     obTile("#ff7eb6","Afwezig \u00b7 "+nAfw, _afwCell)
   ];
-  var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(false){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
+  var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(false){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } try{ (window.cijferTiles?window.cijferTiles():[]).forEach(function(_ct){ tiles.push(_ct); }); }catch(_e){} if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
   bar.style.gridTemplateColumns="repeat("+tiles.length+",1fr)";
   bar.innerHTML=tiles.join("");
   /* laat namen doorlopen als ze niet passen (alle tegels) */
@@ -3122,7 +3122,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.70b";
+  var APP_VERSION="v3.71b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3201,7 +3201,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.70b";
+  var LOCAL=window.__APP_VERSION||"v3.71b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5451,6 +5451,53 @@ body.board .ob-min.ok,body.board .ob-min.setb{display:none}
     toast(v>0?("\ud83c\udfaf Minimum voor "+lbl+": "+v):("Minimum voor "+lbl+" verwijderd"));
     try{ if(typeof obRender==="function") obRender(); }catch(e2){}
   },true);
+})();
+</script>
+<!-- ============ D365-cijfertegels uit de database (v3.71b) ============ -->
+<script>
+(function(){
+  "use strict";
+  var SB="https://gntaanclvusvhfkgjusz.supabase.co";
+  var KEY="sb_publishable_bZ6yeDauQb1md0bIOwCoJQ_KbQAc4qV";
+  var cache=null, lastTry=0;
+  function tok(){ try{ var s=JSON.parse(localStorage.getItem("vp_sb_sess")||"null"); return (s&&s.t)?s.t:null; }catch(e){ return null; } }
+  async function haal(){
+    try{
+      var t=tok(); if(!t) return;
+      var r=await fetch(SB+"/rest/v1/planbord?id=eq.cijfers&select=doc,updated",{headers:{apikey:KEY,Authorization:"Bearer "+t},cache:"no-store"});
+      if(!r.ok) return;
+      var a=await r.json();
+      var d=(a&&a.length&&a[0].doc)?a[0].doc:null;
+      var nieuw=(d&&Array.isArray(d.tiles))?d.tiles:null;
+      var changed=JSON.stringify(nieuw)!==JSON.stringify(cache);
+      cache=nieuw;
+      if(changed){
+        try{
+          var ov=document.getElementById("outboundView");
+          if(ov && !ov.hidden && typeof obBuildTicker==="function") obBuildTicker();
+        }catch(e){}
+      }
+    }catch(e){}
+  }
+  window.cijferTiles=function(){
+    var out=[];
+    try{
+      if(!cache||!cache.length) return out;
+      cache.forEach(function(c){
+        if(!c||c.value===undefined||c.value===null) return;
+        var age=null, stale=false;
+        try{ if(c.updated){ age=Math.round((Date.now()-Date.parse(c.updated))/60000); stale=age>30; } }catch(e){}
+        var sub=(age===null)?"":(age<1?"zonet":(age+" min geleden"));
+        var head=(c.label||"D365")+(stale?" \u00b7 \u26a0 verouderd":(sub?" \u00b7 "+sub:""));
+        var ac=stale?"#ff9f43":"#6fc3ff";
+        out.push(obTile(ac, head, '<div class="ob-tn">'+(""+c.value).replace(/[<>&]/g,"")+'</div>'));
+      });
+    }catch(e){}
+    return out;
+  };
+  setTimeout(haal, 3000);
+  setInterval(haal, 60000);
+  window.addEventListener("focus", haal);
 })();
 </script>
 </body>
