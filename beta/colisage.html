@@ -224,7 +224,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c10";
+  const COLI_VERSION = "c11";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -733,11 +733,13 @@
   }
   setInterval(checkVersie, 5*60*1000);
   /* brigadier-paneel: klik op een toer = SLUIT aan/uit */
-  tbodyEl.addEventListener("click", function(ev){
+  tbodyEl.addEventListener("click", async function(ev){
     if(!SCHERM_BRIG || !ev.target.closest) return;
     const r = ev.target.closest(".brow[data-tour]");
     if(!r) return;
     const name = r.getAttribute("data-tour");
+    /* meerdere brigadier-pc's: eerst de verse stand ophalen, dan pas schrijven */
+    if(tok()){ try{ await poll(); }catch(e){} }
     const man = {}; focusTours.forEach(n=>{ man[n]=1; });
     const af = focusAf.slice();
     const iAf = af.indexOf(name);
