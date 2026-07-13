@@ -224,7 +224,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c11";
+  const COLI_VERSION = "c12";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -594,16 +594,38 @@
     poll();
   }
   /* ---- planbord-database (zelfde teamlogin als de beta) ---- */
+  /* kiosk-login (Appspace/TV): ?auth=base64(email:wachtwoord) -> logt zichzelf in, ook na reboot */
+  const AUTH_QS = QS.get("auth")||"";
+  if(AUTH_QS){ try{ localStorage.setItem("coli_auth", AUTH_QS); }catch(e){} }
+  function kioskAuth(){ try{ return AUTH_QS || localStorage.getItem("coli_auth") || ""; }catch(e){ return AUTH_QS; } }
+  async function kioskLogin(){
+    const a=kioskAuth(); if(!a) return false;
+    try{
+      const s=atob(a); const i=s.indexOf(":"); if(i<1) return false;
+      const r=await fetch(CONFIG.SB_URL+"/auth/v1/token?grant_type=password",
+        {method:"POST",headers:{apikey:CONFIG.SB_KEY,"Content-Type":"application/json"},
+         body:JSON.stringify({email:s.slice(0,i),password:s.slice(i+1)})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.access_token) return false;
+      localStorage.setItem("vp_sb_sess", JSON.stringify({t:j.access_token,r:j.refresh_token,e:Date.now()+(((j.expires_in||3600)-120)*1000)}));
+      return true;
+    }catch(e){ return false; }
+  }
   function tok(){
-    try{ const s=JSON.parse(localStorage.getItem("vp_sb_sess")||"null"); return (s&&s.t)?s.t:null; }
+    try{ const s=JSON.parse(localStorage.getItem("vp_sb_sess")||"null");
+      if(!s||!s.t) return null;
+      if(s.e && Date.now()>s.e) return null;   /* verlopen -> kiosk her-login in poll() */
+      return s.t; }
     catch(e){ return null; }
   }
   async function poll(){
-    const t = tok();
+    let t = tok();
+    if(!t && await kioskLogin()) t = tok();
     if(!t){ leesFocusLokaal(); setStatus("demo","Demo · log in op de beta"); update(demoData()); return; }
     try{
       const res = await fetch(CONFIG.SB_URL+"/rest/v1/planbord?id=in.(cijfers,coli_focus)&select=id,doc",
         {headers:{apikey:CONFIG.SB_KEY,Authorization:"Bearer "+t},cache:"no-store"});
+      if(res.status===401||res.status===403){ try{ localStorage.removeItem("vp_sb_sess"); }catch(e){} throw new Error(res.status); }
       if(!res.ok) throw new Error(res.status);
       const a = await res.json();
       const rij = {}; (a||[]).forEach(r=>{ rij[r.id]=r.doc; });

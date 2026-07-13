@@ -3122,7 +3122,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.73b";
+  var APP_VERSION="v3.74b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -5034,9 +5034,21 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     document.getElementById("sbGo").addEventListener("click",go);
     d.addEventListener("keydown",function(e){ if(e.key==="Enter") go(); });
   }
+  /* v3.74b: kiosk-login voor Appspace/signage - ?auth=base64(email:wachtwoord) in de URL */
+  async function autoLogin(){
+    try{
+      var a=new URLSearchParams(location.search).get("auth");
+      if(!a) return false;
+      var s=atob(a); var i=s.indexOf(":"); if(i<1) return false;
+      await login(s.slice(0,i), s.slice(i+1));
+      return true;
+    }catch(e){ return false; }
+  }
   async function init(){
     loadSess();
-    if(await authed()) activate(); else { enforce(); setInterval(function(){ if(!active) enforce(); },800); overlay(); }
+    if(await authed()) activate();
+    else if(await autoLogin()) activate();
+    else { enforce(); setInterval(function(){ if(!active) enforce(); },800); overlay(); }
   }
   if(document.readyState!=="loading") setTimeout(init,700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(init,700); });
 })();
