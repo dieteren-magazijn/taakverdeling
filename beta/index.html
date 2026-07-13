@@ -3122,7 +3122,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.72b";
+  var APP_VERSION="v3.73b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3184,6 +3184,18 @@ body.board #moreWrap{display:none}
     var menu=document.createElement("div"); menu.id="moreMenu";
     wrap.appendChild(btn); wrap.appendChild(menu); bar.appendChild(wrap);
     ["linkBtn","linkSiBtn","syncBtn","reloadBtn","shotBtn","copyBtn","setBtn","resetBtn"].forEach(function(id){ var b=document.getElementById(id); if(b) menu.appendChild(b); });
+    /* v3.73b: Excel-koppelingen op deze pc verwijderen -> zuivere database-modus */
+    var unl=document.createElement("button"); unl.type="button"; unl.className="btn"; unl.id="unlinkBtn";
+    unl.textContent="\ud83d\uddd1 Excel ontkoppelen (deze pc)";
+    unl.title="Verwijdert de lokale Excel-koppelingen (planning + interims) op deze pc; het bord leest daarna alles via de database (gepubliceerd door de plan-pc)";
+    unl.addEventListener("click", async function(){
+      if(!confirm("Excel-koppelingen op deze pc verwijderen?\nHet bord gebruikt daarna de gepubliceerde gegevens uit de database.")) return;
+      try{ await idb.set("fh", null); }catch(e){}
+      try{ await idb.set("fh_si", null); }catch(e){}
+      try{ if(window.toast) window.toast("Excel ontkoppeld - herladen..."); }catch(e){}
+      setTimeout(function(){ location.reload(); }, 600);
+    });
+    menu.appendChild(unl);
     var rb=document.getElementById("resetBtn"); if(rb) rb.classList.add("edit-only");
     var at=document.getElementById("addTaskBtn"); if(at) at.classList.add("edit-only");
     btn.addEventListener("click", function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
@@ -3651,7 +3663,8 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
   var MERK_COL={MSI:["#16a085","#eafff9"],VOTEX:["#e67e22","#2a1500"],SKODA:["#27ae60","#eafff1"],SEAT:["#c0392b","#ffecec"],VW:["#2980b9","#eaf4ff"],PORSCHE:["#f1c40f","#2a2400"],LKW:["#8e44ad","#f6eaff"]};
   function merkColor(m){ if(MERK_COL[m]) return MERK_COL[m]; var hh=0; for(var i=0;i<m.length;i++) hh=(hh*31+m.charCodeAt(i))%360; return ["hsl("+hh+",52%,44%)","#ffffff"]; }
   function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
+  /* v3.73b: vrachtwagens staan op INBOUND -> inbound-bewerkslot, niet outbound */
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("in")); }catch(e){ return false; } }
   function today(){ try{ if(typeof curDateISO==="function"){ var d=curDateISO(); if(d) return d; } }catch(e){} return new Date().toISOString().slice(0,10); }
   function levGet(date){ try{ var p=store.get("vp_ob_place")||{}; var v=p.leveringen&&p.leveringen[date];
       if(Array.isArray(v)) return v.map(function(it){ return {m:it.m||it.t||"", k:(it.k==="express"?"express":"stock")}; });
