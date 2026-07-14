@@ -3123,7 +3123,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.77b";
+  var APP_VERSION="v3.78b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3214,7 +3214,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.77b";
+  var LOCAL=window.__APP_VERSION||"v3.78b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5016,6 +5016,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     setInterval(function(){ try{ if(typeof syncRead==="function") syncRead(false); }catch(e){} }, 7000);
     setInterval(function(){ authed(); }, 600000);
     var ov=document.getElementById("sbLogin"); if(ov) ov.remove();
+    try{ window.kioskLink=function(){ if(!refTok){ toast_("geen sessie om te delen"); return ""; } var u=location.origin+location.pathname+"#ktok="+btoa(refTok); try{ navigator.clipboard.writeText(u); toast_("Kiosk-link gekopieerd (zonder wachtwoord)"); }catch(e){} return u; }; }catch(e){}
     toast_("\u2601 BETA verbonden met de database");
   }
   function overlay(){
@@ -5035,10 +5036,15 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     document.getElementById("sbGo").addEventListener("click",go);
     d.addEventListener("keydown",function(e){ if(e.key==="Enter") go(); });
   }
-  /* v3.74b: kiosk-login voor Appspace/signage - ?auth=base64(email:wachtwoord) in de URL */
+  /* v3.78b: kiosk-login leest uit de URL-FRAGMENT (#), niet de query, en wist die meteen uit adresbalk+geschiedenis (geen lek naar server-logs/Referer). Ondersteunt #ktok=base64(refresh_token) (aanbevolen, zonder wachtwoord) en #auth=base64(email:wachtwoord). */
+  function cleanUrl(){ try{ history.replaceState(null,"",location.pathname); }catch(e){} }
   async function autoLogin(){
     try{
-      var a=new URLSearchParams(location.search).get("auth");
+      var _h=(location.hash||"").replace(/^#/,""), _hp=new URLSearchParams(_h), _q=new URLSearchParams(location.search);
+      var ktok=_hp.get("ktok")||_q.get("ktok"), a=_hp.get("auth")||_q.get("auth");
+      if(!ktok && !a) return false;
+      cleanUrl();
+      if(ktok){ try{ refTok=atob(ktok); if(await refreshTok()) return true; }catch(e){} }
       if(!a) return false;
       var s=atob(a); var i=s.indexOf(":"); if(i<1) return false;
       await login(s.slice(0,i), s.slice(i+1));
@@ -5047,7 +5053,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
   }
   async function init(){
     loadSess();
-    if(await authed()) activate();
+    if(await authed()){ if(location.search||location.hash) cleanUrl(); activate(); }
     else if(await autoLogin()) activate();
     else { enforce(); setInterval(function(){ if(!active) enforce(); },800); overlay(); }
   }
