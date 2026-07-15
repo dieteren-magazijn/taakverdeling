@@ -808,27 +808,27 @@ var CLIENT_ID = (function(){
   if(!c){ c = Math.random().toString(36).slice(2, 10); store.set("vp_client", c); }
   return c;
 })();
-﻿/* ---- concurrency + diagnostiek (alleen eigen wijzigingen wegschrijven) ---- */
-var SYNC_DIRTY = {fields:{}, days:{}};
-var _applyingRemote = false;
-var SYNC_LAST_READ = 0, SYNC_LAST_WRITE = 0;
-function onVpStoreSet(k){
-  if(_applyingRemote || !k) return;
-  if(k==="vp_hist") SYNC_DIRTY.fields.hist=1;
-  else if(k==="vp_tasks") SYNC_DIRTY.fields.tasks=1;
-  else if(k==="vp_taskorder") SYNC_DIRTY.fields.order=1;
-  else if(k==="vp_ob_place") SYNC_DIRTY.fields.obPlace=1;
+﻿/* ---- concurrency + diagnostiek (alleen eigen wijzigingen wegschrijven) ---- */
+var SYNC_DIRTY = {fields:{}, days:{}};
+var _applyingRemote = false;
+var SYNC_LAST_READ = 0, SYNC_LAST_WRITE = 0;
+function onVpStoreSet(k){
+  if(_applyingRemote || !k) return;
+  if(k==="vp_hist") SYNC_DIRTY.fields.hist=1;
+  else if(k==="vp_tasks") SYNC_DIRTY.fields.tasks=1;
+  else if(k==="vp_taskorder") SYNC_DIRTY.fields.order=1;
+  else if(k==="vp_ob_place") SYNC_DIRTY.fields.obPlace=1;
   else if(k==="vp_ob_template") SYNC_DIRTY.fields.obTpl=1;
   else if(k==="vp_ob_templates") SYNC_DIRTY.fields.obTpls=1;
   else if(k==="vp_ob_tplday") SYNC_DIRTY.fields.obTplDay=1;
-  else if(k==="vp_ob_log") SYNC_DIRTY.fields.obLog=1;
-  else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1; else if(k==="vp_ob_hist") SYNC_DIRTY.fields.obhist=1;
+  else if(k==="vp_ob_log") SYNC_DIRTY.fields.obLog=1;
+  else if(k==="vp_ob_hours") SYNC_DIRTY.fields.obHours=1; else if(k==="vp_ob_hist") SYNC_DIRTY.fields.obhist=1;
   else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
   else if(k==="vp_ob_home") SYNC_DIRTY.fields.obHome=1;
-  else if(k==="vp_ob_min") SYNC_DIRTY.fields.obMin=1;
-  else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
-}
-function updateSyncTitle(){ try{ var d=document.getElementById("saveDot"); if(!d) return; function hm(t){ if(!t) return "-"; var x=new Date(t); return ("0"+x.getHours()).slice(-2)+":"+("0"+x.getMinutes()).slice(-2); } d.title="Sync - laatst gelezen "+hm(SYNC_LAST_READ)+" - laatst geschreven "+hm(SYNC_LAST_WRITE); }catch(e){} }
+  else if(k==="vp_ob_min") SYNC_DIRTY.fields.obMin=1;
+  else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
+}
+function updateSyncTitle(){ try{ var d=document.getElementById("saveDot"); if(!d) return; function hm(t){ if(!t) return "-"; var x=new Date(t); return ("0"+x.getHours()).slice(-2)+":"+("0"+x.getMinutes()).slice(-2); } d.title="Sync - laatst gelezen "+hm(SYNC_LAST_READ)+" - laatst geschreven "+hm(SYNC_LAST_WRITE); }catch(e){} }
 function collectLocal(){
   var days = {};
   try{
@@ -3123,7 +3123,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.79b";
+  var APP_VERSION="v3.80b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3214,7 +3214,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.79b";
+  var LOCAL=window.__APP_VERSION||"v3.80b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5549,6 +5549,46 @@ body.board .ob-min.ok,body.board .ob-min.setb{display:none}
   }
   if(document.readyState!=="loading") setTimeout(add,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(add,1500); });
   setInterval(add,6000);
+})();
+</script>
+<!-- ============ Beheermodus: outbound-knoppenbalk opgeruimd ============ -->
+<style>
+#outboundView .ob-bar.ob-simple button.btn:not(#obBoardBtn):not(#obHomeBtn):not(#obBeheerBtn){display:none}
+#outboundView .ob-bar.ob-simple label.btn{display:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  var PW="dieteren", KEY="vp_ob_beheer";
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function sGet(){ try{ return (window.store&&store.get)?store.get(KEY):localStorage.getItem(KEY); }catch(e){ return null; } }
+  function sSet(v){ try{ if(window.store&&store.set) store.set(KEY,v); else localStorage.setItem(KEY,v); }catch(e){} }
+  function bar(){ return document.querySelector("#outboundView .ob-bar"); }
+  function apply(){
+    var b=bar(); if(!b) return;
+    var on = sGet()==="aan";
+    b.classList.toggle("ob-simple", !on);
+    var k=document.getElementById("obBeheerBtn");
+    if(k){ k.textContent = on ? "🔧 Beheer: aan" : "🔧 Beheer"; k.classList.toggle("primary", on); }
+  }
+  function add(){
+    var b=bar(); if(!b){ return; }
+    if(document.getElementById("obBeheerBtn")){ apply(); return; }
+    var k=document.createElement("button");
+    k.className="btn"; k.id="obBeheerBtn";
+    k.title="Beheerknoppen tonen/verbergen (sjabloon, namen, uren, instellingen, ...) — instelling geldt per toestel";
+    k.addEventListener("click",function(){
+      if(sGet()==="aan"){ sSet("uit"); apply(); toast("🔧 Beheer verborgen — alleen dagelijkse knoppen"); return; }
+      var a=prompt("Wachtwoord voor beheer-knoppen:");
+      if(a===null) return;
+      if(a===PW){ sSet("aan"); apply(); toast("🔓 Beheer-knoppen zichtbaar"); }
+      else toast("❌ Fout wachtwoord");
+    });
+    b.appendChild(k);
+    apply();
+  }
+  if(document.readyState!=="loading") add(); else window.addEventListener("DOMContentLoaded",add);
+  setInterval(add,4000);
 })();
 </script>
 </body>
