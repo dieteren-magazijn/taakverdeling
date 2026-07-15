@@ -3123,7 +3123,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.82b";
+  var APP_VERSION="v3.83b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3214,7 +3214,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.82b";
+  var LOCAL=window.__APP_VERSION||"v3.83b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5655,12 +5655,21 @@ body.board #outboundView .ob-bar{display:none}
     document.body.appendChild(o);
     return o;
   }
+  var PREVIEW=0; /* P-toets in bordmodus = 15s preview */
+  document.addEventListener("keydown",function(e){
+    try{
+      if(!document.body.classList.contains("board")) return;
+      if(e.target && /input|textarea|select/i.test(e.target.tagName||"")) return;
+      if(e.key==="p"||e.key==="P"){ PREVIEW=(PREVIEW>Date.now())?0:Date.now()+15000; tick(); }
+    }catch(_){}
+  });
   function tick(){
     var board=document.body.classList.contains("board");
     var o=document.getElementById("pzOverlay");
     if(!board){ if(o) o.classList.remove("pz-on"); return; }
     var nm=nowMin(), win=null;
     for(var i=0;i<PAUZES.length;i++){ if(nm>=PAUZES[i][0] && nm<PAUZES[i][1]){ win=PAUZES[i]; break; } }
+    if(!win && PREVIEW>Date.now()) win=[nm,nm+5];
     o=el();
     if(!win){ o.classList.remove("pz-on"); return; }
     o.classList.add("pz-on");
