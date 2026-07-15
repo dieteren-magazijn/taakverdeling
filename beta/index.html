@@ -3123,7 +3123,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.81b";
+  var APP_VERSION="v3.82b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3214,7 +3214,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.81b";
+  var LOCAL=window.__APP_VERSION||"v3.82b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5598,6 +5598,82 @@ body.board #outboundView .ob-bar{display:none}
   }
   if(document.readyState!=="loading") add(); else window.addEventListener("DOMContentLoaded",add);
   setInterval(add,4000);
+})();
+</script>
+<!-- ============ pauzescherm op het bord (alleen bordmodus) ============ -->
+<style>
+#pzOverlay{position:fixed;inset:0;z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(1200px 700px at 50% 38%,#10233f 0%,#0a1424 55%,#060d19 100%);
+  opacity:0;pointer-events:none;transition:opacity .8s ease}
+#pzOverlay.pz-on{opacity:1;pointer-events:auto}
+#pzOverlay .pz-glow{position:absolute;left:50%;top:38%;width:44vw;height:44vw;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(45,212,238,.10) 0%,rgba(45,212,238,0) 70%);animation:pzPulse 6s ease-in-out infinite}
+@keyframes pzPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.7}50%{transform:translate(-50%,-50%) scale(1.15);opacity:1}}
+#pzOverlay .pz-card{position:relative;text-align:center}
+#pzOverlay .pz-cup{position:relative;width:110px;height:96px;margin:0 auto 1.2vw}
+#pzOverlay .pz-mok{position:absolute;left:14px;bottom:0;width:64px;height:48px;border-radius:6px 6px 16px 16px;
+  background:linear-gradient(180deg,#e9f1ff 0%,#b9cbe8 100%);box-shadow:0 6px 18px rgba(0,0,0,.45)}
+#pzOverlay .pz-mok::after{content:"";position:absolute;right:-18px;top:7px;width:20px;height:24px;border:5px solid #cdd9ef;border-left:none;border-radius:0 12px 12px 0}
+#pzOverlay .pz-mok::before{content:"";position:absolute;left:8px;right:8px;top:5px;height:6px;border-radius:999px;background:rgba(10,20,36,.35)}
+#pzOverlay .pz-s{position:absolute;bottom:52px;width:7px;height:24px;border-radius:999px;background:rgba(233,241,255,.55);filter:blur(2px);opacity:0;animation:pzSteam 2.6s ease-in-out infinite}
+#pzOverlay .pz-s.s1{left:32px;animation-delay:0s}
+#pzOverlay .pz-s.s2{left:46px;animation-delay:.9s}
+#pzOverlay .pz-s.s3{left:60px;animation-delay:1.7s}
+@keyframes pzSteam{0%{transform:translateY(10px);opacity:0}30%{opacity:.8}100%{transform:translateY(-36px) scaleX(1.6);opacity:0}}
+#pzOverlay h1{margin:0;font:800 7vw/1 var(--fb,system-ui,sans-serif);letter-spacing:.06em;color:var(--txt,#e9f1ff)}
+#pzOverlay h1 b{color:var(--cyan,#2dd4ee)}
+#pzOverlay .pz-sub{margin-top:1vw;font:600 1.6vw/1.4 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9)}
+#pzOverlay .pz-sub b{color:var(--txt,#e9f1ff)}
+#pzOverlay .pz-count{margin-top:1.4vw;font:800 3.4vw/1 var(--fb,system-ui,sans-serif);color:var(--cyan,#2dd4ee);font-variant-numeric:tabular-nums}
+#pzOverlay .pz-bar{margin:1.2vw auto 0;width:26vw;height:6px;border-radius:999px;background:rgba(141,178,255,.15);overflow:hidden}
+#pzOverlay .pz-bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--cyan,#2dd4ee),#7fe7f7);transition:width 1s linear}
+#pzOverlay .pz-clock{position:absolute;top:2.2vw;right:2.6vw;font:800 2.2vw/1 var(--fb,system-ui,sans-serif);color:var(--txt,#e9f1ff);font-variant-numeric:tabular-nums}
+#pzOverlay .pz-brand{position:absolute;bottom:2vw;right:2.6vw;font:700 1.1vw/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);letter-spacing:.04em}
+#pzOverlay .pz-brand b{color:var(--cyan,#2dd4ee)}
+</style>
+<script>
+(function(){
+  "use strict";
+  /* pauzes in minuten sinds middernacht: [start, einde) */
+  var PAUZES=[[720,725],[925,930],[1165,1170]]; /* 12:00-12:05, 15:25-15:30, 19:25-19:30 */
+  function nowMin(){ try{ if(typeof obNowMin==="function") return obNowMin(); }catch(e){} var n=new Date(); return n.getHours()*60+n.getMinutes(); }
+  function fmt2(n){ return (n<10?"0":"")+n; }
+  function el(){
+    var o=document.getElementById("pzOverlay");
+    if(o) return o;
+    o=document.createElement("div"); o.id="pzOverlay";
+    o.innerHTML='<div class="pz-glow"></div>'
+      +'<div class="pz-card">'
+      +'<div class="pz-cup"><span class="pz-s s1"></span><span class="pz-s s2"></span><span class="pz-s s3"></span><i class="pz-mok"></i></div>'
+      +'<h1>PAU<b>ZE</b></h1>'
+      +'<div class="pz-sub">Even op adem komen — we zijn terug om <b id="pzBack">--:--</b></div>'
+      +'<div class="pz-count" id="pzCount">5:00</div>'
+      +'<div class="pz-bar"><i id="pzBarFill"></i></div>'
+      +'</div>'
+      +'<div class="pz-clock" id="pzClock">--:--:--</div>'
+      +'<div class="pz-brand">Plan<b>ning</b> · D’Ieteren</div>';
+    document.body.appendChild(o);
+    return o;
+  }
+  function tick(){
+    var board=document.body.classList.contains("board");
+    var o=document.getElementById("pzOverlay");
+    if(!board){ if(o) o.classList.remove("pz-on"); return; }
+    var nm=nowMin(), win=null;
+    for(var i=0;i<PAUZES.length;i++){ if(nm>=PAUZES[i][0] && nm<PAUZES[i][1]){ win=PAUZES[i]; break; } }
+    o=el();
+    if(!win){ o.classList.remove("pz-on"); return; }
+    o.classList.add("pz-on");
+    var n=new Date(), sec=n.getSeconds();
+    var restSec=Math.max(0,(win[1]-nm)*60 - sec);
+    var totSec=(win[1]-win[0])*60;
+    var b=document.getElementById("pzBack"); if(b) b.textContent=fmt2(Math.floor(win[1]/60))+":"+fmt2(win[1]%60);
+    var c=document.getElementById("pzCount"); if(c) c.textContent=Math.floor(restSec/60)+":"+fmt2(restSec%60);
+    var f=document.getElementById("pzBarFill"); if(f) f.style.width=Math.min(100,Math.round(100*(totSec-restSec)/totSec))+"%";
+    var k=document.getElementById("pzClock"); if(k) k.textContent=fmt2(n.getHours())+":"+fmt2(n.getMinutes())+":"+fmt2(sec);
+  }
+  setInterval(tick,1000);
+  if(document.readyState!=="loading") tick(); else window.addEventListener("DOMContentLoaded",tick);
 })();
 </script>
 </body>
