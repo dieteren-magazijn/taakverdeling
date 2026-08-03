@@ -759,6 +759,10 @@ var store = (function(){
   };
 })();
 
+/* rol van dit toestel: "plan" = mag de moeder-planning koppelen en publiceren; anders enkel database.
+   Bewust rauw localStorage (niet store.set) zodat de rol nooit meesynct naar andere toestellen. */
+window.VP_ISPLAN=function(){ try{ return localStorage.getItem("vp_rol")==="plan"; }catch(e){ return false; } };
+
 /* IndexedDB enkel voor de bestandskoppeling (FileSystemHandle) */
 var idb = {
   _db:null,
@@ -900,12 +904,18 @@ async function syncWrite(){
   setSaveDot("busy");
   try{
     ﻿var local = collectLocal();
-    var old = {}, t0 = "";
+    var old = {}, t0 = "", readOK = false;
     try{
       var f0 = await sync.handle.getFile();
       t0 = await f0.text();
       if(t0 && t0.length > 5) old = JSON.parse(t0) || {};
-    }catch(e){}
+      readOK = true;
+    }catch(e){ readOK = false; }
+    if(!readOK){
+      console.error("sync: lezen mislukt, er wordt NIET geschreven");
+      setSaveDot("err"); toast("Database niet leesbaar - wijziging nog niet bewaard, ik probeer opnieuw");
+      setTimeout(scheduleSyncWrite, 15000); return;
+    }
     var D = SYNC_DIRTY || {fields:{},days:{}};
     function pick(k){ return D.fields[k] ? local[k] : (old[k]!==undefined ? old[k] : local[k]); }
     var doc = {
@@ -1144,6 +1154,7 @@ async function loadFile(file, viaHandle){
 }
 
 async function pickAndLink(){
+  if(!window.VP_ISPLAN || !window.VP_ISPLAN()){ toast("Dit toestel gebruikt de planning uit de database. Koppelen kan enkel op de plan-pc."); return; }
   if(window.showOpenFilePicker){
     try{
       var hs = await window.showOpenFilePicker({
@@ -2257,6 +2268,7 @@ async function siLoadFile(file){
   }catch(e){ console.error(e); toast("Kon de studenten/interim-Excel niet lezen"); }
 }
 async function siPickAndLink(ev){
+  if(!window.VP_ISPLAN || !window.VP_ISPLAN()){ toast("Studenten/interims worden beheerd op de plan-pc."); return; }
   var inp=document.getElementById("siFileInput");
   var preferClassic = !!(window.top !== window.self) || /iObeya/i.test(navigator.userAgent||"");
   if(preferClassic && inp){
@@ -2964,7 +2976,7 @@ obLoad();
 
   try{
     var shSi = await idb.get("fh_si");
-    if(shSi && shSi.queryPermission){
+    if(shSi && shSi.queryPermission && window.VP_ISPLAN()){
       siHandle = shSi;
       updSiBtn();
       siReloadFromHandle(false);
@@ -2973,7 +2985,7 @@ obLoad();
 
   try{
     var h = await idb.get("fh");
-    if(h && h.queryPermission){
+    if(h && h.queryPermission && window.VP_ISPLAN()){
       state.handle = h;
       $("#reloadBtn").hidden = false;
       var ok = await reloadFromHandle(false);
@@ -3124,7 +3136,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.89b";
+  var APP_VERSION="v3.90b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3215,7 +3227,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.89b";
+  var LOCAL=window.__APP_VERSION||"v3.90b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5101,6 +5113,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     T=null;
     try{
       if(typeof sync==="undefined"||!sync||!sync.handle) return;
+      if(!window.VP_ISPLAN || !window.VP_ISPLAN()) return;   /* enkel de plan-pc publiceert */
       var data=build(); if(!data) return;
       var body=JSON.stringify({s:data.sheet,p:data.planTS,i:data.siTS,r:data.roster,si:data.si,t:data.terug,ps:data.ploegStart,g:(data.model.grid||[]).length});
       if(body===SIG) return;
@@ -5293,6 +5306,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     T=null;
     try{
       if(typeof sync==="undefined"||!sync||!sync.handle) return;
+      if(!window.VP_ISPLAN || !window.VP_ISPLAN()) return;   /* enkel de plan-pc publiceert */
       var data=build(); if(!data) return;
       var sig=JSON.stringify({c:data.cur,p:data.planTS,i:data.siTS,w:Object.keys(data.weeks),r:data.weeks[data.cur].roster,s:data.weeks[data.cur].si,t:data.terug});
       if(sig===SIG) return;
@@ -5696,6 +5710,58 @@ body.board #outboundView .ob-bar{display:none}
   }
   setInterval(tick,1000);
   if(document.readyState!=="loading") tick(); else window.addEventListener("DOMContentLoaded",tick);
+})();
+</script>
+<!-- ============ rol van dit toestel: plan-pc of database-gebruiker (v3.90b) ============ -->
+<style>
+body.rol-user #linkBtn,body.rol-user #linkSiBtn,body.rol-user #reloadBtn,
+body.rol-user #unlinkBtn,body.rol-user #lamp_plan,body.rol-user #lamp_int{display:none !important}
+#rolBadge{display:inline-flex;align-items:center;margin-left:8px;padding:3px 9px;border-radius:999px;
+ font:600 10px/1 var(--fb,system-ui,sans-serif);text-transform:uppercase;letter-spacing:.06em;
+ border:1px solid rgba(141,178,255,.28);color:var(--muted,#8fa6c9);background:transparent;cursor:pointer}
+#rolBadge.plan{border-color:#3ddc97;color:#3ddc97}
+body.board #rolBadge{display:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  var PW="dieteren", KEY="vp_rol";
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function isPlan(){ try{ return localStorage.getItem(KEY)==="plan"; }catch(e){ return false; } }
+  window.VP_ISPLAN=isPlan;
+  function apply(){
+    document.body.classList.toggle("rol-user", !isPlan());
+    var b=document.getElementById("rolBadge"); if(!b) return;
+    b.className=isPlan()?"plan":"";
+    b.textContent=isPlan()?"PLAN-PC":"database";
+    b.title=isPlan()
+      ? "Dit toestel beheert de moeder-planning en publiceert ze naar alle schermen. Klik om er een gewoon toestel van te maken."
+      : "Dit toestel gebruikt enkel de database. De planning wordt beheerd op de plan-pc.";
+  }
+  function toggle(){
+    if(isPlan()){
+      if(!confirm("Dit toestel is geen plan-pc meer?\nHet gebruikt daarna enkel nog de database.")) return;
+      try{ localStorage.removeItem(KEY); }catch(e){}
+      toast("Dit toestel gebruikt nu enkel de database - herladen...");
+      setTimeout(function(){ location.reload(); },700); return;
+    }
+    var a=prompt("Wachtwoord om van dit toestel een PLAN-PC te maken:"); if(a===null) return;
+    if(a!==PW){ toast("Fout wachtwoord"); return; }
+    if(!confirm("Dit toestel wordt PLAN-PC.\nHet mag dan de moeder-planning koppelen en publiceren naar alle schermen. Doorgaan?")) return;
+    try{ localStorage.setItem(KEY,"plan"); }catch(e){}
+    toast("PLAN-PC - herladen...");
+    setTimeout(function(){ location.reload(); },700);
+  }
+  function add(){
+    var bar=document.querySelector(".topbar-in"); if(!bar) return;
+    if(!document.getElementById("rolBadge")){
+      var b=document.createElement("button"); b.type="button"; b.id="rolBadge";
+      b.addEventListener("click",toggle); bar.appendChild(b);
+    }
+    apply();
+  }
+  if(document.readyState!=="loading") setTimeout(add,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(add,1600); });
+  setInterval(apply,4000);
 })();
 </script>
 </body>
