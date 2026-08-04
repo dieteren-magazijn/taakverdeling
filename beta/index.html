@@ -830,6 +830,7 @@ function onVpStoreSet(k){
   else if(k==="vp_ob_deptcolors") SYNC_DIRTY.fields.obColors=1;
   else if(k==="vp_ob_home") SYNC_DIRTY.fields.obHome=1;
   else if(k==="vp_ob_min") SYNC_DIRTY.fields.obMin=1;
+  else if(k==="vp_ob_qual") SYNC_DIRTY.fields.obQual=1;
   else if(/^vp_[^_]+_(MA|DI|WO|DO|VR|ZA|ZO)$/.test(k)) SYNC_DIRTY.days[k.slice(3)]=1;
 }
 function updateSyncTitle(){ try{ var d=document.getElementById("saveDot"); if(!d) return; function hm(t){ if(!t) return "-"; var x=new Date(t); return ("0"+x.getHours()).slice(-2)+":"+("0"+x.getMinutes()).slice(-2); } d.title="Sync - laatst gelezen "+hm(SYNC_LAST_READ)+" - laatst geschreven "+hm(SYNC_LAST_WRITE); }catch(e){} }
@@ -843,7 +844,7 @@ function collectLocal(){
       }
     }
   }catch(e){}
-  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obLog:store.get("vp_ob_log") || [], obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obHome:store.get("vp_ob_home") || null, obMin:store.get("vp_ob_min") || null, obhist:store.get("vp_ob_hist") || {}};
+  return {days:days, hist:store.get("vp_hist") || {}, tasks:store.get("vp_tasks") || [], order:store.get("vp_taskorder") || [], obPlace:store.get("vp_ob_place") || null, obTpl:store.get("vp_ob_template") || null, obTpls:store.get("vp_ob_templates") || null, obTplDay:store.get("vp_ob_tplday") || null, obLog:store.get("vp_ob_log") || [], obHours:store.get("vp_ob_hours") || null, obColors:store.get("vp_ob_deptcolors") || null, obHome:store.get("vp_ob_home") || null, obMin:store.get("vp_ob_min") || null, obQual:store.get("vp_ob_qual") || null, obhist:store.get("vp_ob_hist") || {}};
 }
 async function syncPerm(ask){
   if(!sync.handle) return false;
@@ -884,6 +885,7 @@ async function syncRead(force){
     if(doc.obColors){ store.set("vp_ob_deptcolors", doc.obColors); }
     if(doc.obHome){ store.set("vp_ob_home", doc.obHome); }
     if(doc.obMin){ store.set("vp_ob_min", doc.obMin); }
+    if(doc.obQual){ store.set("vp_ob_qual", doc.obQual); }
     rebuildTasks();
     if(state.model) loadDayState();
     render();
@@ -2671,7 +2673,7 @@ function obChipHTML(p, ctx, dept){
   return '<div class="chip'+selCls+afwCls+dimCls+halfCls+(homeTag?" ob-uit":"")+'"'+homeSty+' data-name="'+esc(p.name)+'"'+(_ttl?' title="'+esc(_ttl)+'"':'')+'>'+
     avPip+obRolePip(p.rol)+
     '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
-    '<span class="ob-nm">'+esc(p.name)+'</span>'+homeTag+
+    '<span class="ob-nm">'+esc(p.name)+(window.obQualHTML?window.obQualHTML(p.name):"")+'</span>'+homeTag+
     (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
     (obEdit?'<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>':'')+
     (ctx==="dept"?'<span class="x" data-name="'+esc(p.name)+'">×</span>':'')+'</div>';
@@ -2744,7 +2746,7 @@ function obBuildTicker(){
     obTile("#ff9f43","Afwijkende uren · "+early.length, earlyCell),
     obTile("#ff7eb6","Afwezig \u00b7 "+nAfw, _afwCell)
   ];
-  var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(false){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } try{ (window.cijferTiles?window.cijferTiles():[]).forEach(function(_ct){ tiles.push(_ct); }); }catch(_e){} if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
+  var _wlist=[]; try{ var _whm=obHoursMap(), _wtd=(typeof curDateISO==="function"?curDateISO():null), _wseen={}; obDepts.forEach(function(_d){ (_d.names||[]).forEach(function(_n){ var _o=_whm[_n]; if(_o&&_o.wisselDate===_wtd && !_wseen[_n]){ var _wb=window.obWisselList(_o); if(_wb.length){ _wseen[_n]=1; _wlist.push({name:_n,blocks:_wb}); } } }); }); }catch(e){} if(false){ var _wrows=_wlist.map(function(w){ return '<div class="ob-nrow wis">'+esc(w.name)+' <b>'+w.blocks.map(function(b){ return esc(b.at)+" &#8594; "+esc(b.to||"eigen"); }).join(" \u00b7 ")+'</b></div>'; }).join(""); tiles.push(obTile("#a78bfa","Wisselt sector \u00b7 "+_wlist.length, '<div class="ob-names-wrap"><div class="ob-names">'+_wrows+'</div></div>')); } try{ (window.qualTiles?window.qualTiles():[]).forEach(function(_qt){ tiles.push(_qt); }); }catch(_e){} try{ (window.cijferTiles?window.cijferTiles():[]).forEach(function(_ct){ tiles.push(_ct); }); }catch(_e){} if(nAvond) tiles.push(obTile("#16a085","🌙 Avond · stud./interim", '<div class="ob-tn">'+nAvond+'</div>'));
   bar.style.gridTemplateColumns="repeat("+tiles.length+",1fr)";
   bar.innerHTML=tiles.join("");
   /* laat namen doorlopen als ze niet passen (alle tegels) */
@@ -3148,7 +3150,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.95b";
+  var APP_VERSION="v3.96b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3239,7 +3241,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.95b";
+  var LOCAL=window.__APP_VERSION||"v3.96b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5837,6 +5839,148 @@ body.board #rolBadge{display:none}
   }
   if(document.readyState!=="loading") setTimeout(add,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(add,1600); });
   setInterval(apply,4000);
+})();
+</script>
+<!-- ============ EHBO / brandweer per persoon (v3.96b) ============ -->
+<style>
+.ob-q{width:1em;height:1em;fill:currentColor;vertical-align:-.14em;margin-left:5px;font-size:13px;flex:0 0 auto}
+.ob-q.bw{color:#ff6b6b} .ob-q.eh{color:#3ddc97}
+body.board .ob-q{font-size:.85vw;margin-left:.3vw}
+.ob-th .ob-q{margin-left:0;margin-right:4px;color:var(--ac)}
+#qualBox{position:fixed;inset:0;z-index:320;background:rgba(4,10,20,.72);display:flex;align-items:center;justify-content:center;padding:20px}
+#qualBox .qb-panel{background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:14px;width:min(560px,100%);max-height:min(80vh,700px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+#qualBox h3{margin:0;padding:15px 18px 11px;font-family:var(--fd,system-ui);font-size:20px;font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:9px}
+#qualBox h3 span{margin-left:auto;font-family:var(--fb,system-ui);font-size:12px;font-weight:500;color:var(--muted,#8fa6c9);letter-spacing:0}
+#qualBox .qb-search{margin:0 18px 10px;padding:7px 10px;background:var(--panel2,#0f1d35);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;color:var(--txt,#e9f1ff);font:inherit;font-size:14px}
+#qualBox .qb-list{overflow-y:auto;padding:0 18px 4px;display:flex;flex-direction:column;gap:4px}
+#qualBox .qb-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(141,178,255,.09)}
+#qualBox .qb-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:14px}
+#qualBox .qb-t{flex:0 0 auto;display:flex;align-items:center;gap:5px;background:transparent;border:1px solid rgba(141,178,255,.28);color:var(--muted,#8fa6c9);border-radius:7px;padding:3px 9px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+#qualBox .qb-t .ob-q{margin:0;font-size:12px}
+#qualBox .qb-t:hover{border-color:currentColor}
+#qualBox .qb-t.on.bw{color:#ff6b6b;border-color:#ff6b6b;background:rgba(255,107,107,.12)}
+#qualBox .qb-t.on.eh{color:#3ddc97;border-color:#3ddc97;background:rgba(61,220,151,.12)}
+#qualBox .qb-foot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--line,rgba(141,178,255,.16))}
+#qualBox .qb-foot p{margin:0;flex:1;font-size:12.5px;color:var(--muted,#8fa6c9)}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="vpq-eh" viewBox="0 0 16 16"><path d="M6 1h4v5h5v4h-5v5H6v-5H1V6h5z"/></symbol><symbol id="vpq-bw" viewBox="0 0 16 16"><path d="M8 16c3.314 0 6-2 6-5.5 0-1.5-.5-4-2.5-6 .25 1.5-1.25 2-1.25 2C11 4 9 .5 6 0c.357 2 .5 4-2 6-1.25 1-2 2.729-2 4.5C2 14 4.686 16 8 16Zm0-1c-1.657 0-3-1-3-2.75 0-.75.25-2 1.25-3C6.125 10 7 10.5 7 10.5c-.375-1.25.5-3.25 2-3.5-.179 1-.25 2 1 3 .625.5 1 1.364 1 2.25C11 14 9.657 15 8 15Z"/></symbol></svg>
+<script>
+(function(){
+  "use strict";
+  var KEY="vp_ob_qual", C=null, CT=0;
+  function nrm(s){ try{ return window.obNrm(s); }catch(e){ return (""+s).toLowerCase().trim(); } }
+  function raw(){ try{ return (window.store&&store.get)?(store.get(KEY)||{}):{}; }catch(e){ return {}; } }
+  function qmap(){ var n=Date.now(); if(!C||n-CT>2000){ C=raw(); CT=n; } return C; }
+  function bust(){ C=null; CT=0; }
+  function flags(name){ return qmap()[nrm(name)]||""; }
+  function icon(kind,ttl){ return '<svg class="ob-q '+kind+'" title="'+ttl+'"><use href="#vpq-'+kind+'"/></svg>'; }
+  window.obQualHTML=function(name){
+    try{
+      var f=flags(name); if(!f) return "";
+      return (f.indexOf("B")>=0?icon("bw","Brandweerploeg"):"")+(f.indexOf("E")>=0?icon("eh","EHBO-hulpverlener"):"");
+    }catch(e){ return ""; }
+  };
+  /* ---- tegels: enkel wie NU binnen zijn uren is ---- */
+  window.qualTiles=function(){
+    try{
+      var m=qmap(); if(!Object.keys(m).length) return [];
+      var bw=[], eh=[];
+      (window.obRoster||[]).forEach(function(p){
+        if(!p||p._avond) return;
+        if(p.status!=="aanwezig"||p._buitenUren) return;
+        var f=m[nrm(p.name)]; if(!f) return;
+        if(f.indexOf("B")>=0) bw.push(p.name);
+        if(f.indexOf("E")>=0) eh.push(p.name);
+      });
+      function esc2(s){ return (""+s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+      function tile(ac,kind,label,list){
+        var inner=list.length
+          ? '<div class="ob-names-wrap"><div class="ob-names">'+list.map(function(n){ return '<div class="ob-nrow">'+esc2(n)+'</div>'; }).join("")+'</div></div>'
+          : '<div class="ob-tn">0</div>';
+        return '<div class="ob-tile" style="--ac:'+ac+'"><div class="ob-th"><svg class="ob-q"><use href="#vpq-'+kind+'"/></svg>'+label+' · '+list.length+'</div>'+inner+'<div class="ob-scan"></div></div>';
+      }
+      return [tile("#ff6b6b","bw","Brandweer",bw), tile("#3ddc97","eh","EHBO",eh)];
+    }catch(e){ return []; }
+  };
+  /* ---- beheerscherm ---- */
+  function allNames(){
+    var seen={}, out=[];
+    function add(n){ if(!n) return; var k=nrm(n); if(seen[k]) return; seen[k]=1; out.push({k:k,n:(""+n).trim()}); }
+    try{ (window.obRoster||[]).forEach(function(p){ if(p&&p.name) add(p.name); }); }catch(e){}
+    try{ (store.get("vp_ob_template")||[]).forEach(function(d){ ((d&&d.names)||[]).forEach(add); }); }catch(e){}
+    try{ var m=qmap(); Object.keys(m).forEach(function(k){ if(!seen[k]){ seen[k]=1; out.push({k:k,n:k.toUpperCase()}); } }); }catch(e){}
+    out.sort(function(a,b){ return a.n.localeCompare(b.n); });
+    return out;
+  }
+  function save(k,letter,on){
+    var m=raw(); var f=m[k]||"";
+    if(on){ if(f.indexOf(letter)<0) f+=letter; }
+    else { f=f.split(letter).join(""); }
+    if(f) m[k]=f; else delete m[k];
+    try{ store.set(KEY,m); }catch(e){}
+    bust();
+    try{ if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){}
+    try{ if(typeof obRender==="function") obRender(); }catch(e){}
+  }
+  function open(){
+    if(document.getElementById("qualBox")) return;
+    if(window.WL_blockWrite && window.WL_blockWrite("out")){ if(window.toast) window.toast("Klik eerst op Bewerken"); return; }
+    var box=document.createElement("div"); box.id="qualBox";
+    var rows=allNames();
+    box.innerHTML='<div class="qb-panel">'
+      +'<h3><svg class="ob-q bw"><use href="#vpq-bw"/></svg><svg class="ob-q eh"><use href="#vpq-eh"/></svg> Brandweer en EHBO<span id="qbCount"></span></h3>'
+      +'<input class="qb-search" id="qbSearch" type="text" placeholder="Zoek een naam…" autocomplete="off">'
+      +'<div class="qb-list" id="qbList"></div>'
+      +'<div class="qb-foot"><p>De symbolen staan bij de naam op het bord. Iedereen ziet ze, alleen hier kan je ze wijzigen.</p>'
+      +'<button class="btn primary" id="qbClose" type="button">Klaar</button></div></div>';
+    document.body.appendChild(box);
+    var list=box.querySelector("#qbList");
+    function count(){
+      var m=qmap(), b=0,e=0;
+      Object.keys(m).forEach(function(k){ if(m[k].indexOf("B")>=0)b++; if(m[k].indexOf("E")>=0)e++; });
+      var c=box.querySelector("#qbCount"); if(c) c.textContent=b+" brandweer · "+e+" EHBO";
+    }
+    function draw(filter){
+      var f=(filter||"").toLowerCase();
+      list.innerHTML=rows.filter(function(r){ return !f || r.k.indexOf(f)>=0; }).map(function(r){
+        var fl=qmap()[r.k]||"";
+        return '<div class="qb-row" data-k="'+r.k+'"><span class="qb-nm">'+r.n.replace(/&/g,"&amp;").replace(/</g,"&lt;")+'</span>'
+          +'<button type="button" class="qb-t bw'+(fl.indexOf("B")>=0?" on":"")+'" data-f="B"><svg class="ob-q bw"><use href="#vpq-bw"/></svg>BW</button>'
+          +'<button type="button" class="qb-t eh'+(fl.indexOf("E")>=0?" on":"")+'" data-f="E"><svg class="ob-q eh"><use href="#vpq-eh"/></svg>EHBO</button></div>';
+      }).join("") || '<div class="qb-row"><span class="qb-nm" style="color:var(--muted,#8fa6c9);font-weight:400">Geen naam gevonden.</span></div>';
+      count();
+    }
+    draw("");
+    list.addEventListener("click", function(ev){
+      var b=ev.target.closest?ev.target.closest(".qb-t"):null; if(!b) return;
+      var row=b.closest(".qb-row"); if(!row) return;
+      var on=!b.classList.contains("on");
+      b.classList.toggle("on", on);
+      save(row.getAttribute("data-k"), b.getAttribute("data-f"), on);
+      count();
+    });
+    box.querySelector("#qbSearch").addEventListener("input", function(){ draw(this.value); });
+    function shut(){ try{ box.remove(); }catch(e){} document.removeEventListener("keydown",onKey,true); }
+    function onKey(ev){ if(ev.key==="Escape"){ ev.stopPropagation(); shut(); } }
+    document.addEventListener("keydown",onKey,true);
+    box.querySelector("#qbClose").addEventListener("click",shut);
+    box.addEventListener("click", function(ev){ if(ev.target===box) shut(); });
+    setTimeout(function(){ try{ box.querySelector("#qbSearch").focus(); }catch(e){} },50);
+  }
+  function addBtn(){
+    try{
+      var bar=document.querySelector("#outboundView .ob-bar"); if(!bar) return;
+      if(document.getElementById("obQualBtn")) return;
+      var b=document.createElement("button");
+      b.className="btn"; b.id="obQualBtn"; b.type="button";
+      b.innerHTML='<svg class="ob-q bw" style="margin-left:0"><use href="#vpq-bw"/></svg><svg class="ob-q eh"><use href="#vpq-eh"/></svg> Brandweer / EHBO';
+      b.title="Aanduiden wie brandweer of EHBO is — verschijnt als symbool bij de naam";
+      b.addEventListener("click", open);
+      bar.appendChild(b);
+    }catch(e){}
+  }
+  if(document.readyState!=="loading") setTimeout(addBtn,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(addBtn,1500); });
+  setInterval(addBtn,5000);
 })();
 </script>
 </body>
