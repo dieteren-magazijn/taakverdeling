@@ -2161,7 +2161,7 @@ function obClassify(vm,nm){
   }
   if(a==="Z"||b==="Z")   return {kol:"afwezig", badge:"ziek"};
   // training/syndicaal = afwezig
-  if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("HT")>=0) return {kol:"afwezig"};
+  if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("HT")>=0) return {kol:"afwezig", code:(both.indexOf("TR")>=0?"TR":(both.indexOf("SYN")>=0?"SYN":"HT"))};
   // IP = werktaak, blijft in ploeg met badge
   if(a.indexOf("PW")>=0 || b.indexOf("PW")>=0) return {kol:"ploeg", badge:"PW", swap:true};
   var ipB = (both.indexOf("IP")>=0) ? "IP" : null;
@@ -2387,7 +2387,7 @@ function obFromExcel(){
       var vmCol=obColLetter(dayStart + di*2), nmCol=obColLetter(dayStart + di*2 + 1);
       var cls=obClassify(ws[vmCol+r]?ws[vmCol+r].v:null, ws[nmCol+r]?ws[nmCol+r].v:null);
       var status = cls.kol==="ploeg" ? "aanwezig" : cls.kol;  // verlof/tk/afwezig
-      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, _aftrekHalf:cls.aftrekHalf||null, herkomst:afd, _pw:!!cls.swap});
+      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, _aftrekHalf:cls.aftrekHalf||null, _code:cls.code||null, herkomst:afd, _pw:!!cls.swap});
     }
   });
   return roster;
@@ -2664,10 +2664,11 @@ function obChipHTML(p, ctx, dept){
   var afwCls=p._afwijking?" ob-afw":"";
   var dimCls=p._buitenUren?" ob-dim":"";
   var avPip=(p._avond && p._kind==="student") ? '<i class="ob-pip" style="--p:#16a085" title="Avondstudent'+(p._agency?" · "+esc(p._agency):"")+'"></i>' : "";
+  var halfBar=""; try{ if(p._halfFree && !p._avond){ var _vm=(p._halfFree==="NM"); var _hw=obWindowFor(p); var _ht=(_hw&&_hw.van&&_hw.tot)?(" "+_hw.van+"–"+_hw.tot):""; halfBar='<i class="ob-half '+(_vm?"vm":"nm")+'" title="Halve dag · werkt '+(_vm?"voormiddag":"namiddag")+_ht+'"></i>'; } }catch(e){}
   var homeTag="", homeSty="";
   try{ if(ctx==="dept" && dept && !p._avond && !(typeof obTplMode!=="undefined"&&obTplMode)){ var _hm=obHomeDept(p.name); if(_hm && _hm!==dept){ var _hc=obHomeColor(_hm); homeSty=' style="--hc:'+_hc+'"'; homeTag='<span class="ob-home" title="Vaste sector: '+esc(_hm)+'">'+esc((""+_hm).replace(/^SECTOR\s+/i,"").slice(0,10))+'</span>'; } } }catch(e){}
   return '<div class="chip'+selCls+afwCls+dimCls+(homeTag?" ob-uit":"")+'"'+homeSty+' data-name="'+esc(p.name)+'"'+(p._agency?' title="'+esc(p._agency)+'"':'')+'>'+
-    avPip+obRolePip(p.rol)+
+    avPip+obRolePip(p.rol)+halfBar+
     '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
     '<span class="ob-nm">'+esc(p.name)+'</span>'+homeTag+
     (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
@@ -3146,7 +3147,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.93b";
+  var APP_VERSION="v3.94b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3237,7 +3238,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.93b";
+  var LOCAL=window.__APP_VERSION||"v3.94b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3314,6 +3315,10 @@ body.board #linkLamps{display:none}
 body:not(.board) #outboundView .chip{height:34px;align-items:center;gap:8px;padding:6px 9px} body:not(.board) #obBoard .chip{height:auto;min-height:34px;flex-wrap:wrap;align-items:center}
 body:not(.board) #outboundView .chip .ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} body:not(.board) #obBoard .chip .ob-nm{flex:1 1 60%;min-width:0;overflow:visible;text-overflow:clip;white-space:normal;word-break:break-word;line-height:1.15}
 body:not(.board) #outboundView .chip .ob-tag{margin-left:auto}
+.ob-half{width:5px;height:17px;border-radius:3px;flex:0 0 auto;background:rgba(141,178,255,.18);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.ob-half.vm{background:linear-gradient(to bottom,#f6c945 50%,rgba(141,178,255,.18) 50%)}
+.ob-half.nm{background:linear-gradient(to bottom,rgba(141,178,255,.18) 50%,#f6c945 50%)}
+body.board .ob-half{width:.32vw;height:1.15vw;border-radius:.16vw}
 </style>
 ﻿<!-- ============ outbound-balk opruimen (Meer + uitlichten) ============ -->
 <style>
@@ -3354,7 +3359,7 @@ body.wl-ro .ob-return{cursor:default}
   "use strict";
   function roster(){ try{ return (typeof obRoster!=="undefined"&&obRoster)?obRoster:[]; }catch(e){ return []; } }
   function hoursMap(){ try{ return (typeof store!=="undefined"&&store.get)?(store.get("vp_ob_hours")||{}):{}; }catch(e){ return {}; } }
-  function isAbsent(p){ return p && (p.status==="verlof" || p.status==="tk" || (p.status==="afwezig" && p.badge==="ziek")); }
+  function isAbsent(p){ return p && (p.status==="verlof" || p.status==="tk" || (p.status==="afwezig" && (p.badge==="ziek" || p._code==="TR" || p._code==="SYN"))); }
   function findP(name){ var r=roster(); for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; return null; }
   function fmtDate(ms){ var d=new Date(ms); var dn=["zo","ma","di","wo","do","vr","za"][d.getDay()]; return dn+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
   var _retCache={}, _retKey="";
