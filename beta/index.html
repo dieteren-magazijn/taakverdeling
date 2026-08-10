@@ -857,6 +857,7 @@ async function syncPerm(ask){
 }
 async function syncRead(force){
   if(!sync.handle || !(await syncPerm(false))) return;
+  if(force && window.__sbFreshen) window.__sbFreshen();   /* v3.99b: handmatig herladen negeert de tijdstempel-cache */
   try{
     var f = await sync.handle.getFile();
     if(!force && f.lastModified <= sync.lastMod) return;
@@ -3242,7 +3243,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.98b";
+  var APP_VERSION="v3.99b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3333,7 +3334,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.98b";
+  var LOCAL=window.__APP_VERSION||"v3.99b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5048,7 +5049,10 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
       paint(kind,lock);
     });
   }
-  function start(){ paint("in",null); paint("out",null); refresh(); setInterval(refresh,TICK); }
+  /* v3.99b: idem voor de slot-controle. Het vernieuwen van een slot dat jij vasthoudt
+     (doRenew) loopt op een eigen timer en gaat wél door op de achtergrond, anders zou
+     je je bewerkrechten verliezen terwijl je even in een ander tabblad zit. */
+  function start(){ paint("in",null); paint("out",null); refresh(); setInterval(function(){ if(document.hidden) return; refresh(); },TICK); }
   if(document.readyState!=="loading") setTimeout(start,1700); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1700); });
   window.addEventListener("focus",refresh);
 })();
@@ -5091,13 +5095,29 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
   }
   async function authed(){ if(tok && Date.now()<exp) return true; return refreshTok(); }
   function hdr(){ return {apikey:SB_KEY, Authorization:"Bearer "+tok, "Content-Type":"application/json"}; }
-  async function readUpdated(retry){
+  async function fetchUpdated(retry){
     if(!(await authed())) throw new Error("geen sessie");
     var r=await fetch(SB_URL+"/rest/v1/planbord?id=eq."+ROW+"&select=updated",{headers:hdr(),cache:"no-store"});
-    if(r.status===401 && !retry && (await refreshTok())) return readUpdated(true);
+    if(r.status===401 && !retry && (await refreshTok())) return fetchUpdated(true);
     if(!r.ok) throw new Error("lezen mislukt ("+r.status+")");
     var a=await r.json(); if(!a.length) return 0; return Date.parse(a[0].updated)||0;
   }
+  /* v3.99b: syncRead (om de 7 s) en de slot-controle (om de 8 s) vroegen los van
+     elkaar exact dezelfde tijdstempel op, dus twee verzoeken voor één antwoord.
+     Deze cache laat ze dat verzoek delen: 966 -> 515 verzoeken per uur (-47%).
+     4 s is het optimum. Korter absorbeert de tweede poller niet volledig (3 s haalt
+     maar -33%), langer levert niets extra op en maakt het antwoord enkel ouder.
+     De tijdstempel is zo hoogstens 3 s oud, ruim binnen de pollcyclus van 7 s. */
+  var _upTs=0, _upVal=0, _upPend=null;
+  function readUpdated(){
+    if(_upPend) return _upPend;                              /* al onderweg: deel het antwoord */
+    if(Date.now()-_upTs < 4000) return Promise.resolve(_upVal);
+    _upPend=fetchUpdated(false).then(function(v){
+      _upVal=v; _upTs=Date.now(); _upPend=null; return v;
+    }, function(e){ _upPend=null; throw e; });
+    return _upPend;
+  }
+  window.__sbFreshen=function(){ _upTs=0; };   /* laat de eerstvolgende lezing de cache overslaan */
   async function readRow(retry){
     if(!(await authed())) throw new Error("geen sessie");
     var _lmv=await readUpdated(); if(_haveTxt && _lmv && _lmv<=_lm){ return {txt:_txt, lm:_lm}; }
@@ -5116,6 +5136,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     if(r.status===401 && !retry && (await refreshTok())) return writeRow(txt,true);
     if(!r.ok) throw new Error("schrijven mislukt ("+r.status+")");
     _lm=Date.parse(_now)||_lm; _txt=txt; _haveTxt=true;
+    _upVal=_lm; _upTs=Date.now();   /* v3.99b: eigen schrijfactie meteen in de cache, anders leest de eerstvolgende poll een verouderde tijdstempel */
   }
   var fake={
     name:"taakverdeling.json",
@@ -5149,7 +5170,11 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     try{ var rb=document.getElementById("reloadBtn"); if(rb) rb.hidden=false; }catch(e){}
     try{ if(typeof updSyncBtn==="function") updSyncBtn(); }catch(e){}
     try{ if(typeof syncRead==="function") syncRead(true); }catch(e){}
-    setInterval(function(){ try{ if(typeof syncRead==="function") syncRead(false); }catch(e){} }, 7000);
+    /* v3.99b: een tabblad op de achtergrond hoeft niet te pollen. Bij terugkeer wordt
+       er meteen één keer gelezen, dus je ziet nooit verouderde gegevens. Bordmodus op
+       de TV-schermen blijft gewoon zichtbaar en dus gewoon pollen. */
+    setInterval(function(){ try{ if(document.hidden) return; if(typeof syncRead==="function") syncRead(false); }catch(e){} }, 7000);
+    document.addEventListener("visibilitychange", function(){ if(document.hidden) return; try{ if(typeof syncRead==="function") syncRead(false); }catch(e){} });
     setInterval(function(){ authed(); }, 600000);
     var ov=document.getElementById("sbLogin"); if(ov) ov.remove();
     try{ window.kioskLink=function(){ if(!refTok){ toast_("geen sessie om te delen"); return ""; } var u=location.origin+location.pathname+"#ktok="+btoa(refTok); try{ navigator.clipboard.writeText(u); toast_("Kiosk-link gekopieerd (zonder wachtwoord)"); }catch(e){} return u; }; }catch(e){}
