@@ -1972,6 +1972,7 @@ $("#linkBtn").addEventListener("click", pickAndLink);
 $("#syncBtn").addEventListener("click", syncLink);
 $("#reloadBtn").addEventListener("click", function(){
   reloadFromHandle(true);
+  if(window.__sbHardRefresh) window.__sbHardRefresh();   /* v4.00b: negeer ook het bewaarde document, dit is de weg terug bij twijfel */
   syncPerm(true).then(function(ok){ if(ok) syncRead(true); });
 });
 $("#fileInput").addEventListener("change", function(e){ if(e.target.files[0]) loadFile(e.target.files[0], false); });
@@ -3243,7 +3244,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v3.99b";
+  var APP_VERSION="v4.00b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3334,7 +3335,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v3.99b";
+  var LOCAL=window.__APP_VERSION||"v4.00b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5118,6 +5119,25 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     return _upPend;
   }
   window.__sbFreshen=function(){ _upTs=0; };   /* laat de eerstvolgende lezing de cache overslaan */
+  /* v4.00b: het opgehaalde document overleeft nu een herlaadbeurt. Appspace toont het
+     bord in een rotatie, dus die pagina begint geregeld opnieuw. Zonder dit moest elke
+     ronde het volledige document (±250 KB) opnieuw opgehaald worden, ook tijdens de
+     ~300 uren per cyclus dat er niemand aan het bord komt (na 21u en in het weekend).
+     Nu volstaat de tijdstempel-controle van een halve KB zolang er niets wijzigde.
+     Vangnet: de herlaadknop wist deze cache, zodat er altijd een weg terug is. */
+  var DOCK="vp_sbdoc", _dockTxt="";
+  async function loadDocCache(){
+    try{
+      var c=await idb.get(DOCK);
+      if(c && typeof c.txt==="string" && c.txt.length>5 && c.lm){ _txt=c.txt; _lm=c.lm; _haveTxt=true; _dockTxt=c.txt; }
+    }catch(e){}
+  }
+  function saveDocCache(){
+    if(!_haveTxt || !_lm || _txt===_dockTxt) return;   /* niets gewijzigd: niet nodeloos wegschrijven */
+    _dockTxt=_txt;
+    try{ idb.set(DOCK,{txt:_txt, lm:_lm}); }catch(e){}
+  }
+  window.__sbHardRefresh=function(){ _haveTxt=false; _upTs=0; };   /* herlaadknop: alles opnieuw ophalen */
   async function readRow(retry){
     if(!(await authed())) throw new Error("geen sessie");
     var _lmv=await readUpdated(); if(_haveTxt && _lmv && _lmv<=_lm){ return {txt:_txt, lm:_lm}; }
@@ -5126,7 +5146,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     if(!r.ok) throw new Error("lezen mislukt ("+r.status+")");
     var a=await r.json();
     if(!a.length){ _txt="{}"; _lm=0; _haveTxt=true; return {txt:"{}", lm:0}; }
-    _txt=JSON.stringify(a[0].doc||{}); _lm=(Date.parse(a[0].updated)||0); _haveTxt=true; return {txt:_txt, lm:_lm};
+    _txt=JSON.stringify(a[0].doc||{}); _lm=(Date.parse(a[0].updated)||0); _haveTxt=true; saveDocCache(); return {txt:_txt, lm:_lm};
   }
   async function writeRow(txt,retry){
     if(!(await authed())) throw new Error("geen sessie");
@@ -5137,6 +5157,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     if(!r.ok) throw new Error("schrijven mislukt ("+r.status+")");
     _lm=Date.parse(_now)||_lm; _txt=txt; _haveTxt=true;
     _upVal=_lm; _upTs=Date.now();   /* v3.99b: eigen schrijfactie meteen in de cache, anders leest de eerstvolgende poll een verouderde tijdstempel */
+    saveDocCache();
   }
   var fake={
     name:"taakverdeling.json",
@@ -5214,6 +5235,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
   }
   async function init(){
     loadSess();
+    await loadDocCache();   /* v4.00b: moet vóór activate(), want die doet meteen de eerste lezing */
     if(await authed()){ if(location.search||location.hash) cleanUrl(); activate(); }
     else if(await autoLogin()) activate();
     else { enforce(); setInterval(function(){ if(!active) enforce(); },800); overlay(); }
