@@ -3244,7 +3244,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.00b";
+  var APP_VERSION="v4.01b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3335,7 +3335,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.00b";
+  var LOCAL=window.__APP_VERSION||"v4.01b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5101,7 +5101,8 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     var r=await fetch(SB_URL+"/rest/v1/planbord?id=eq."+ROW+"&select=updated",{headers:hdr(),cache:"no-store"});
     if(r.status===401 && !retry && (await refreshTok())) return fetchUpdated(true);
     if(!r.ok) throw new Error("lezen mislukt ("+r.status+")");
-    var a=await r.json(); if(!a.length) return 0; return Date.parse(a[0].updated)||0;
+    var body=await r.text(); if(window.__telBytes) window.__telBytes(body.length);   /* v4.01b */
+    var a=JSON.parse(body); if(!a.length) return 0; return Date.parse(a[0].updated)||0;
   }
   /* v3.99b: syncRead (om de 7 s) en de slot-controle (om de 8 s) vroegen los van
      elkaar exact dezelfde tijdstempel op, dus twee verzoeken voor één antwoord.
@@ -5144,7 +5145,8 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     var r=await fetch(SB_URL+"/rest/v1/planbord?id=eq."+ROW+"&select=doc,updated",{headers:hdr(),cache:"no-store"});
     if(r.status===401 && !retry && (await refreshTok())) return readRow(true);
     if(!r.ok) throw new Error("lezen mislukt ("+r.status+")");
-    var a=await r.json();
+    var body=await r.text(); if(window.__telBytes) window.__telBytes(body.length);   /* v4.01b: dit is de dure oproep */
+    var a=JSON.parse(body);
     if(!a.length){ _txt="{}"; _lm=0; _haveTxt=true; return {txt:"{}", lm:0}; }
     _txt=JSON.stringify(a[0].doc||{}); _lm=(Date.parse(a[0].updated)||0); _haveTxt=true; saveDocCache(); return {txt:_txt, lm:_lm};
   }
@@ -5158,6 +5160,7 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     _lm=Date.parse(_now)||_lm; _txt=txt; _haveTxt=true;
     _upVal=_lm; _upTs=Date.now();   /* v3.99b: eigen schrijfactie meteen in de cache, anders leest de eerstvolgende poll een verouderde tijdstempel */
     saveDocCache();
+    if(window.__telBytes) window.__telBytes(0);   /* v4.01b: antwoord is leeg (return=minimal), enkel de overhead telt */
   }
   var fake={
     name:"taakverdeling.json",
@@ -6120,6 +6123,58 @@ body.board .ob-q{font-size:.85vw;margin-left:.3vw}
   }
   if(document.readyState!=="loading") setTimeout(addBtn,1500); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(addBtn,1500); });
   setInterval(addBtn,5000);
+})();
+</script>
+<!-- ============ verbruiksteller (v4.01b) ============ -->
+<style>
+body.board #egrBadge, body.vp-simple #egrBadge{ display:none !important; }
+</style>
+<script>
+(function(){
+  "use strict";
+  /* Telt wat DIT TOESTEL bij de database ophaalt, als vroegtijdige waarschuwing.
+     De echte teller van Supabase is org-breed en enkel op te vragen met een
+     management-token; dat hoort nooit in deze publieke repo. Dit is dus een
+     indicatie per toestel, geen totaal. De Appspace-schermen tellen hier niet mee.
+     Opslag: rauwe localStorage onder vp_egress, per dag, 14 dagen bijgehouden.
+     Staat bewust niet in collectLocal() of syncWrite(), dus het synct nooit mee
+     en kost zelf geen enkele byte aan de database. */
+  var KEY="vp_egress", HDR=450, DAGEN=14;
+  function dagKey(d){ d=d||new Date(); return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+  function lees(){ try{ return JSON.parse(localStorage.getItem(KEY)||"{}")||{}; }catch(e){ return {}; } }
+  window.__telBytes=function(n){
+    try{
+      if(!(n>0)) n=0;
+      var m=lees(), k=dagKey();
+      m[k]=(m[k]||0)+n+HDR;                      /* HDR: schatting van de HTTP- en TLS-overhead per verzoek, zodat het cijfer eerder te hoog dan te laag uitvalt */
+      var ks=Object.keys(m).sort(); while(ks.length>DAGEN) delete m[ks.shift()];
+      localStorage.setItem(KEY, JSON.stringify(m));
+    }catch(e){}
+  };
+  window.__egress=lees;
+  function mb(b){ return (b/1048576).toFixed(1).replace(".",",")+" MB"; }
+  function titel(){
+    var m=lees(), ks=Object.keys(m).sort().reverse().slice(0,7);
+    if(!ks.length) return "Nog niets gemeten";
+    return "Opgehaald bij de database door DIT toestel:\n"+ks.map(function(k){ return k+"   "+mb(m[k]); }).join("\n")
+      +"\n\nDit is enkel dit toestel, niet het totaal van de organisatie.\nVuistregel: boven 25 MB op een werkdag is er iets mis.";
+  }
+  function verf(){
+    try{
+      var host=document.querySelector(".topbar-in"); if(!host) return;
+      var e=document.getElementById("egrBadge");
+      if(!e){
+        e=document.createElement("span"); e.id="egrBadge";
+        e.style.cssText="margin-left:6px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);opacity:.7;cursor:default";
+        var v=document.getElementById("appVer");
+        if(v && v.parentNode) v.parentNode.insertBefore(e, v.nextSibling); else host.appendChild(e);
+      }
+      e.textContent="↓ "+mb(lees()[dagKey()]||0);
+      e.title=titel();
+    }catch(e){}
+  }
+  function start(){ verf(); setInterval(verf, 10000); }
+  if(document.readyState!=="loading") setTimeout(start,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1600); });
 })();
 </script>
 </body>
