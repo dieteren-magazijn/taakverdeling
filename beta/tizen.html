@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schermtest planbord</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#0a1424;color:#e9f1ff;font-family:Arial,Helvetica,sans-serif}
+.wrap{padding:18px 22px;max-width:1700px;margin:0 auto}
+h1{font-size:30px;margin:0 0 4px}
+.sub{color:#9db4dc;font-size:16px;margin:0 0 14px}
+.verdict{border-radius:12px;padding:12px 16px;font-size:22px;font-weight:bold;margin:0 0 16px;border:2px solid #8db2ff44;background:#0f1c33}
+.card{background:#0f1c33;border:1px solid rgba(141,178,255,.28);border-radius:12px;padding:12px 14px;margin:0 0 14px}
+.card h2{font-size:19px;margin:0 0 8px;color:#9db4dc;text-transform:uppercase;letter-spacing:.06em}
+table{width:100%;border-collapse:collapse;font-size:17px}
+td{padding:5px 6px;border-bottom:1px solid rgba(141,178,255,.14);vertical-align:top}
+td.k{color:#c8d8f5;width:46%}
+td.v{font-weight:bold;word-break:break-word}
+.ok{color:#39d98a}.no{color:#ff6b6b}.warn{color:#ffc857}.dim{color:#9db4dc;font-weight:normal}
+pre{white-space:pre-wrap;word-break:break-word;font-size:15px;background:#081020;border:1px solid rgba(141,178,255,.2);border-radius:8px;padding:10px;margin:0;max-height:340px;overflow:auto}
+button,a.btn{display:inline-block;font-size:18px;padding:10px 16px;margin:0 8px 8px 0;border-radius:10px;border:1px solid rgba(141,178,255,.4);background:#16294a;color:#e9f1ff;text-decoration:none;cursor:pointer}
+input[type=text]{font-size:17px;padding:9px 11px;border-radius:9px;border:1px solid rgba(141,178,255,.4);background:#081020;color:#e9f1ff;width:100%;max-width:560px}
+iframe{width:100%;height:420px;border:1px solid rgba(141,178,255,.4);border-radius:10px;background:#000;margin-top:10px}
+#boxflex{display:flex;gap:20px}#boxflex i{display:block;width:30px;height:8px;background:#39d98a}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Schermtest planbord</h1>
+<p class="sub">Open deze pagina op het scherm waar het bord slecht toont. Maak daarna een foto van dit rapport, of gebruik de knop onderaan om de tekst te kopieren.</p>
+<div class="verdict" id="verdict">Bezig met testen...</div>
+
+<div class="card"><h2>Browser en scherm</h2><table id="tInfo"></table></div>
+<div class="card"><h2>Javascript</h2><table id="tJs"></table></div>
+<div class="card"><h2>Opmaak (CSS)</h2><table id="tCss"></table></div>
+<div class="card"><h2>Netwerk</h2><table id="tNet"></table></div>
+<div class="card"><h2>Foutmeldingen op deze pagina</h2><pre id="errs">(nog geen)</pre></div>
+
+<div class="card"><h2>Het bord zelf testen</h2>
+  <p class="sub" style="margin:0 0 8px">Laadt het bord in een kader op deze pagina en vangt de foutmeldingen op. Plak eventueel het stukje achter het hekje van je kiosk-link hieronder.</p>
+  <input type="text" id="hash" placeholder="view=outbound&amp;board=1">
+  <div style="margin-top:10px"><button id="btnFrame">Bord laden in kader</button></div>
+  <div id="frameWrap"></div>
+  <pre id="frameErrs" style="margin-top:10px">(bord nog niet geladen)</pre>
+</div>
+
+<div class="card">
+  <button id="btnCopy">Rapport kopieren</button>
+  <button id="btnText">Rapport als platte tekst tonen</button>
+  <a class="btn" href="./">Naar het bord</a>
+  <pre id="plain" style="display:none;margin-top:10px"></pre>
+</div>
+
+<div style="position:absolute;left:-9999px"><div id="boxflex"><i></i><i></i></div></div>
+</div>
+
+<script>
+/* Bewust ouderwets javascript (ES5). Deze pagina moet ook draaien
+   op een browser die de rest van de app niet aankan. */
+(function(){
+  var errLines = [];
+  window.onerror = function(msg, src, line, col){
+    errLines.push(msg + "  [" + String(src||"?").replace(/^.*\//,"") + ":" + line + ":" + col + "]");
+    var p = document.getElementById("errs");
+    if (p) p.textContent = errLines.join("\n");
+    return false;
+  };
+
+  var problems = [];
+  var rows = { info: [], js: [], css: [], net: [] };
+
+  function add(tbl, key, val, state, note){
+    rows[tbl].push([key, val, state||"", note||""]);
+    var id = tbl === "info" ? "tInfo" : tbl === "js" ? "tJs" : tbl === "css" ? "tCss" : "tNet";
+    var t = document.getElementById(id);
+    var tr = t.insertRow(-1);
+    var c1 = tr.insertCell(-1); c1.className = "k"; c1.appendChild(document.createTextNode(key));
+    var c2 = tr.insertCell(-1); c2.className = "v " + (state || "");
+    c2.appendChild(document.createTextNode(val));
+    if (note){ var s = document.createElement("span"); s.className = "dim"; s.appendChild(document.createTextNode("  " + note)); c2.appendChild(s); }
+    return tr;
+  }
+  function test(tbl, key, fn, nodig, note){
+    var ok = false;
+    try { ok = !!fn(); } catch(e){ ok = false; }
+    add(tbl, key, ok ? "ja" : "NEE", ok ? "ok" : (nodig ? "no" : "warn"), note);
+    if (!ok && nodig) problems.push(key);
+    return ok;
+  }
+  function syntax(code){ return function(){ new Function(code); return true; }; }
+
+  /* ---- browser en scherm ---- */
+  var ua = navigator.userAgent || "";
+  var mChr = ua.match(/Chrom(?:e|ium)\/(\d+)/);
+  var mTiz = ua.match(/Tizen[ \/]?([\d.]+)/);
+  var chrome = mChr ? parseInt(mChr[1], 10) : 0;
+
+  add("info", "Chromium-versie", chrome ? String(chrome) : "onbekend", chrome ? (chrome >= 84 ? "ok" : chrome >= 63 ? "warn" : "no") : "warn");
+  add("info", "Tizen-versie", mTiz ? mTiz[1] : (ua.indexOf("Tizen") >= 0 ? "Tizen (versie onbekend)" : "geen Tizen"), "");
+  add("info", "Volledige user agent", ua, "dim");
+  add("info", "Schermresolutie", screen.width + " x " + screen.height, "");
+  add("info", "Venster (zichtbaar gebied)", window.innerWidth + " x " + window.innerHeight, "");
+  add("info", "Pixelverhouding", String(window.devicePixelRatio || 1), "");
+  add("info", "Kleurdiepte", String(screen.colorDepth) + " bit", "");
+  add("info", "Taal", navigator.language || "?", "");
+  add("info", "Online", navigator.onLine ? "ja" : "NEE", navigator.onLine ? "ok" : "no");
+  add("info", "Tijd op dit toestel", new Date().toString(), "");
+  try { add("info", "Tijdzone", Intl.DateTimeFormat().resolvedOptions().timeZone || "?", ""); }
+  catch(e){ add("info", "Tijdzone", "onbekend (geen Intl)", "warn"); }
+
+  if (chrome && chrome < 84) problems.push("Chromium " + chrome + " is ouder dan 84");
+
+  /* ---- javascript ---- */
+  test("js", "let en const", syntax("const a=1; let b=2; return a+b"), true);
+  test("js", "pijlfuncties", syntax("var g=(x)=>x*2; return g(1)"), true);
+  test("js", "sjabloonteksten", syntax("var n=1; return `x${n}`"), true);
+  test("js", "async en await", syntax("return (async function(){ await 0; return 1 })"), true, "de app gebruikt dit ruim 140 keer");
+  test("js", "spreiding en rest", syntax("function f(...a){return a} return f(...[1,2])"), true);
+  test("js", "ontleding (destructuring)", syntax("var o={a:1}; var {a}=o; var [b]=[2]; return a+b"), true);
+  test("js", "standaardwaarden", syntax("function f(a=1){return a} return f()"), true);
+  test("js", "klassen", syntax("class A{}; return A"), false, "app gebruikt dit niet");
+  test("js", "optionele punt (?.)", syntax("var o={}; return o?.x"), false, "app gebruikt dit niet");
+  test("js", "Promise", function(){ return typeof Promise === "function"; }, true);
+  test("js", "fetch", function(){ return typeof fetch === "function"; }, true);
+  test("js", "Object.assign", function(){ return typeof Object.assign === "function"; }, true);
+  test("js", "Array.from", function(){ return typeof Array.from === "function"; }, true);
+  test("js", "Array.includes", function(){ return !![].includes; }, true);
+  test("js", "Map en Set", function(){ return typeof Map === "function" && typeof Set === "function"; }, true);
+  test("js", "localStorage", function(){ localStorage.setItem("_t", "1"); localStorage.removeItem("_t"); return true; }, true, "nodig voor rol en instellingen");
+  test("js", "IndexedDB", function(){ return !!window.indexedDB; }, false, "enkel nodig op de plan-pc");
+  test("js", "Bestandskoppeling", function(){ return typeof window.showOpenFilePicker === "function"; }, false, "enkel nodig op de plan-pc");
+
+  /* ---- css ---- */
+  var sup = (window.CSS && CSS.supports) ? function(p, v){ try { return CSS.supports(p, v); } catch(e){ return false; } } : null;
+  add("css", "CSS.supports beschikbaar", sup ? "ja" : "NEE", sup ? "ok" : "warn", sup ? "" : "tests hieronder minder betrouwbaar");
+
+  test("css", "Eigen kleuren (var())", function(){
+    var d = document.createElement("div");
+    d.style.setProperty("--x", "red");
+    d.style.color = "var(--x)";
+    return d.style.color.indexOf("var") >= 0;
+  }, true, "de hele opmaak hangt hieraan");
+
+  test("css", "Tussenruimte in flex (gap)", function(){
+    var b = document.getElementById("boxflex");
+    if (!b) return false;
+    var k = b.getElementsByTagName("i");
+    return (k[1].offsetLeft - (k[0].offsetLeft + k[0].offsetWidth)) >= 15;
+  }, true, "Chromium 84 en hoger, anders plakken de tegels aan elkaar");
+
+  test("css", "Raster (grid)", function(){
+    if (sup) return sup("display", "grid");
+    var d = document.createElement("div"); d.style.display = "grid"; return d.style.display === "grid";
+  }, true, "de taakkaarten liggen in een raster");
+  test("css", "Rastertussenruimte (grid-gap)", function(){ return sup ? (sup("gap", "10px") || sup("grid-gap", "10px")) : true; }, true);
+  test("css", "position:sticky", function(){ var d = document.createElement("div"); d.style.position = "sticky"; return d.style.position.indexOf("sticky") >= 0; }, false, "bovenbalk blijft anders niet staan");
+  test("css", "selector :has()", function(){ document.querySelector("body:has(div)"); return true; }, false, "Chromium 105 en hoger, enkel voor de brede taakrij");
+  test("css", "backdrop-filter", function(){ return sup ? (sup("backdrop-filter", "blur(4px)") || sup("-webkit-backdrop-filter", "blur(4px)")) : false; }, false, "enkel wazige achtergrond");
+  test("css", "color-mix()", function(){ return sup ? sup("color", "color-mix(in srgb, red 50%, blue)") : false; }, false, "de app heeft hier een eigen oplossing voor");
+  test("css", "calc()", function(){ return sup ? sup("width", "calc(10px + 1%)") : true; }, true);
+  test("css", "flexbox", function(){ return sup ? sup("display", "flex") : true; }, true);
+  test("css", "object-fit", function(){ return sup ? sup("object-fit", "cover") : false; }, false);
+  test("css", "vh en vw", function(){ return sup ? sup("width", "50vw") : true; }, true);
+
+  /* ---- netwerk ---- */
+  function netRow(key, url, opts){
+    var tr = add("net", key, "bezig...", "dim");
+    var cell = tr.cells[1];
+    var t0 = new Date().getTime();
+    function done(txt, cls){ cell.className = "v " + cls; cell.textContent = txt + "  (" + (new Date().getTime() - t0) + " ms)"; }
+    try {
+      fetch(url, opts || {}).then(function(r){
+        return r.text().then(function(t){ return { s: r.status, t: t }; });
+      }).then(function(o){
+        var extra = o.t ? ("  " + o.t.slice(0, 40).replace(/\s+/g, " ")) : "";
+        if (o.s >= 200 && o.s < 400) { done("ok (" + o.s + ")" + extra, "ok"); }
+        else { done("status " + o.s + extra, "no"); problems.push(key); }
+      })["catch"](function(e){ done("MISLUKT: " + (e && e.message ? e.message : e), "no"); problems.push(key); });
+    } catch(e){ done("MISLUKT: " + e, "no"); problems.push(key); }
+  }
+  var cb = "?cb=" + Math.random().toString(36).slice(2);
+  netRow("Versiebestand van het bord", "./version.txt" + cb);
+  netRow("Supabase bereikbaar", "https://ukkpduoirexxzndtgwpc.supabase.co/rest/v1/planbord?id=eq.hoofdbord&select=updated", {
+    headers: { apikey: "sb_publishable_RozqrztrtqO3ueA05yepHA_Rji0Ks8a" }
+  });
+  netRow("Bibliotheek cdnjs (SheetJS)", "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" + cb);
+  netRow("Bibliotheek cdnjs (html2canvas)", "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" + cb);
+
+  /* ---- eindoordeel ---- */
+  setTimeout(function(){
+    var v = document.getElementById("verdict");
+    if (!problems.length){
+      v.style.borderColor = "#39d98a"; v.style.color = "#39d98a";
+      v.textContent = "Geen blokkerende problemen gevonden. Toont het bord toch fout, gebruik dan het kader hieronder.";
+    } else {
+      v.style.borderColor = "#ff6b6b"; v.style.color = "#ff6b6b";
+      v.textContent = "Probleem: " + problems.join(" / ");
+    }
+  }, 4000);
+
+  /* ---- bord in een kader ---- */
+  document.getElementById("btnFrame").onclick = function(){
+    var h = (document.getElementById("hash").value || "").replace(/^#/, "");
+    var wrap = document.getElementById("frameWrap");
+    wrap.innerHTML = "";
+    var f = document.createElement("iframe");
+    f.src = "./" + (h ? "#" + h : "");
+    var out = document.getElementById("frameErrs");
+    var lines = [];
+    out.textContent = "(bord laadt...)";
+    f.onload = function(){
+      try {
+        var w = f.contentWindow;
+        w.onerror = function(m, s, l, c){
+          lines.push("FOUT: " + m + "  [regel " + l + ":" + c + "]");
+          out.textContent = lines.join("\n");
+          return false;
+        };
+        var ce = w.console && w.console.error;
+        if (ce){
+          w.console.error = function(){
+            lines.push("console.error: " + Array.prototype.join.call(arguments, " "));
+            out.textContent = lines.join("\n");
+            return ce.apply(w.console, arguments);
+          };
+        }
+        setTimeout(function(){
+          var ver = "?";
+          try {
+            var el = w.document.getElementById("verBanner");
+            ver = w.__APP_VERSION || (el ? el.textContent : "?");
+          } catch(e){}
+          lines.push("Bord geladen. Versie volgens het bord: " + ver);
+          out.textContent = lines.join("\n");
+        }, 5000);
+      } catch(e){
+        out.textContent = "Kon de foutmeldingen van het bord niet uitlezen: " + e;
+      }
+    };
+    wrap.appendChild(f);
+  };
+
+  /* ---- rapport als tekst ---- */
+  function plainText(){
+    var out = ["SCHERMTEST PLANBORD  " + new Date().toString(), ""];
+    var titels = { info: "BROWSER EN SCHERM", js: "JAVASCRIPT", css: "OPMAAK (CSS)", net: "NETWERK" };
+    var k, i;
+    for (k in rows){
+      if (!rows.hasOwnProperty(k)) continue;
+      out.push("== " + titels[k] + " ==");
+      for (i = 0; i < rows[k].length; i++){
+        out.push("  " + rows[k][i][0] + ": " + rows[k][i][1] + (rows[k][i][3] ? "  (" + rows[k][i][3] + ")" : ""));
+      }
+      out.push("");
+    }
+    out.push("== FOUTMELDINGEN ==");
+    out.push(errLines.length ? errLines.join("\n") : "  geen");
+    out.push("");
+    out.push("== OORDEEL ==");
+    out.push(problems.length ? "  " + problems.join(" / ") : "  geen blokkerende problemen");
+    return out.join("\n");
+  }
+  document.getElementById("btnText").onclick = function(){
+    var p = document.getElementById("plain");
+    p.style.display = "block";
+    p.textContent = plainText();
+  };
+  document.getElementById("btnCopy").onclick = function(){
+    var txt = plainText(), self = this;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt);
+        self.textContent = "Gekopieerd";
+        return;
+      }
+    } catch(e){}
+    var p = document.getElementById("plain");
+    p.style.display = "block"; p.textContent = txt;
+    try {
+      var r = document.createRange(); r.selectNodeContents(p);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      document.execCommand("copy");
+      self.textContent = "Gekopieerd";
+    } catch(e){ self.textContent = "Kopieren lukt niet, maak een foto"; }
+  };
+})();
+</script>
+</body>
+</html>
