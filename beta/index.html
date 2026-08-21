@@ -1906,7 +1906,7 @@ function pdStart(){
   if(pdrag.started || !pdrag.kind) return;
   pdrag.started = true;
   document.body.classList.add("pdragging");
-  try{ if(pdrag.srcEl && pdrag.srcEl.setPointerCapture && pdrag.id != null) pdrag.srcEl.setPointerCapture(pdrag.id); }catch(_){}
+  try{ if(document.body.setPointerCapture && pdrag.id != null) document.body.setPointerCapture(pdrag.id); }catch(_){}
   var label = pdrag.name || (pdrag.kind === "task" ? pdrag.task
             : (pdrag.kind === "obdept" ? (obDepts[pdrag.di] && obDepts[pdrag.di].label) : "")) || "";
   var g = document.createElement("div"); g.className = "pdrag-ghost"; g.textContent = label;
@@ -3244,7 +3244,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.01b";
+  var APP_VERSION="v4.02b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3335,7 +3335,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.01b";
+  var LOCAL=window.__APP_VERSION||"v4.02b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -5012,7 +5012,17 @@ body.wl-ro-out #outboundView .pool .chip, body.wl-ro-out #obBoard .chip, body.wl
     document.body.classList.toggle("wl-ro", !hold.in && !hold.out);
   }
   async function claim(kind,force){
-    var r=await readDoc(); if(!r){ toast("Geen sync-koppeling op dit toestel"); return; }
+    var r=await readDoc();
+    if(!r){
+      /* v4.02b: een toestel zonder sjabloonkoppeling (tv-scherm, tablet) kan niet
+         meedoen aan het gedeelde slot in de Excel. Voor outbound geven we dan een
+         lokaal slot, zodat je vanaf het bord toch kan schuiven. Let op: er is dan
+         geen bescherming tegen twee mensen die tegelijk bewerken. */
+      if(kind!=="out"){ toast("Geen sync-koppeling op dit toestel"); return; }
+      hold.out=true; startRenew();
+      toast("Je bewerkt nu outbound - dit toestel kent geen sloten, spreek af wie schuift");
+      refresh(); return;
+    }
     var lock=(r.doc.locks||{})[kind];
     if(fresh(lock)&&lock.holder!==CID&&!force){
       if(!confirm((lock.label||"Iemand")+" bewerkt nu "+(kind==="in"?"inbound":"outbound")+". Toch overnemen? Dan kan die niet meer opslaan.")) return;
@@ -6175,6 +6185,188 @@ body.board #egrBadge, body.vp-simple #egrBadge{ display:none !important; }
   }
   function start(){ verf(); setInterval(verf, 10000); }
   if(document.readyState!=="loading") setTimeout(start,1600); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1600); });
+})();
+</script>
+<!-- ============ bordmodus: knoppen linksonder + leesbaar op oude tv-browsers (v4.02b) ============ -->
+<style>
+/* --- twee subtiele knoppen linksonder in bordmodus --- */
+#bbCtl{display:none}
+body.board #bbCtl{display:flex;gap:.5vw;position:fixed;left:1.2vw;bottom:1.1vw;z-index:70}
+#bbCtl .bbc{
+  width:2.4vw;height:2.4vw;padding:0;border-radius:.5vw;
+  background:rgba(10,20,36,.55);border:1px solid rgba(141,178,255,.25);
+  color:var(--muted,#8fa6c9);font:400 1.1vw/1 var(--fb,system-ui,sans-serif);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  opacity:.24;transition:opacity .18s ease,color .18s ease,border-color .18s ease;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
+}
+#bbCtl .bbc:hover,#bbCtl .bbc:focus{opacity:1;color:var(--txt,#e9f1ff);border-color:rgba(141,178,255,.6);outline:none}
+#bbCtl .bbc.on{opacity:1;color:#3ddc97;border-color:#3ddc97;background:rgba(61,220,151,.14)}
+#bbCtl .bbc.lock{opacity:.75;color:#f6c945;border-color:rgba(246,201,69,.55)}
+#bbCtl .bbc[hidden]{display:none}
+
+/* --- naamblokjes in de outbound-tegels ---
+   Ze staan op een vaste hoogte (2.3vw, module v3.36). Rekent een browser de
+   regelhoogte iets ruimer, dan snijdt die vaste hoogte de letters af en lopen
+   de regels visueel in elkaar. min-height laat het blokje meegroeien; op een
+   gewone pc verandert er niets, want de tekst blijft even hoog. */
+body.board #outboundView .chip{height:auto;min-height:2.3vw}
+
+/* --- vijf kolommen ook zonder :has() (oudere tv-browsers) --- */
+body.board .tasks.tasks-many{grid-template-columns:repeat(5,1fr)}
+
+/* --- browsers zonder tussenruimte in flex (Chromium < 84, o.a. oudere Tizen):
+       daar valt elke gap weg en plakken de naamvakjes aan elkaar. --- */
+body.no-flexgap.board .tcard:not(.dense) > .tbody > *{margin-bottom:.3vw}
+body.no-flexgap.board .tcard:not(.dense) > .tbody > *:last-child{margin-bottom:0}
+body.no-flexgap.board #outboundView .chip > *{margin-right:.35vw}
+body.no-flexgap.board #outboundView .chip > *:last-child{margin-right:0}
+body.no-flexgap.board #absGrid .tbody > *{margin:0 .4vw .4vw 0}
+body.no-flexgap #bbCtl .bbc{margin-right:.5vw}
+
+/* --- slepen met de vinger op een tv- of tabletscherm --- */
+.chip[data-name],.pcard[data-name],.tcard[data-task] > header,#obBoard .tcard[data-di] > header{
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+}
+body.board #obBoard .chip[data-name],body.board #obBoard .tcard[data-di] > header{touch-action:none}
+body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
+</style>
+<script>
+(function(){
+  "use strict";
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function onBoard(){ return document.body.classList.contains("board"); }
+  function outboundOpen(){
+    var v=document.getElementById("outboundView");
+    return !!(v && !v.hidden);
+  }
+
+  /* ---------------------------------------------------------------
+     1. Tussenruimte in flex meten. Oudere Chromium-versies (< 84,
+        zoals op sommige Tizen-schermen) negeren "gap" in een flexbox;
+        dan plakken alle naamvakjes tegen elkaar. We zetten in dat
+        geval body.no-flexgap en de stylesheet hierboven valt terug
+        op gewone marges.
+     --------------------------------------------------------------- */
+  function testFlexGap(){
+    var ok=true;
+    try{
+      var b=document.createElement("div");
+      b.style.cssText="position:absolute;left:-9999px;top:0;display:flex;gap:20px;width:200px";
+      var i1=document.createElement("i"), i2=document.createElement("i");
+      i1.style.cssText=i2.style.cssText="display:block;width:30px;height:8px";
+      b.appendChild(i1); b.appendChild(i2);
+      document.body.appendChild(b);
+      ok=(i2.offsetLeft-(i1.offsetLeft+i1.offsetWidth))>=15;
+      b.parentNode.removeChild(b);
+    }catch(e){ ok=true; }
+    document.body.classList.toggle("no-flexgap", !ok);
+  }
+
+  /* ---------------------------------------------------------------
+     2. Vijf kolommen bij negen of meer afdelingen. Dat stond enkel in
+        een :has()-regel, en die kent een oudere tv-browser niet.
+     --------------------------------------------------------------- */
+  function gridCols(){
+    try{
+      ["tasks","obBoard"].forEach(function(id){
+        var g=(id==="tasks")?document.getElementById("taskGrid"):document.getElementById(id);
+        if(!g||!g.classList.contains("tasks")) return;
+        g.classList.toggle("tasks-many", g.querySelectorAll(":scope > .tcard").length>=9);
+      });
+    }catch(e){}
+  }
+
+  /* ---------------------------------------------------------------
+     3. Niet hertekenen terwijl er gesleept wordt. Een binnenkomende
+        wijziging uit de database bouwde het bord opnieuw op, waardoor
+        het vakje onder je vinger verdween en het slepen afbrak.
+     --------------------------------------------------------------- */
+  var pendingRender=false;
+  (function(){
+    var orig=window.obRender;
+    if(typeof orig!=="function") return;
+    window.obRender=function(){
+      if(document.body.classList.contains("pdragging")){ pendingRender=true; return; }
+      var r=orig.apply(this,arguments);
+      gridCols();
+      return r;
+    };
+  })();
+  function flushRender(){
+    if(!pendingRender) return;
+    pendingRender=false;
+    setTimeout(function(){ try{ if(typeof window.obRender==="function") window.obRender(); }catch(e){} },80);
+  }
+  document.addEventListener("pointerup",flushRender,true);
+  document.addEventListener("pointercancel",flushRender,true);
+
+  /* geen tekstselectie of rechtsklikmenu tijdens het slepen: op een
+     aanraakscherm breekt dat de sleepbeweging af */
+  document.addEventListener("contextmenu",function(e){
+    if(document.body.classList.contains("pdragging")){ e.preventDefault(); return; }
+    if(onBoard() && e.target && e.target.closest && e.target.closest(".chip[data-name]")) e.preventDefault();
+  });
+
+  /* ---------------------------------------------------------------
+     4. De twee knoppen.
+     --------------------------------------------------------------- */
+  var box=null, bEdit=null, bExit=null;
+  function build(){
+    if(document.getElementById("bbCtl")) return;
+    box=document.createElement("div"); box.id="bbCtl";
+    bEdit=document.createElement("button");
+    bEdit.type="button"; bEdit.className="bbc"; bEdit.id="bbEdit";
+    bEdit.innerHTML="&#9998;";
+    bEdit.title="Outbound bewerken";
+    bEdit.addEventListener("click",function(){
+      var w=document.getElementById("wlBtnOut");
+      if(!w){ toast("Bewerkknop nog niet klaar - probeer zo opnieuw"); return; }
+      w.click();
+      setTimeout(paint,400); setTimeout(paint,1400);
+    });
+    bExit=document.createElement("button");
+    bExit.type="button"; bExit.className="bbc"; bExit.id="bbExit";
+    bExit.innerHTML="&#10005;";
+    bExit.title="Bordmodus verlaten (Esc)";
+    bExit.addEventListener("click",function(){
+      try{ if(typeof window.setBoard==="function"){ window.setBoard(false); return; } }catch(e){}
+      try{ document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"})); }catch(e){}
+    });
+    box.appendChild(bEdit); box.appendChild(bExit);
+    document.body.appendChild(box);
+  }
+
+  function paint(){
+    if(!bEdit) return;
+    bEdit.hidden=!outboundOpen();
+    var w=document.getElementById("wlBtnOut");
+    var txt=w?(w.textContent||""):"";
+    var mine=/jij bewerkt/i.test(txt);
+    var other=txt.indexOf("\ud83d\udd12")>=0;   /* hangslot = iemand anders bewerkt */
+    bEdit.classList.toggle("on",mine);
+    bEdit.classList.toggle("lock",!mine&&other);
+    bEdit.title=mine?"Je bewerkt outbound - klik om vrij te geven"
+           :(other?txt.replace(/\s+/g," ").trim():"Outbound bewerken");
+  }
+
+  function start(){
+    build(); testFlexGap(); gridCols(); paint();
+    /* meteen bijwerken bij een tabwissel of bij het in- of uitschakelen van
+       de bordmodus, zodat de bewerkknop niet even achterloopt */
+    try{
+      var tabs=document.querySelector(".viewtabs");
+      if(tabs) tabs.addEventListener("click",function(){ setTimeout(paint,60); });
+      var sb=window.setBoard;
+      if(typeof sb==="function"){
+        window.setBoard=function(){ var r=sb.apply(this,arguments); setTimeout(paint,60); setTimeout(gridCols,80); return r; };
+      }
+    }catch(e){}
+    setInterval(paint,2500);
+    setInterval(gridCols,4000);
+  }
+  if(document.readyState!=="loading") setTimeout(start,1900);
+  else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1900); });
 })();
 </script>
 </body>
