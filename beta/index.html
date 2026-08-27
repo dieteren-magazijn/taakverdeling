@@ -296,6 +296,11 @@ body.board #outboundView .chip.ob-afw{background:#5a3a12;border-color:#f6a800}
 .ob-clock{cursor:pointer;opacity:.7;font-size:12px}.ob-clock:hover{opacity:1}
 .chip .ob-clock{display:none}
 body.ob-edit .chip .ob-clock{display:inline}
+/* v4.05b: het klokje hing vroeger aan de indeling-modus, maar die knop verstopt
+   zich in eenvoudige modus - dan was het onvindbaar. Nu staat het op elke naam
+   zodra je het outbound-slot hebt, en nooit in bordmodus (tv-scherm). */
+body:not(.board):not(.wl-ro):not(.wl-ro-out) #outboundView .chip .ob-clock{display:inline}
+body.board .chip .ob-clock{display:none !important}
 /* bordmodus: inbound .tcard-bordregels gelden automatisch ook hier;
    chip-badges meeschalen */
 body.board .ob-bar{display:none}
@@ -2754,7 +2759,7 @@ function obChipHTML(p, ctx, dept){
     '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
     '<span class="ob-nm">'+esc(p.name)+(window.obQualHTML?window.obQualHTML(p.name):"")+'</span>'+ibWarn+homeTag+
     (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
-    (obEdit?'<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>':'')+
+    '<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>'+
     (ctx==="dept"?'<span class="x" data-name="'+esc(p.name)+'">×</span>':'')+'</div>';
 }
 var OB_HUES=["#2dd4ee","#6fc3ff","#a78bfa","#3ddc97","#f6c945","#ff9f43","#ff7eb6","#34d4b8","#9ed36a","#ffd56b"];
@@ -2925,12 +2930,19 @@ function obRender(){
   obWire(board);
   updSiStatus();
 }
+/* het klokje werkt overal binnen outbound, ook op chips die obWire niet bindt */
+document.addEventListener("click", function(e){
+  var k=(e.target&&e.target.closest)?e.target.closest(".ob-clock"):null; if(!k) return;
+  var v=document.getElementById("outboundView"); if(!v||!v.contains(k)) return;
+  e.stopPropagation(); e.preventDefault();
+  obSetHours(k.getAttribute("data-name"), k);
+}, true);
 function obWire(board){
   // pool + bord chips: enkel klik-acties (verslepen draait via de pointer-laag)
   document.querySelectorAll("#obPool .chip, #obBoard .chip").forEach(function(b){
     b.addEventListener("click",function(e){
       if(e.target.classList.contains("x")) return;
-      if(e.target.classList.contains("ob-clock")){ e.stopPropagation(); obSetHours(b.dataset.name, e.target); return; }
+      if(e.target.classList.contains("ob-clock")) return;   /* afgehandeld door de delegatie hieronder */
       obSel=(obSel===b.dataset.name)?null:b.dataset.name; obRender();
     });
   });
@@ -3258,7 +3270,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.04b";
+  var APP_VERSION="v4.05b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3349,7 +3361,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.04b";
+  var LOCAL=window.__APP_VERSION||"v4.05b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
