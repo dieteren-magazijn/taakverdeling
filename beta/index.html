@@ -2500,59 +2500,73 @@ function obDefaultHours(p){
   function hm(min){ return ("0"+Math.floor(min/60)).slice(-2)+":"+("0"+(min%60)).slice(-2); }
   return {van:hm(startMin), tot:hm(endMin)};
 }
-/* halve-dag-venster: helft van het ploegvenster van die week.
+function obFmtHM(m){ m=Math.max(0,Math.round(m)); return ("0"+Math.floor(m/60)).slice(-2)+":"+("0"+(m%60)).slice(-2); }
+/* eigen uren-rooster van een persoon, voor de dag die nu getoond wordt.
+   o.van/o.tot = de basis (elke dag); o.dagen[MA..VR] = uitzondering voor die ene dag.
+   Een dagregel mag ook enkel 'van' of enkel 'tot' invullen; de rest komt uit de basis. */
+function obEigenVenster(o){
+  if(!o) return null;
+  var dk=null; try{ dk=state.dayKey; }catch(e){}
+  var d=(o.dagen && dk) ? o.dagen[dk] : null;
+  var eigenDag=!!(d && (d.van || d.tot));
+  var van=(d&&d.van)?d.van:(o.van||"");
+  var tot=(d&&d.tot)?d.tot:(o.tot||"");
+  if(!van && !tot) return null;
+  return {van:van, tot:tot, eigen:true, dag:eigenDag};
+}
+/* halve-dag-venster: helft van het meegegeven venster (eigen rooster of ploeg-standaard).
    NM vrij -> werkt voormiddag (van..midden); VM vrij -> werkt namiddag (midden..tot). */
-function obHalfWindow(p){
+function obHalfWindow(p, base){
   if(!p || !p._halfFree) return null;
-  var def=obDefaultHours(p); var van=obParseHM(def.van), tot=obParseHM(def.tot);
+  var def=base||obDefaultHours(p); var van=obParseHM(def.van), tot=obParseHM(def.tot);
   if(van==null||tot==null) return null;
   var mid=Math.round((van+tot)/2);
-  function hm(m){ return ("0"+Math.floor(m/60)).slice(-2)+":"+("0"+(m%60)).slice(-2); }
-  return p._halfFree==="NM" ? {van:def.van, tot:hm(mid), half:true} : {van:hm(mid), tot:def.tot, half:true};
+  return p._halfFree==="NM" ? {van:def.van, tot:obFmtHM(mid), half:true} : {van:obFmtHM(mid), tot:def.tot, half:true};
 }
-/* effectief venster: handmatig (indien ingesteld) anders ploeg-standaard */
+/* effectief venster: eigen rooster (dagregel, anders de basis) of de ploeg-standaard,
+   en in BEIDE gevallen de afwijkingen van die dag uit de Excel erop (halve dag, -X). */
 function obWindowFor(p){
-  var hm=obHoursMap();
-  if(hm[p.name] && (hm[p.name].van || hm[p.name].tot)){ var _ov={van:hm[p.name].van, tot:hm[p.name].tot, eigen:true}; if(state.dayKey==="VR" && _ov.tot){ var _em=obParseHM(_ov.tot); if(_em!=null){ _em-=120; _ov.tot=("0"+Math.floor(_em/60)).slice(-2)+":"+("0"+(_em%60)).slice(-2); } } return _ov; }
-  /* inbound-mensen staan niet in de ploegkolommen van dit blad, dus er is geen
-     betrouwbaar standaardvenster. Geen automatisch venster betekent dat ze niet
-     ten onrechte als "buiten uren" van het bord vallen. Stel je hun uren met de
-     klok in, dan geldt dat venster wel (dat is hierboven al afgehandeld). */
-  if(p && p._inbound) return null;
-  var _hw=obHalfWindow(p); if(_hw) return _hw;
-  var def=obDefaultHours(p);
+  var eig=obEigenVenster(obHoursMap()[p.name]);
+  var def;
+  if(eig){
+    def={van:eig.van, tot:eig.tot, eigen:true};
+    /* de kortere vrijdag zit al in de ploeg-standaard; bij een eigen BASIS-venster
+       trekken we hem hier af. Wie zelf uren voor vrijdag invulde, heeft het al gezegd. */
+    if(state.dayKey==="VR" && !eig.dag && def.tot){ var _em=obParseHM(def.tot); if(_em!=null) def.tot=obFmtHM(_em-120); }
+  } else {
+    /* inbound-mensen staan niet in de ploegkolommen van dit blad, dus er is geen
+       betrouwbaar standaardvenster. Geen automatisch venster betekent dat ze niet
+       ten onrechte als "buiten uren" van het bord vallen. Stel je hun uren met de
+       klok in, dan geldt dat venster wel (dat is hierboven al afgehandeld). */
+    if(p && p._inbound) return null;
+    def=obDefaultHours(p);
+  }
+  /* halve dag: de helft van het venster hierboven, dus ook van een eigen rooster */
+  var _hw=obHalfWindow(p, def); if(_hw){ if(eig) _hw.eigen=true; return _hw; }
   /* uren-aftrek (-X) uit de Excel: deze persoon stopt X uur VROEGER.
      We schuiven het einduur op (start + werkduur - X), zodat de
      uren-automatiek hem na zijn echte einduur als 'buiten uren' beschouwt
-     (en op het TV-bord verdwijnt) — net zoals een X/verlof-persoon. */
+     (en op het TV-bord verdwijnt) - net zoals een X/verlof-persoon.
+     Dit geldt OOK bovenop een eigen rooster: dat rooster is zijn normale dag,
+     en de -X uit de Excel is een afwijking van die ene dag (v4.04b). */
   var b = p && (p._origBadge || p.badge);
   var m = b ? (""+b).match(/^-(\d+(?:[.,]\d+)?)/) : null;
   if(m){
     var _xMin = Math.round(parseFloat(m[1].replace(",","."))*60);
     if(p && p._aftrekHalf==="VM"){
       var startMin = obParseHM(def.van);
-      if(startMin!=null){ startMin += _xMin; def.van = ("0"+Math.floor(startMin/60)).slice(-2)+":"+("0"+(startMin%60)).slice(-2); def.aftrek = true; }
+      if(startMin!=null){ def.van=obFmtHM(startMin+_xMin); def.aftrek=true; }
     } else {
       var endMin = obParseHM(def.tot);
-      if(endMin!=null){ endMin -= _xMin; def.tot = ("0"+Math.floor(endMin/60)).slice(-2)+":"+("0"+(endMin%60)).slice(-2); def.aftrek = true; }
+      if(endMin!=null){ def.tot=obFmtHM(endMin-_xMin); def.aftrek=true; }
     }
   }
   return def;
 }
-function obSetHours(name){
-  var hm=obHoursMap(); var cur=hm[name]||{};
-  var p=obRoster.find(function(x){return x.name===name;});
-  var def=p?obDefaultHours(p):{van:"",tot:""};
-  var info="Standaard voor ploeg "+(p?p.ploeg:"?")+": "+def.van+"–"+def.tot+"\\n(leeg laten = standaard gebruiken)";
-  var van=prompt("Aanwezig VANAF (uu:mm) voor "+name+"\\n"+info, cur.van||"");
-  if(van===null) return;
-  var tot=prompt("Aanwezig TOT (uu:mm) voor "+name, cur.tot||"");
-  if(tot===null) return;
-  van=van.trim(); tot=tot.trim();
-  if(!van && !tot){ delete hm[name]; toast("Terug naar ploeg-standaard voor "+name); }
-  else { hm[name]={van:van,tot:tot}; toast("⏰ "+name+": "+(van||"…")+"–"+(tot||"…")); }
-  store.set("vp_ob_hours", hm); scheduleSyncWrite();
-  obRefreshFromExcel();
+/* het uren-venster zelf zit in de module "uren per weekdag" onderaan */
+function obSetHours(name, anchor){
+  if(typeof window.obUurPop==="function") return window.obUurPop(name, anchor);
+  toast("Uren-venster is niet geladen");
 }
 function obParseHM(s){ var m=(s||"").match(/^(\d{1,2}):(\d{2})$/); return m?(+m[1]*60+ +m[2]):null; }
 /* zet status op 'afwezig' (buiten uren) als de huidige tijd buiten het venster valt */
@@ -2916,7 +2930,7 @@ function obWire(board){
   document.querySelectorAll("#obPool .chip, #obBoard .chip").forEach(function(b){
     b.addEventListener("click",function(e){
       if(e.target.classList.contains("x")) return;
-      if(e.target.classList.contains("ob-clock")){ e.stopPropagation(); obSetHours(b.dataset.name); return; }
+      if(e.target.classList.contains("ob-clock")){ e.stopPropagation(); obSetHours(b.dataset.name, e.target); return; }
       obSel=(obSel===b.dataset.name)?null:b.dataset.name; obRender();
     });
   });
@@ -3244,7 +3258,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.03b";
+  var APP_VERSION="v4.04b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3335,7 +3349,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.03b";
+  var LOCAL=window.__APP_VERSION||"v4.04b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -4109,7 +4123,7 @@ body.wl-ro #sectorView .sec-card.drop{outline:none}
     +'<h4>Mensen indelen (Outbound)</h4>'
     +'<p>Klik op <span class="k">✎ Indeling</span>. Klik dan een naam links en daarna een sector — of versleep de naam. Klik het <span class="k">×</span> om iemand weg te halen.</p>'
     +'<h4>Uren van iemand</h4>'
-    +'<p>Klik het <span class="k">⏰</span> op een naam om zijn begin- en einduur in te stellen.</p>'
+    +'<p>Klik het <span class="k">⏰</span> op een naam om zijn eigen uren in te stellen, eventueel per weekdag anders. Leeg = de uren uit de Excel.</p>'
     +'<h4>Sector-wissel op tijd</h4>'
     +'<p>Klik het <span class="k">⇄</span> op een naam om hem op een bepaald uur naar een andere sector te sturen (bv. 16:00 → H&amp;L). Dat geldt enkel die dag; hij verspringt automatisch.</p>'
     +'<h4>Groot scherm</h4>'
@@ -6367,6 +6381,128 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
   }
   if(document.readyState!=="loading") setTimeout(start,1900);
   else window.addEventListener("DOMContentLoaded",function(){ setTimeout(start,1900); });
+})();
+</script>
+<!-- ============ uren per weekdag (v4.04b) ============ -->
+<style>
+#uurPop{position:fixed;z-index:9600;background:var(--panel,#13233e);border:1px solid var(--line2,rgba(141,178,255,.35));border-radius:12px;padding:12px 14px;width:310px;box-shadow:0 12px 34px rgba(0,0,0,.5);font:500 13px/1.5 system-ui,sans-serif;color:var(--txt,#e9f1ff)}
+#uurPop .up-h{font-weight:800;margin-bottom:2px;font-size:13px}
+#uurPop .up-sub{font-size:11px;color:#9db3d9;margin-bottom:9px}
+#uurPop .up-row{display:flex;align-items:center;gap:6px;margin:4px 0}
+#uurPop .up-row .up-lbl{flex:0 0 74px;font-size:12px;color:#c5d6f2}
+#uurPop .up-row.up-basis{padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid var(--line2,rgba(141,178,255,.2))}
+#uurPop .up-row.up-basis .up-lbl{font-weight:800;color:#e9f1ff}
+#uurPop .up-row.up-nu .up-lbl{color:#6fc3ff;font-weight:800}
+#uurPop input[type=time]{flex:1;min-width:0;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:7px;padding:4px 6px;font-size:13px}
+#uurPop .up-dash{flex:0 0 auto;color:#6f86ad}
+#uurPop .up-note{font-size:11px;color:#8fa4c7;margin-top:8px}
+#uurPop .up-btns{display:flex;gap:8px;margin-top:10px}
+#uurPop .up-btns button{flex:1;background:var(--inset,#0b1830);color:var(--txt,#e9f1ff);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:8px;padding:6px 8px;font-size:13px;cursor:pointer}
+#uurPop .up-btns .save{border-color:var(--green,#3ddc97);color:var(--green,#3ddc97)}
+#uurPop .up-btns .del{border-color:#ff6b6b;color:#ff6b6b}
+</style>
+<script>
+/* Uren per weekdag. Bewaard in vp_ob_hours[naam]:
+     {van,tot}                 = de basis, geldt elke dag
+     dagen:{VR:{tot:"12:00"}}  = uitzondering voor die ene dag (mag half ingevuld)
+   Leeg = geen eigen rooster, dan geldt de ploeg-standaard uit de Excel.
+   In beide gevallen komen de afwijkingen van die dag uit de Excel er nog bij
+   (halve dag, "-2"); dat rekenwerk zit in obWindowFor. */
+(function(){
+  "use strict";
+  var DAGEN=[["MA","maandag"],["DI","dinsdag"],["WO","woensdag"],["DO","donderdag"],["VR","vrijdag"]];
+  function esc(s){ return (""+s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function toast(m){ try{ if(window.toast) window.toast(m); }catch(e){} }
+  function blocked(){ try{ return !!(window.WL_blockWrite && window.WL_blockWrite("out")); }catch(e){ return false; } }
+  function getHM(){ try{ return store.get("vp_ob_hours")||{}; }catch(e){ return {}; } }
+  function saveHM(hm){ try{ store.set("vp_ob_hours",hm); if(typeof scheduleSyncWrite==="function") scheduleSyncWrite(); }catch(e){} }
+  /* aanvaardt "10:30", "10.30", "1030", "10u30" en "10" */
+  function norm(v){
+    v=(""+v).trim(); if(!v) return "";
+    var m=v.match(/^(\d{1,2})[:.,uh]?(\d{2})$/);
+    if(m && +m[1]<24 && +m[2]<60) return ("0"+ +m[1]).slice(-2)+":"+m[2];
+    m=v.match(/^(\d{1,2})$/);
+    if(m && +m[1]<24) return ("0"+ +m[1]).slice(-2)+":00";
+    return "";
+  }
+  function dagLijst(){
+    try{
+      var dk=state.model&&state.model.dayKeys;
+      if(dk&&dk.length){ var l=DAGEN.filter(function(d){ return dk.indexOf(d[0])>=0; }); if(l.length) return l; }
+    }catch(e){}
+    return DAGEN;
+  }
+  function persoon(name){ try{ var r=obRoster||[]; for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; }catch(e){} return null; }
+  function standaard(p){ try{ return p?obDefaultHours(p):null; }catch(e){ return null; } }
+
+  function close(){ var e=document.getElementById("uurPop"); if(e&&e.parentNode) e.parentNode.removeChild(e); document.removeEventListener("mousedown",buiten,true); }
+  function buiten(ev){ var e=document.getElementById("uurPop"); if(e && !e.contains(ev.target)) close(); }
+
+  window.obUurPop=function(name, anchor){
+    if(blocked()){ toast("Klik eerst op Bewerken"); return; }
+    close();
+    var hm=getHM(), o=hm[name]||{}, dgn=o.dagen||{};
+    var p=persoon(name), def=standaard(p);
+    var nu=null; try{ nu=state.dayKey; }catch(e){}
+    function rij(key, label, val, cls){
+      var v=val||{};
+      return '<div class="up-row '+(cls||"")+'" data-dag="'+esc(key||"")+'">'
+        +'<span class="up-lbl">'+esc(label)+'</span>'
+        +'<input type="time" class="up-van" value="'+esc(v.van||"")+'">'
+        +'<span class="up-dash">–</span>'
+        +'<input type="time" class="up-tot" value="'+esc(v.tot||"")+'">'
+        +'</div>';
+    }
+    var sub = def ? ("Excel-standaard vandaag: "+def.van+"–"+def.tot) : "Geen ploeg-standaard bekend";
+    var pop=document.createElement("div"); pop.id="uurPop";
+    pop.innerHTML='<div class="up-h">⏰ Uren — '+esc(name)+'</div>'
+      +'<div class="up-sub">'+esc(sub)+'</div>'
+      +rij("", "Elke dag", o, "up-basis")
+      +dagLijst().map(function(d){ return rij(d[0], d[1], dgn[d[0]], d[0]===nu?"up-nu":""); }).join("")
+      +'<div class="up-note">Een dagregel leeg laten = de regel "Elke dag". Alles leeg = de uren uit de Excel. De aftrek ("-2") en halve dagen uit de Excel komen er altijd nog bij.</div>'
+      +'<div class="up-btns"><button class="save" id="upSave">Bewaren</button><button class="del" id="upDel">Alles wissen</button></div>';
+    document.body.appendChild(pop);
+    try{
+      var r=(anchor&&anchor.getBoundingClientRect)?anchor.getBoundingClientRect():{left:80,top:80,bottom:80};
+      pop.style.left=Math.max(8, Math.min(r.left, window.innerWidth-320))+"px";
+      pop.style.top=(r.bottom+6+pop.offsetHeight>window.innerHeight ? Math.max(8, window.innerHeight-pop.offsetHeight-8) : r.bottom+6)+"px";
+    }catch(e){ pop.style.left="80px"; pop.style.top="80px"; }
+    setTimeout(function(){ document.addEventListener("mousedown",buiten,true); },0);
+
+    function bewaar(){
+      var hm2=getHM(), oo=hm2[name]||{};
+      var basis=pop.querySelector(".up-basis");
+      var bv=norm(basis.querySelector(".up-van").value), bt=norm(basis.querySelector(".up-tot").value);
+      if(bv) oo.van=bv; else delete oo.van;
+      if(bt) oo.tot=bt; else delete oo.tot;
+      var dd={}, aantal=0;
+      var rows=pop.querySelectorAll(".up-row[data-dag]");
+      for(var i=0;i<rows.length;i++){
+        var k=rows[i].getAttribute("data-dag"); if(!k) continue;
+        var v=norm(rows[i].querySelector(".up-van").value), t=norm(rows[i].querySelector(".up-tot").value);
+        if(!v && !t) continue;
+        var e={}; if(v) e.van=v; if(t) e.tot=t;
+        dd[k]=e; aantal++;
+      }
+      if(aantal) oo.dagen=dd; else delete oo.dagen;
+      /* de andere velden van deze persoon (terugkomdatum, sector-wissels) blijven staan */
+      if(!oo.van && !oo.tot && !oo.dagen && !oo.terug && !oo.wissels && !oo.wisselAt){ delete hm2[name]; toast("Terug naar de uren uit de Excel voor "+name); }
+      else { hm2[name]=oo; toast("⏰ Uren bewaard voor "+name); }
+      saveHM(hm2); close();
+      try{ if(typeof obRefreshFromExcel==="function") obRefreshFromExcel(); else if(typeof obRender==="function") obRender(); }catch(e){}
+    }
+    function wis(){
+      var hm2=getHM(), oo=hm2[name]||{};
+      delete oo.van; delete oo.tot; delete oo.dagen;
+      if(!oo.terug && !oo.wissels && !oo.wisselAt) delete hm2[name]; else hm2[name]=oo;
+      saveHM(hm2); close(); toast("Terug naar de uren uit de Excel voor "+name);
+      try{ if(typeof obRefreshFromExcel==="function") obRefreshFromExcel(); else if(typeof obRender==="function") obRender(); }catch(e){}
+    }
+    document.getElementById("upSave").addEventListener("click",bewaar);
+    document.getElementById("upDel").addEventListener("click",wis);
+    pop.addEventListener("keydown",function(ev){ if(ev.key==="Enter") bewaar(); else if(ev.key==="Escape") close(); });
+    try{ pop.querySelector(".up-basis .up-van").focus(); }catch(e){}
+  };
 })();
 </script>
 </body>
