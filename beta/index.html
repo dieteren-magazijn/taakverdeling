@@ -3285,7 +3285,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.13b";
+  var APP_VERSION="v4.14b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3376,7 +3376,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.13b";
+  var LOCAL=window.__APP_VERSION||"v4.14b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -6611,12 +6611,27 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
       ".tcard > header{min-width:0;}" +
       ".tcard > header > .tname{min-width:0;overflow:hidden;text-overflow:ellipsis;}" +
       ".tcoli{flex:0 0 auto;}" +
-      ".tcoli-d{display:flex;align-items:center;gap:5px;min-width:0;flex:0 1 auto;overflow:hidden;" +
-        "font-family:var(--fd);font-size:11px;font-weight:600;color:#0a1424;opacity:.72;}" +
+      /* De delen staan NIET in de kop maar op een eigen strook eronder.
+         Gerekend: een kaart is minmax(250px,1fr), en naam + mensen + TE DOEN
+         + gaps + padding eten daar al ~239px van op. Voor vijf liften is ~225px
+         nodig; in de kop werd dat stil afgekapt door overflow:hidden - je zag
+         K05 en K06 en de rest verdween zonder aanwijzing.
+         Op een eigen regel is er de volle kaartbreedte, en met flex-wrap valt
+         er nooit iets weg: liever twee regels dan een half cijfer. */
+      ".tcoli-d{display:flex;flex-wrap:wrap;align-items:center;gap:3px 9px;" +
+        "padding:5px 12px;background:rgba(10,20,36,.13);" +
+        "border-bottom:1px solid rgba(10,20,36,.18);" +
+        "font-family:var(--fd);font-size:12px;font-weight:600;color:var(--txt);opacity:.8;}" +
+      ".tcoli-d:empty{display:none;}" +
+      /* Op oude tv-browsers (Chromium < 84) doet `gap` niets in flexbox; het
+         planbord zet daar body.no-flexgap voor. Zonder deze twee regels
+         plakken de delen daar tegen elkaar. */
+      "body.no-flexgap .tcoli-d > i{margin:0 9px 3px 0;}" +
+      "body.no-flexgap .tcoli-d > i:last-child{margin-right:0;}" +
       ".tcoli-d i{font-style:normal;white-space:nowrap;}" +
       ".tcoli-d i b{font-weight:800;margin-left:2px;}" +
       ".tcoli-d.oud{opacity:.38;}" +
-      "body.board .tcoli-d{font-size:.72vw;gap:.35vw;}" +
+      "body.board .tcoli-d{font-size:.78vw;gap:.2vw .6vw;padding:.3vw .8vw;}" +
       /* Bij negen afdelingen of meer zet het bord vijf kolommen naast elkaar
          (.tasks-many). Daar is voor de losse delen geen plaats meer: dan wint
          het grote getal, en de opsplitsing blijft in de tooltip staan. */
@@ -6674,7 +6689,7 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
       var sp = h.querySelector(".tcoli");
       if (!a) {                                  /* afdeling zonder cijfer blijft zoals ze was */
         if (sp) sp.remove();
-        var dw = h.querySelector(".tcoli-d"); if (dw) dw.remove();
+        var dw = h.parentNode.querySelector(":scope > .tcoli-d"); if (dw) dw.remove();
         return;
       }
 
@@ -6691,11 +6706,14 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
       sp.innerHTML = n + "<small>TE DOEN</small>";
       /* De delen komen ERNAAST te staan, niet erin: zo blijft het totaal het
          grote getal en zijn de stukken toch af te lezen zonder muis. */
-      var dsp = h.querySelector(".tcoli-d");
+      /* De delenstrook hangt aan de KAART, direct na de kop - niet in de kop
+         zelf. Daar is de volle breedte beschikbaar en kan hij wrappen. */
+      var kaart = h.parentNode;
+      var dsp = kaart.querySelector(":scope > .tcoli-d");
       if (!dsp) {
-        dsp = document.createElement("span");
+        dsp = document.createElement("div");
         dsp.className = "tcoli-d";
-        if (sp.nextSibling) h.insertBefore(dsp, sp.nextSibling); else h.appendChild(dsp);
+        if (h.nextSibling) kaart.insertBefore(dsp, h.nextSibling); else kaart.appendChild(dsp);
       }
       sp.classList.toggle("nul", n === 0);
       sp.classList.toggle("oud", oud);
