@@ -3285,7 +3285,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.15b";
+  var APP_VERSION="v4.16b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3376,7 +3376,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.15b";
+  var LOCAL=window.__APP_VERSION||"v4.16b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -6595,62 +6595,51 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
     var st = document.createElement("style");
     st.id = "coliStijl";
     st.textContent =
-      ".tcoli{font-family:var(--fd);font-weight:700;font-size:17px;min-width:30px;height:30px;" +
-        "display:flex;align-items:center;justify-content:center;gap:3px;border-radius:9px;" +
-        "padding:0 7px;background:rgba(255,255,255,.82);border:1px solid rgba(10,20,36,.25);" +
-        "color:#0a1424;cursor:help;}" +
-      ".tcoli small{font-weight:600;font-size:10px;opacity:.62;letter-spacing:.04em;}" +
-      /* De delen naast het totaal: klein, maar zichtbaar zonder muis. Jens,
-         29/08: "laat ze apart zien en samen". Ze schuiven mee in de flexbox
-         van de header en krimpen als eerste weg als de kaart smal wordt. */
-      /* De kop is een flexbox met vaste kinderen; zonder deze twee regels kan
-         hij niet krimpen en duwt hij de kaart breder dan zijn kolom. In
-         bordmodus staan er vijf kolommen naast elkaar, en dan valt de
-         automatische passendmaker eroverheen - die kijkt naar HOOGTE
-         (scrollHeight) en ziet breedte-overloop niet. */
-      ".tcard > header{min-width:0;}" +
-      ".tcard > header > .tname{min-width:0;overflow:hidden;text-overflow:ellipsis;}" +
-      ".tcoli{flex:0 0 auto;}" +
-      /* De delen staan NIET in de kop maar op een eigen strook eronder.
-         Gerekend: een kaart is minmax(250px,1fr), en naam + mensen + TE DOEN
-         + gaps + padding eten daar al ~239px van op. Voor vijf liften is ~225px
-         nodig; in de kop werd dat stil afgekapt door overflow:hidden - je zag
-         K05 en K06 en de rest verdween zonder aanwijzing.
-         Op een eigen regel is er de volle kaartbreedte, en met flex-wrap valt
-         er nooit iets weg: liever twee regels dan een half cijfer. */
-      ".tcoli-d{display:flex;flex-wrap:wrap;align-items:center;gap:3px 9px;" +
-        "padding:5px 12px;background:rgba(10,20,36,.13);" +
-        "border-bottom:1px solid rgba(10,20,36,.18);" +
-        "font-family:var(--fd);font-size:12px;font-weight:600;color:var(--txt);opacity:.8;}" +
+      /* ---- het TE DOEN-blok: vorm A, gekozen 30/08 ----
+         Een chip bovenaan in de lijst met dezelfde maten als een naamchip
+         (border-radius 10px, padding 7px/11px, font 13.5px), met een gekleurd
+         randje links zoals een gemarkeerde naam. De afdelingskleur komt uit
+         --hue, die op de .tcard staat. */
+      ".tcoli{display:flex;align-items:center;gap:7px;background:var(--panel);" +
+        "border:1px solid var(--hue,var(--cyan));border-radius:10px;padding:7px 11px;" +
+        "box-shadow:inset 3px 0 0 var(--hue,var(--cyan));cursor:help;}" +
+      ".tcoli .k{font-family:var(--fd);font-weight:700;font-size:12px;letter-spacing:.14em;" +
+        "text-transform:uppercase;color:var(--hue,var(--cyan));}" +
+      ".tcoli .t{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1;" +
+        "color:var(--txt);font-variant-numeric:tabular-nums;margin-left:auto;}" +
+      ".tcoli.nul{opacity:.55;}" +
+      ".tcoli.oud{border-style:dashed;opacity:.5;}" +
+
+      /* De delen eronder, als kleine blokjes. Wrapt, dus er valt nooit iets
+         weg - ook niet bij LIFTEN met vijf liften. */
+      ".tcoli-d{display:flex;flex-wrap:wrap;gap:5px;align-items:center;cursor:help;}" +
       ".tcoli-d:empty{display:none;}" +
-      /* Een deel op nul blijft staan - dat zegt „deze lift is klaar”, waar een
-         ontbrekend blokje „geen idee” zegt. Wel gedimd, zodat het oog naar de
-         delen gaat waar nog werk ligt. */
-      ".tcoli-d > i.nul{opacity:.42;}" +
-      /* Op oude tv-browsers (Chromium < 84) doet `gap` niets in flexbox; het
-         planbord zet daar body.no-flexgap voor. Zonder deze twee regels
-         plakken de delen daar tegen elkaar. */
-      "body.no-flexgap .tcoli-d > i{margin:0 9px 3px 0;}" +
-      "body.no-flexgap .tcoli-d > i:last-child{margin-right:0;}" +
-      ".tcoli-d i{font-style:normal;white-space:nowrap;}" +
-      ".tcoli-d i b{font-weight:800;margin-left:2px;}" +
-      ".tcoli-d.oud{opacity:.38;}" +
-      "body.board .tcoli-d{font-size:.78vw;gap:.2vw .6vw;padding:.3vw .8vw;}" +
-      /* Bij negen afdelingen of meer zet het bord vijf kolommen naast elkaar
-         (.tasks-many). Daar is voor de losse delen geen plaats meer: dan wint
-         het grote getal, en de opsplitsing blijft in de tooltip staan. */
-      "body.board .tasks-many .tcoli-d{display:none;}" +
-      /* Bij vijf kolommen is er geen plaats voor het woord TE DOEN; het getal
-         alleen is genoeg, en de tooltip vertelt de rest. Dit scheelt per kaart
-         zo'n 4 vw aan minimale breedte. */
-      "body.board .tasks-many .tcoli small{display:none;}" +
-      "body.board .tasks-many .tcoli{padding:0 .3vw;}" +
-      ".tcoli.nul{opacity:.42;}" +
-      ".tcoli.oud{background:rgba(255,255,255,.42);border-style:dashed;}" +
-      "body.board .tcoli{font-size:1.1vw;min-width:1.8vw;height:1.8vw;border-radius:.4vw;padding:0 .45vw;}" +
-      "body.board .tcoli small{font-size:.6vw;}" +
-      /* De voetregel: één stille regel onderaan met de leeftijd en wat er
-         weggefilterd is. Geen balk meer, alleen een zin. */
+      ".tcoli-d > i{font-style:normal;display:inline-flex;align-items:center;gap:5px;" +
+        "background:var(--panel);border:1px solid var(--line2);border-radius:8px;" +
+        "padding:3px 8px;font-size:12px;font-weight:600;color:var(--txt);}" +
+      ".tcoli-d > i > b{font-family:var(--fd);font-size:15px;color:var(--hue,var(--cyan));" +
+        "font-variant-numeric:tabular-nums;}" +
+      /* Een deel op nul blijft staan - dat zegt "deze lift is klaar", waar een
+         ontbrekend blokje "geen idee" zegt. Wel gedimd. */
+      ".tcoli-d > i.nul{opacity:.38;}" +
+      ".tcoli-d > i.nul > b{color:var(--muted);}" +
+      ".tcoli-d.oud{opacity:.5;}" +
+
+      /* Bordmodus: mee schalen met de rest. Hier stond eerder display:none bij
+         vijf kolommen, omdat de delen toen nog in de kop zaten en de layout
+         braken. In de tbody is dat niet meer nodig - Jens miste ze juist. */
+      "body.board .tcoli{padding:.45vw .7vw;border-radius:.5vw;gap:.4vw;}" +
+      "body.board .tcoli .k{font-size:.72vw;}" +
+      "body.board .tcoli .t{font-size:1.5vw;}" +
+      "body.board .tcoli-d{gap:.3vw;}" +
+      "body.board .tcoli-d > i{padding:.15vw .45vw;font-size:.7vw;border-radius:.4vw;gap:.3vw;}" +
+      "body.board .tcoli-d > i > b{font-size:.9vw;}" +
+
+      /* Op oude tv-browsers (Chromium < 84) doet gap niets in flexbox; het
+         planbord zet daar body.no-flexgap voor. */
+      "body.no-flexgap .tcoli-d > i{margin:0 5px 5px 0;}" +
+      "body.no-flexgap .tcoli > .k{margin-right:7px;}" +
+
       "#coliVoet{position:fixed;left:8px;bottom:6px;z-index:9997;font:400 11px/1.3 system-ui,sans-serif;" +
         "color:var(--muted,#7c8794);background:rgba(0,0,0,.35);padding:3px 8px;border-radius:5px;" +
         "pointer-events:none;max-width:60vw;}" +
@@ -6679,81 +6668,87 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
     return laatsteTijd ? Math.round((Date.now() - laatsteTijd) / 60000) : null;
   }
 
-  /* Hang bij elke afdelingskop het cijfer, of werk het bij. */
+  /* Hang het cijfer in elke afdelingskaart, of werk het bij.
+
+     Vorm A, gekozen door Jens op 30/08 uit vier voorbeelden: een CHIP bovenaan
+     in de lijst, in dezelfde vorm als een naamchip, met de delen als kleine
+     blokjes eronder. Het cijfer stond eerder in de kop, maar daar was geen
+     plaats voor de delen en in bordmodus verdween het helemaal.
+
+     Alles hangt nu in de TBODY, als eerste twee kinderen. Daar is de volle
+     kaartbreedte beschikbaar, het schuift netjes mee met de gap van de lijst,
+     en het staat altijd bovenaan omdat obRender() de namen eronder plakt. */
   function hangIn(){
     if (!laatste) return;
     bouwStijl();
     var m = kaart(), min = minuten(), oud = (min !== null && min >= VERVAL);
 
-    document.querySelectorAll("#obBoard .tcard > header").forEach(function(h){
-      var naamEl = h.querySelector(".tname");
+    document.querySelectorAll("#obBoard .tcard").forEach(function(kaartEl){
+      var naamEl = kaartEl.querySelector(":scope > header .tname");
       if (!naamEl) return;
+      var body = kaartEl.querySelector(":scope > .tbody");
+      if (!body) return;
       var a = m[sleutel(naamEl.textContent)];
 
-      var sp = h.querySelector(".tcoli");
-      if (!a) {                                  /* afdeling zonder cijfer blijft zoals ze was */
-        if (sp) sp.remove();
-        var dw = h.parentNode.querySelector(":scope > .tcoli-d"); if (dw) dw.remove();
+      var chip = body.querySelector(":scope > .tcoli");
+      var dsp  = body.querySelector(":scope > .tcoli-d");
+
+      /* Een afdeling zonder cijfer - E.S., D.S., BRIG - blijft zoals ze was. */
+      if (!a) {
+        if (chip) chip.remove();
+        if (dsp) dsp.remove();
         return;
       }
 
       var t = a.totaal || {}, n = t.n || 0;
-      if (!sp) {
-        sp = document.createElement("span");
-        sp.className = "tcoli";
-        /* pal na het mensen-getal, vóór de minimum-badge en de knopjes */
-        var na = h.querySelector(".tcount");
-        if (na && na.nextSibling) h.insertBefore(sp, na.nextSibling);
-        else if (na) h.appendChild(sp);
-        else h.appendChild(sp);
-      }
-      sp.innerHTML = n + "<small>TE DOEN</small>";
-      /* De delen komen ERNAAST te staan, niet erin: zo blijft het totaal het
-         grote getal en zijn de stukken toch af te lezen zonder muis. */
-      /* De delenstrook hangt aan de KAART, direct na de kop - niet in de kop
-         zelf. Daar is de volle breedte beschikbaar en kan hij wrappen. */
-      var kaart = h.parentNode;
-      var dsp = kaart.querySelector(":scope > .tcoli-d");
-      if (!dsp) {
-        dsp = document.createElement("div");
-        dsp.className = "tcoli-d";
-        if (h.nextSibling) kaart.insertBefore(dsp, h.nextSibling); else kaart.appendChild(dsp);
-      }
-      sp.classList.toggle("nul", n === 0);
-      sp.classList.toggle("oud", oud);
 
-      /* De delen staan NAAST het totaal in de kop, en nog een keer voluit in
-         de tooltip - daar is ook plaats voor de stuks en het aantal werken.
-         Zijn er veel delen (LIFTEN heeft er vijf), dan krimpt de strook in de
-         kop weg; de tooltip blijft dan de volledige lijst tonen. */
-      /* Op NAAM sorteren, niet op aantal. Een bord dat elke vijf minuten
-         ververst moet een stabiele volgorde houden: staat K07 ineens vooraan
-         omdat er één regel bijkwam, dan moet je oog elke ronde opnieuw zoeken.
-         Het getal zegt al waar het werk ligt; de volgorde hoeft dat niet ook
-         nog te doen. Natuurlijke sortering, zodat K9 na K10 komt en niet
-         ervoor. */
+      if (!chip) {
+        chip = document.createElement("div");
+        chip.className = "tcoli";
+        body.insertBefore(chip, body.firstChild);
+      }
+      chip.innerHTML = "<span class='k'>Te doen</span><span class='t'>" + n + "</span>";
+      chip.classList.toggle("nul", n === 0);
+      chip.classList.toggle("oud", oud);
+
+      /* Op NAAM sorteren, niet op aantal: een bord dat elke vijf minuten
+         ververst moet een stabiele volgorde houden, anders staat K07 ineens
+         vooraan omdat er één regel bijkwam en moet je oog opnieuw zoeken.
+         Natuurlijke sortering, zodat K9 na K10 komt en niet ervoor. */
       var delen = a.delen || {}, namen = Object.keys(delen).sort(function(x, y){
         return String(x).localeCompare(String(y), "nl", {numeric: true});
       });
       if (namen.length === 1 && namen[0] === a.naam) namen = [];
-      dsp.innerHTML = namen.length
-        ? namen.map(function(k){
-            var n = delen[k].n || 0;
-            return "<i" + (n ? "" : " class='nul'") + ">" + veilig(k) +
-                   "<b>" + n + "</b></i>";
-          }).join("")
-        : "";
-      dsp.classList.toggle("oud", oud);
 
+      if (namen.length) {
+        if (!dsp) {
+          dsp = document.createElement("div");
+          dsp.className = "tcoli-d";
+          if (chip.nextSibling) body.insertBefore(dsp, chip.nextSibling);
+          else body.appendChild(dsp);
+        }
+        dsp.innerHTML = namen.map(function(k){
+          var dn = delen[k].n || 0;
+          return "<i" + (dn ? "" : " class='nul'") + ">" + veilig(k) +
+                 "<b>" + dn + "</b></i>";
+        }).join("");
+        dsp.classList.toggle("oud", oud);
+      } else if (dsp) {
+        dsp.remove();
+      }
+
+      /* De volledige opsplitsing plus stuks, werken en de leeftijd in de
+         tooltip - daar past wat er op de kaart niet bij kan. */
       var uitleg = a.naam + ": " + n + " openstaande pickregels";
       if (t.qty) uitleg += ", " + t.qty + " stuks";
       if (t.werken) uitleg += ", " + t.werken + " werken";
       if (namen.length) {
         uitleg += "\n" + namen.map(function(k){ return "  " + k + ": " + (delen[k].n || 0); }).join("\n");
       }
-      uitleg += "\n\nUit D365, " + (min === null ? "zonet" : (min < 1 ? "zonet" : min + " min geleden"));
+      uitleg += "\n\nUit D365, " + (min === null || min < 1 ? "zonet" : min + " min geleden");
       if (oud) uitleg += " - STAAT DIT STIL?";
-      sp.title = uitleg;
+      chip.title = uitleg;
+      if (dsp) dsp.title = uitleg;
     });
 
     voet(min, oud);
