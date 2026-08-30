@@ -228,7 +228,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c14";
+  const COLI_VERSION = "c15";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -854,13 +854,33 @@
       voederTijd = Date.parse(d.updated) || Date.now();
       leesFocusLokaal();
       var min = Math.round((Date.now()-voederTijd)/60000);
-      setStatus("live", "D365 · " + (min<1 ? "zonet" : min+" min geleden") +
-                        (d.perGang ? " · per gang" : ""));
       update(d);
+      /* Komt er data binnen maar staat er niets voor dit scherm, dan is dat
+         geen storing en geen demo: er is gewoon niets te doen in deze gangen.
+         Dat moet het scherm ook zeggen, anders gaat iemand zoeken. */
+      var binnen = (d.tours||[]).length, hier = state.tours.length;
+      setStatus("live", "D365 · " + (min<1 ? "zonet" : min+" min geleden") +
+                        (d.perGang ? " · per gang" : "") +
+                        (binnen && !hier ? " · niets in " + (SCHERM_LBL||"dit scherm") : ""));
     }catch(x){ /* een fout hier mag het bord nooit zwart maken */ }
   });
-  /* Meld je aan bij het venster dat ons opende, zodat de voeder mag beginnen. */
-  try{ if(window.opener) window.opener.postMessage({bron:"colisage-bord-klaar"}, "*"); }catch(e){}
+  /* Meld je aan bij het venster dat ons opende, zodat de voeder mag beginnen.
+
+     BLIJF VRAGEN tot er data is. Reden: de schermkiezer doet
+     `location.href=location.pathname`, dus een andere gang kiezen is een volle
+     herlaadbeurt. Eén seintje bij het laden is dan te weinig - komt het net
+     niet aan, dan wacht dit scherm tot de volgende ronde van de voeder, en dat
+     duurt tot vijf minuten. Zolang toonde het bord DEMO, wat eruitziet alsof
+     de koppeling stuk is. */
+  var vraagTeller = 0;
+  function vraagOmData(){
+    if(voederLeeft() || vraagTeller > 40) return;    /* ~80 s, dan is er echt niemand */
+    vraagTeller++;
+    try{ if(window.opener && !window.opener.closed)
+           window.opener.postMessage({bron:"colisage-bord-klaar"}, "*"); }catch(e){}
+    setTimeout(vraagOmData, 2000);
+  }
+  vraagOmData();
 
   setInterval(poll, CONFIG.POLL_SECONDS*1000);
   setInterval(nextPage, CONFIG.PAGE_SECONDS*1000);
