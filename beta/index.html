@@ -3270,7 +3270,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.09b";
+  var APP_VERSION="v4.10b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3361,7 +3361,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.09b";
+  var LOCAL=window.__APP_VERSION||"v4.10b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -6714,6 +6714,22 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
     v.classList.toggle("oud", !!oud);
   }
 
+  /* Wat er NU in de koppen staat, om weg te schrijven. Draait pas na hangIn(),
+     dus de cijfers staan er al; het aantal mensen komt uit `.tcount`. */
+  function verzamel(){
+    var uit = [], m = kaart();
+    document.querySelectorAll("#obBoard .tcard > header").forEach(function(h){
+      var naamEl = h.querySelector(".tname");
+      if (!naamEl) return;
+      var a = m[sleutel(naamEl.textContent)];
+      if (!a) return;
+      var t = a.totaal || {};
+      uit.push({ naam: a.naam, n: t.n || 0, qty: t.qty || 0,
+                 werken: t.werken || 0, mensen: mensenUit(h) });
+    });
+    return uit;
+  }
+
   /* obRender() bouwt #obBoard opnieuw op, dus daarna moeten de cijfers er
      opnieuw in. Wikkelen is goedkoper en betrouwbaarder dan een observer:
      het loopt precies één keer per tekenbeurt. Valt obRender weg of komt hij
@@ -6731,6 +6747,179 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
     return true;
   }
 
+  /* ── HET LOGBOEK (v4.10b) ──────────────────────────────────────────────────
+     Bewaart bij elke ronde wat er openstond én hoeveel mensen erop stonden.
+     Daar is later het TEMPO uit te halen - regels per persoon per uur - en dat
+     is het enige ontbrekende getal om "hoeveel mensen heb ik nodig om op tijd
+     klaar te zijn" te kunnen beantwoorden. Zie
+     Desktop\COLISAGE\geheugen\voorspelling-capaciteit-over-tijd.md
+
+     TOONT NIETS. Jens, 30/08: "nog niks zichtbaar". Het draait stil mee en is
+     alleen via de console te benaderen (zie window.coliLog onderaan).
+
+     Waarom het HIER zit en niet in het bord: dit is de enige plek waar de twee
+     getallen samenkomen. Het werk komt uit D365, de bezetting staat in de
+     planning. Het aantal mensen wordt uit `.tcount` in de kop gelezen - dus
+     exact het getal dat de planner zelf ziet, niet een tweede berekening die
+     uit de pas kan lopen.
+
+     Opslag: één localStorage-sleutel PER DAG (`vp_coli_log_2026-08-30`). Zo
+     blijft elke schrijfbeurt klein (~300 rondes van een dag), in plaats van
+     een steeds groeiende array opnieuw te serialiseren. Rijen zijn arrays
+     zonder veldnamen, want dat scheelt de helft:
+        [ tijd_in_seconden_na_middernacht, [n, qty, werken, mensen], ... ]
+     met de afdelingsnamen één keer bovenaan in `afd`.
+     ───────────────────────────────────────────────────────────────────────── */
+  var LOG_PREFIX = "vp_coli_log_";
+  var LOG_DAGEN  = 60;        /* ouder dan dit wordt opgeruimd */
+
+  function dagSleutel(d){
+    var y = d.getFullYear(), m = d.getMonth() + 1, g = d.getDate();
+    return LOG_PREFIX + y + "-" + (m < 10 ? "0" : "") + m + "-" + (g < 10 ? "0" : "") + g;
+  }
+
+  /* Hoeveel mensen staan er nu in deze afdeling? Uit `.tcount`, want dat is
+     het getal dat de planning zelf toont. Het `<small>+2</small>` erin telt
+     mensen die NIET binnen hun uren vallen; die horen niet in het tempo. */
+  function mensenUit(header){
+    try {
+      var c = header.querySelector(".tcount");
+      if (!c) return null;
+      var kloon = c.cloneNode(true);
+      var s = kloon.querySelector("small");
+      if (s) s.parentNode.removeChild(s);
+      var n = parseInt((kloon.textContent || "").replace(/[^0-9]/g, ""), 10);
+      return isNaN(n) ? null : n;
+    } catch(e){ return null; }
+  }
+
+  function logSchrijf(d, perAfdeling){
+    try {
+      var nu = new Date(Date.parse(d.tijd) || Date.now());
+      var sleutel = dagSleutel(nu);
+      var seconden = nu.getHours() * 3600 + nu.getMinutes() * 60 + nu.getSeconds();
+
+      var boek = null;
+      try { boek = JSON.parse(localStorage.getItem(sleutel) || "null"); } catch(e){}
+      if (!boek || !boek.afd || !boek.r) boek = { v: 1, afd: [], r: [] };
+
+      /* Filterstand meebewaren: zonder die context zijn twee metingen niet
+         vergelijkbaar. Een cijfer met het datumfilter aan is iets anders dan
+         hetzelfde cijfer zonder. */
+      var stand = (d.zonefilter ? "z" : "") + (d.alleenVandaag ? "v" : "") +
+                  (d.dealerwerk ? "d" : "") + (d.klasse && d.klasse !== "*" ? "k" : "");
+
+      var rij = [seconden, stand];
+      for (var i = 0; i < perAfdeling.length; i++) {
+        var a = perAfdeling[i];
+        var idx = boek.afd.indexOf(a.naam);
+        if (idx < 0) { boek.afd.push(a.naam); idx = boek.afd.length - 1; }
+        rij.push([idx, a.n, a.qty, a.werken, a.mensen]);
+      }
+      boek.r.push(rij);
+
+      try {
+        localStorage.setItem(sleutel, JSON.stringify(boek));
+      } catch(e){
+        /* Vol. Gooi de oudste helft van vandaag weg en probeer nog één keer;
+           lukt dat ook niet, dan laten we het gewoon - een logboek mag de
+           planning nooit in de weg zitten. */
+        try {
+          boek.r = boek.r.slice(Math.floor(boek.r.length / 2));
+          localStorage.setItem(sleutel, JSON.stringify(boek));
+        } catch(e2){}
+      }
+      logOpruimen();
+    } catch(e){ /* stil: de planning gaat voor */ }
+  }
+
+  /* Dagen ouder dan LOG_DAGEN weggooien, hoogstens een paar per keer zodat
+     dit nooit merkbaar wordt. */
+  function logOpruimen(){
+    try {
+      var grens = dagSleutel(new Date(Date.now() - LOG_DAGEN * 86400000));
+      var weg = [];
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(LOG_PREFIX) === 0 && k < grens) weg.push(k);
+      }
+      weg.slice(0, 3).forEach(function(k){ try { localStorage.removeItem(k); } catch(e){} });
+    } catch(e){}
+  }
+
+  /* ---- de console-kant. Niets hiervan is zichtbaar op de pagina. ---- */
+  function alleDagen(){
+    var uit = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(LOG_PREFIX) === 0) uit.push(k);
+      }
+    } catch(e){}
+    return uit.sort();
+  }
+
+  function naarCSV(){
+    var regels = ["datum;tijd;afdeling;pickregels;stuks;werken;mensen;filters"];
+    alleDagen().forEach(function(k){
+      var boek = null;
+      try { boek = JSON.parse(localStorage.getItem(k) || "null"); } catch(e){}
+      if (!boek || !boek.r) return;
+      var datum = k.slice(LOG_PREFIX.length);
+      boek.r.forEach(function(rij){
+        var sec = rij[0], stand = rij[1];
+        var u = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+        var tijd = (u < 10 ? "0" : "") + u + ":" + (m < 10 ? "0" : "") + m +
+                   ":" + (s < 10 ? "0" : "") + s;
+        for (var i = 2; i < rij.length; i++) {
+          var c = rij[i];
+          regels.push([datum, tijd, boek.afd[c[0]] || "?", c[1], c[2], c[3],
+                       (c[4] === null || c[4] === undefined) ? "" : c[4], stand].join(";"));
+        }
+      });
+    });
+    return regels.join("\n");
+  }
+
+  window.coliLog = {
+    /* Hoeveel is er verzameld, per dag. */
+    stand: function(){
+      var uit = {}, totaal = 0, bytes = 0;
+      alleDagen().forEach(function(k){
+        var rauw = "";
+        try { rauw = localStorage.getItem(k) || ""; } catch(e){}
+        var boek = null; try { boek = JSON.parse(rauw || "null"); } catch(e){}
+        var n = (boek && boek.r) ? boek.r.length : 0;
+        uit[k.slice(LOG_PREFIX.length)] = n;
+        totaal += n; bytes += rauw.length;
+      });
+      uit["-- totaal rondes --"] = totaal;
+      uit["-- ruimte --"] = Math.round(bytes / 1024) + " KB";
+      return uit;
+    },
+    /* De CSV als tekst, om zelf te bekijken. */
+    csv: naarCSV,
+    /* De CSV als bestand opslaan. */
+    bewaar: function(){
+      try {
+        var blob = new Blob(["﻿" + naarCSV()], { type: "text/csv;charset=utf-8" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "colisage-logboek-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        return "bewaard";
+      } catch(e){ return "lukt niet: " + (e.message || e); }
+    },
+    /* Alles wissen. Vraagt bevestiging, want dit is niet terug te halen. */
+    wis: function(zeker){
+      if (zeker !== true) return "zeker? typ coliLog.wis(true)";
+      var n = 0;
+      alleDagen().forEach(function(k){ try { localStorage.removeItem(k); n++; } catch(e){} });
+      return n + " dagen gewist";
+    }
+  };
+
   window.addEventListener("message", function(e){
     if (!magVan(e.origin)) return;
     var d = e.data;
@@ -6740,6 +6929,9 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
       laatsteTijd = Date.parse(d.tijd) || Date.now();
       haakAan();
       hangIn();
+      /* Eén regel per ronde. Alleen hier, niet in de klok hieronder - die
+         werkt enkel de leeftijd bij en zou anders elke 30 s meeloggen. */
+      try { var v = verzamel(); if (v.length) logSchrijf(d, v); } catch(x){}
       if (!klok) klok = setInterval(function(){
         try { hangIn(); } catch(x){}
       }, 30000);   /* de leeftijd bijwerken, zodat een stilgevallen voeder zichzelf verraadt */
