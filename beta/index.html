@@ -3270,7 +3270,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.05b";
+  var APP_VERSION="v4.07b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3361,7 +3361,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.05b";
+  var LOCAL=window.__APP_VERSION||"v4.07b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -6515,6 +6515,169 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
     pop.addEventListener("keydown",function(ev){ if(ev.key==="Enter") bewaar(); else if(ev.key==="Escape") close(); });
     try{ pop.querySelector(".up-basis .up-van").focus(); }catch(e){}
   };
+})();
+</script>
+<script>
+/* ── COLISAGE: cijfers per AFDELING uit D365 (v4.07b) ────────────────────────────
+   Deze module doet NIETS tot er een bericht binnenkomt van een D365-tabblad
+   op hetzelfde toestel. Op elk ander scherm blijft ze onzichtbaar en stil:
+   geen netwerkverkeer, geen database, geen wijziging aan de planning.
+
+   Waarom postMessage en niet gewoon lezen: deze pagina staat op github.io,
+   D365 op dynamics.com. Twee verschillende origins, dus geen gedeelde
+   localStorage en geen fetch naar D365 vanaf hier. postMessage is het enige
+   dat er wel doorheen gaat.
+
+   De zender is `scripts\bord-sectoren.js` uit het COLISAGE-project. Dat
+   draait in een openstaand D365-tabblad, opent deze pagina met de knop
+   "koppel planning" en stuurt elke ronde zijn cijfers door.
+
+   v4.07b: toont AFDELINGEN in plaats van sectorletters. De afdelingen van dit
+   planbord blijken een op een de zonegroepen van D365 te zijn - LIFTEN = Z2,
+   SCHAEFER = Z1+Z6+Z9, SECTOR M + P = 4A+4B, SECTOR H & L = Z5,
+   SECTOR W + K10 = Z3, COLISAGE = GE. Elke afdeling toont een totaal met de
+   delen eronder (Jens: "SCHAEFER zijn 3 cijfers ... de liften apart K06, K07").
+   E.S., D.S. en BRIG krijgen bewust GEEN cijfer: dat is geen pickingwerk.
+   Het grote getal is het aantal PICKREGELS - een regel is een stop.
+   Stuurt de zender nog de oude vorm (alleen letters), dan valt de strook
+   daarop terug in plaats van leeg te blijven.
+   ───────────────────────────────────────────────────────────────────────── */
+(function(){
+  "use strict";
+
+  var SLEUTEL = "vp_coli_strip";   /* rauw localStorage: per toestel, synct nooit mee */
+  var VERVAL  = 15;                /* minuten; daarna heet het cijfer oud */
+  var strip = null, laatsteTijd = null, klok = null;
+
+  /* Alleen berichten van een D365-tabblad. Alles anders wordt genegeerd. */
+  function magVan(origin){
+    try { return /(^|\.)dynamics\.com$/i.test(new URL(origin).hostname); }
+    catch(e){ return false; }
+  }
+
+  function bouw(){
+    var st = document.createElement("style");
+    st.textContent =
+      "#coliStrip{position:fixed;left:0;right:0;top:0;z-index:9998;display:flex;align-items:center;" +
+        "gap:10px;padding:6px 12px;background:#181d24;border-bottom:1px solid #2f3742;" +
+        "color:#e8eaed;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 3px 12px rgba(0,0,0,.35);}" +
+      "#coliStrip.dicht{right:auto;border-bottom-right-radius:8px;padding:4px 10px;}" +
+      "#coliStrip.dicht #coliCel,#coliStrip.dicht #coliTijd{display:none;}" +
+      "#coliStrip.oud{opacity:.55;}" +
+      "#coliStrip .coli-kop{letter-spacing:.18em;text-transform:uppercase;color:#ffb23e;white-space:nowrap;}" +
+      "#coliCel{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0;overflow:hidden;}" +
+      "#coliCel .chip{display:flex;align-items:baseline;gap:5px;padding:2px 8px;border-radius:5px;" +
+        "background:#262d36;border:1px solid #2f3742;}" +
+      "#coliCel .chip i{font-style:normal;color:#ffb23e;font-weight:700;}" +
+      "#coliCel .chip b{font-size:14px;}" +
+      "#coliCel .chip s{text-decoration:none;color:#7c8794;font-weight:400;}" +
+      "#coliCel .chip.afd{flex-direction:column;align-items:flex-start;gap:1px;padding:3px 9px;}" +
+      "#coliCel .chip.afd i{font-size:10px;letter-spacing:.1em;color:#ffb23e;}" +
+      "#coliCel .chip.afd b{font-size:17px;line-height:1;}" +
+      "#coliCel .chip.afd u{text-decoration:none;color:#7c8794;font-weight:400;font-size:10px;}" +
+      "#coliCel .chip.afd.leeg{opacity:.45;}" +
+      "#coliCel .chip.afd.rest{border-color:#f0883e;border-style:dashed;}" +
+      "#coliStrip .rechts{margin-left:auto;display:flex;align-items:center;gap:8px;white-space:nowrap;}" +
+      "#coliTijd{color:#7c8794;font-weight:400;}" +
+      "#coliVouw{background:#262d36;color:#e8eaed;border:1px solid #2f3742;border-radius:4px;" +
+        "padding:2px 8px;cursor:pointer;font:inherit;}";
+    document.head.appendChild(st);
+
+    strip = document.createElement("div");
+    strip.id = "coliStrip";
+    strip.innerHTML =
+      '<span class="coli-kop">Te picken <b id="coliKlasse"></b></span>' +
+      '<span id="coliCel"></span>' +
+      '<span class="rechts"><span id="coliTijd"></span>' +
+      '<button id="coliVouw" type="button" title="in- of uitklappen">&minus;</button></span>';
+    document.body.appendChild(strip);
+
+    var dicht = false;
+    try { dicht = localStorage.getItem(SLEUTEL) === "dicht"; } catch(e){}
+    zetVouw(dicht);
+    strip.querySelector("#coliVouw").addEventListener("click", function(){
+      zetVouw(!strip.classList.contains("dicht"));
+    });
+
+    /* Elke halve minuut de leeftijd bijwerken, zodat een stilgevallen
+       voeder zichzelf verraadt in plaats van een oud cijfer te blijven tonen. */
+    klok = setInterval(leeftijd, 30000);
+  }
+
+  function zetVouw(dicht){
+    strip.classList.toggle("dicht", !!dicht);
+    strip.querySelector("#coliVouw").innerHTML = dicht ? "&plus;" : "&minus;";
+    try { localStorage.setItem(SLEUTEL, dicht ? "dicht" : "open"); } catch(e){}
+  }
+
+  function leeftijd(){
+    if (!strip || !laatsteTijd) return;
+    var min = Math.round((Date.now() - laatsteTijd) / 60000);
+    strip.classList.toggle("oud", min >= VERVAL);
+    var t = strip.querySelector("#coliTijd");
+    t.textContent = (min < 1 ? "zonet" : min + " min geleden") + (min >= VERVAL ? " - staat stil?" : "");
+  }
+
+  function veilig(t){
+    var v = String(t == null ? "" : t);
+    v = v.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
+    return v.split(String.fromCharCode(34)).join("&quot;");
+  }
+
+  /* Een afdeling: naam klein, pickregels groot, de delen eronder.
+     Een deel dat hetzelfde heet als de afdeling voegt niets toe en valt weg. */
+  function afdChip(a){
+    var t = a.totaal || {}, delen = a.delen || {};
+    var namen = Object.keys(delen).sort(function(x, y){
+      return (delen[y].n || 0) - (delen[x].n || 0);
+    });
+    if (namen.length === 1 && namen[0] === a.naam) namen = [];
+    var sub = namen.length
+      ? "<u>" + namen.map(function(n){
+          return veilig(n) + " " + (delen[n].n || 0);
+        }).join(" · ") + "</u>"
+      : "";
+    var rest = String(a.naam || "").charAt(0) === "(";
+    return '<span class="chip afd' + ((t.n || 0) ? "" : " leeg") + (rest ? " rest" : "") +
+           '" title="' + veilig(a.naam) + ": " + (t.qty || 0) + " stuks, " +
+           (t.werken || 0) + ' werken"><i>' + veilig(a.naam) + "</i><b>" +
+           (t.n || 0) + "</b>" + sub + "</span>";
+  }
+
+  function toon(d){
+    if (!strip) bouw();
+    strip.querySelector("#coliKlasse").textContent =
+      (d.klasse && d.klasse !== "*") ? d.klasse : "";
+    var cel = strip.querySelector("#coliCel");
+
+    if (Array.isArray(d.afdelingen) && d.afdelingen.length) {
+      cel.innerHTML = d.afdelingen.map(afdChip).join("");
+    } else {
+      /* Een oudere zender stuurt alleen sectorletters. Dan die tonen, want een
+         verouderd cijfer is beter dan een lege strook zonder uitleg. */
+      var sec = Array.isArray(d.sectoren) ? d.sectoren : [];
+      cel.innerHTML = sec.slice(0, 20).map(function(s){
+        return '<span class="chip"><i>' + veilig(String(s.L).slice(0, 2)) + "</i><b>" +
+               (Number(s.n) || 0) + "</b>" +
+               (s.qty ? "<s>" + (Number(s.qty) || 0) + " st</s>" : "") + "</span>";
+      }).join("");
+    }
+    laatsteTijd = Date.parse(d.tijd) || Date.now();
+    leeftijd();
+  }
+
+  window.addEventListener("message", function(e){
+    if (!magVan(e.origin)) return;
+    var d = e.data;
+    if (!d || d.bron !== "colisage-sectoren") return;
+    try { toon(d); } catch(x){ /* een fout hier mag de planning nooit raken */ }
+  });
+
+  /* Meld je aan bij het venster dat ons opende, zodat de voeder weet dat hij
+     mag beginnen sturen. Het bericht bevat niets, dus "*" is hier ongevaarlijk. */
+  try {
+    if (window.opener) window.opener.postMessage({ bron: "colisage-planning-klaar" }, "*");
+  } catch(e){}
 })();
 </script>
 </body>
