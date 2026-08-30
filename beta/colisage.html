@@ -7,7 +7,7 @@
 <title>Colisage · Kortenberg — TV</title>
 <link rel="icon" href="favicon.svg?v=2" type="image/svg+xml">
 </head>
-<body style="margin:0;background:#14171c">
+<body style="margin:0;background:var(--steel-900)">
 <!--
   COLISAGE — TV dashboard (Kortenberg DC) — planbord-editie
   ============================================================
@@ -48,10 +48,17 @@
 -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=JetBrains+Mono:wght@700;800&display=swap');
+  /* De grond komt van het PLANBORD (beta/index.html), de cijfers blijven amber.
+     Keuze van Jens, 30/08: het bord hoort visueel bij de familie, maar de
+     vertrekbord-gloed van de amber cijfers blijft. De namen `--steel-*` staan
+     er nog van de vorige stijl; ze slaan nu op de blauwe tinten. */
   :root{
-    --steel-900:#14171c; --steel-850:#181d24; --steel-800:#1b2027; --steel-700:#262d36;
-    --line:#2f3742; --seam:#0c0e12; --amber:#ffb23e; --amber-soft:#ffc977; --amber-dim:#5a4624;
-    --text:#e8eaed; --muted:#7c8794; --live:#46d17f; --warn:#f0883e; --down:#e5534b;
+    --steel-900:#0a1424; --steel-850:#0f1d35; --steel-800:#13233e; --steel-700:#1c3255;
+    --line:rgba(141,178,255,.16); --seam:#050c18;
+    --amber:#ffb23e; --amber-soft:#ffc977; --amber-dim:#5a4624;
+    --text:#e9f1ff; --muted:#8fa6c9; --live:#3ddc97; --warn:#f6c945; --down:#ff6b6b;
+    /* afgeleiden die vroeger hardcoded stonden */
+    --nul:#3f5578; --lijn-zacht:rgba(141,178,255,.11); --lijn-zachter:rgba(141,178,255,.07);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   #stage{
@@ -83,25 +90,42 @@
   .kpi .cap{font-size:clamp(11px,1.25vw,19px);letter-spacing:.2em;text-transform:uppercase;
     color:var(--muted);margin-top:.5em;font-weight:500;}
   .panel{flex:1;display:flex;flex-direction:column;min-height:0; margin:0 clamp(18px,2.6vw,40px);
-    border:1px solid var(--line);border-radius:clamp(6px,.6vw,12px); background:var(--steel-850);overflow:hidden;}
+    border:1px solid var(--line);border-radius:clamp(6px,.6vw,12px); background:var(--steel-850);
+    overflow:hidden; position:relative;}
+  /* Het D'Ieteren-logo als watermerk achter de tabel. Als MASK en niet als
+     plaatje: dieteren-logo.png is de POSITIEVE versie (donkerblauwe letters),
+     die zou hier wegvallen in de donkerblauwe grond. De letters zijn wel
+     transparant uitgesneden (RGBA), dus gebruiken we het bestand als VORM en
+     geven het zelf de tekstkleur. Zo klopt het op elke achtergrond en is er
+     geen tweede bestand nodig. Dezelfde aanpak als in de RMA-app; zie
+     Desktop\RMA\geheugenma-logo-watermerk.md
+     Sterkte .07: op een schermafdruk nauwelijks te vinden, op de TV net
+     zichtbaar. Hoger dan .10 begint het mee te lezen met de cijfers. */
+  .panel::before{content:"";position:absolute;inset:0;background:var(--text);
+    -webkit-mask:url("dieteren-logo.png") center 46% / min(34%,380px) no-repeat;
+    mask:url("dieteren-logo.png") center 46% / min(34%,380px) no-repeat;
+    opacity:.07;pointer-events:none;z-index:0;}
+  /* Zonder dit wordt het pseudo-element NA de inhoud getekend en ligt het
+     watermerk voor de cijfers in plaats van erachter. */
+  .panel > *{position:relative;z-index:1;}
   .thead,.row{display:grid;grid-template-columns:2.2fr .8fr .9fr .9fr .8fr .7fr 1fr; align-items:center;}
   .thead{padding:clamp(8px,1vw,16px) clamp(14px,1.6vw,26px); border-bottom:1px solid var(--line);color:var(--muted);
     font-size:clamp(11px,1.2vw,18px);letter-spacing:.16em;text-transform:uppercase;font-weight:500;}
   .thead span:not(:first-child),.row .c:not(:first-child){text-align:right;justify-self:end;}
   .tbody{flex:1;min-height:0;overflow:hidden;}
   .row{position:relative;padding:clamp(6px,.85vw,14px) clamp(14px,1.6vw,26px);
-    border-bottom:1px solid rgba(47,55,66,.55);font-size:clamp(15px,1.9vw,30px);}
+    border-bottom:1px solid var(--lijn-zacht);font-size:clamp(15px,1.9vw,30px);}
   .row:last-child{border-bottom:none;}
   .row .tour{font-weight:500;letter-spacing:.04em;}
   .row .c{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
-  .row .c.zero{color:#41484f;}
+  .row .c.zero{color:var(--nul);}
   .row .total{color:var(--amber);}
   .row .bar{position:absolute;left:0;top:0;bottom:0;background:rgba(255,178,62,.07);
     border-left:2px solid rgba(255,178,62,.35);z-index:0;}
   .row > *{position:relative;z-index:1;}
   .srow{display:grid;grid-template-columns:2.2fr 3.2fr 1.9fr .7fr;align-items:center;
     padding:clamp(3px,.5vw,9px) clamp(14px,1.6vw,26px);
-    border-bottom:1px solid rgba(47,55,66,.35);font-size:clamp(12px,1.35vw,21px);
+    border-bottom:1px solid var(--lijn-zachter);font-size:clamp(12px,1.35vw,21px);
     background:rgba(255,178,62,.035);}
   .srow .nr{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--amber-soft);letter-spacing:.05em;padding-left:1.2em;}
   .srow .oms{color:var(--muted);letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -132,7 +156,7 @@
   #kiesBtn,#focusBtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:6px;
     font:inherit;font-size:.9em;padding:.2em .55em;cursor:pointer;letter-spacing:0;}
   #kiesBtn:hover,#focusBtn:hover{color:var(--amber);border-color:var(--amber-dim);}
-  #kies{position:fixed;inset:0;background:rgba(10,12,16,.82);display:flex;align-items:center;justify-content:center;z-index:50;}
+  #kies{position:fixed;inset:0;background:rgba(5,12,24,.82);display:flex;align-items:center;justify-content:center;z-index:50;}
   #kies .box{background:var(--steel-850);border:1px solid var(--line);border-radius:12px;
     padding:clamp(18px,2.4vw,36px);display:flex;flex-direction:column;gap:.7em;min-width:min(90vw,420px);}
   #kies h2{font-size:clamp(14px,1.6vw,24px);letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:.3em;}
@@ -156,12 +180,12 @@
   .fmeer{padding:.6em clamp(14px,1.6vw,26px);color:var(--muted);font-size:clamp(12px,1.3vw,20px);letter-spacing:.14em;text-transform:uppercase;}
   #ver{font-size:.72em;color:var(--muted);letter-spacing:.1em;}
   .fdone{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45em;animation:fdIn .6s ease both;}
-  .fdone svg{width:clamp(90px,11vw,200px);height:auto;filter:drop-shadow(0 0 14px rgba(70,209,127,.35));animation:fdPulse 2.8s 1.8s ease-in-out infinite;}
+  .fdone svg{width:clamp(90px,11vw,200px);height:auto;filter:drop-shadow(0 0 14px rgba(61,220,151,.35));animation:fdPulse 2.8s 1.8s ease-in-out infinite;}
   .fdone circle{fill:none;stroke:var(--live);stroke-width:6;stroke-linecap:round;stroke-dasharray:340;stroke-dashoffset:340;animation:fdDraw .9s .15s ease-out forwards;}
   .fdone path{fill:none;stroke:var(--live);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:80;stroke-dashoffset:80;animation:fdDraw .5s .95s ease-out forwards;}
   .fdone .t1{font-size:clamp(20px,2.4vw,40px);letter-spacing:.28em;text-transform:uppercase;color:var(--live);font-weight:600;}
   .fdone .t2{font-size:clamp(13px,1.5vw,24px);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);}
-  .fpan.done .fhead .fn{color:var(--live);text-shadow:0 0 16px rgba(70,209,127,.35);}
+  .fpan.done .fhead .fn{color:var(--live);text-shadow:0 0 16px rgba(61,220,151,.35);}
   @keyframes fdDraw{to{stroke-dashoffset:0;}}
   @keyframes fdIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:scale(1);}}
   @keyframes fdPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.04);}}
@@ -169,13 +193,13 @@
   .bpan{background:var(--steel-850);padding:clamp(6px,.8vw,14px) clamp(10px,1.2vw,20px);overflow:hidden;display:flex;flex-direction:column;}
   .bkop{font-size:clamp(13px,1.5vw,24px);letter-spacing:.18em;text-transform:uppercase;color:var(--amber);font-weight:600;margin-bottom:.35em;display:flex;justify-content:space-between;align-items:baseline;}
   .bkop .bsub{color:var(--muted);font-size:.72em;letter-spacing:.12em;text-transform:none;}
-  .brow{display:flex;align-items:center;gap:.6em;padding:clamp(2px,.35vw,6px) .4em;border-bottom:1px solid rgba(47,55,66,.4);font-size:clamp(13px,1.6vw,26px);cursor:pointer;border-left:3px solid transparent;}
+  .brow{display:flex;align-items:center;gap:.6em;padding:clamp(2px,.35vw,6px) .4em;border-bottom:1px solid var(--lijn-zacht);font-size:clamp(13px,1.6vw,26px);cursor:pointer;border-left:3px solid transparent;}
   .brow:last-child{border-bottom:none;}
   .brow .bn{flex:1;letter-spacing:.06em;font-weight:500;}
   .brow .uur{color:var(--muted);font-size:.68em;letter-spacing:.06em;font-family:'JetBrains Mono',monospace;}
   .brow .bv{font-family:'JetBrains Mono',monospace;font-weight:800;color:var(--text);}
-  .brow .bv.ok{color:var(--live);text-shadow:0 0 10px rgba(70,209,127,.4);}
-  .brow .bv.none{color:#41484f;}
+  .brow .bv.ok{color:var(--live);text-shadow:0 0 10px rgba(61,220,151,.4);}
+  .brow .bv.none{color:var(--nul);}
   .brow.done .bn{color:var(--muted);}
   .brow.foc{border-left-color:var(--amber);background:rgba(255,178,62,.05);}
   .brow.afg{opacity:.55;border-left-color:var(--live);}
@@ -228,7 +252,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c15";
+  const COLI_VERSION = "c16";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
