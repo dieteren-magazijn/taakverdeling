@@ -216,15 +216,19 @@
 <script>
   // ===================== INSTELLINGEN =====================
   const CONFIG = {
-    SB_URL: "https://gntaanclvusvhfkgjusz.supabase.co",
-    SB_KEY: "sb_publishable_bZ6yeDauQb1md0bIOwCoJQ_KbQAc4qV",
+    /* Het NIEUWE project. Stond tot 30/08 nog op het oude, geblokkeerde ref
+       (gntaanclvusvhfkgjusz) - daardoor faalde elke databasepoging en stond er
+       "Hapering" bovenaan. Overgenomen uit beta/index.html, dat al lang naar
+       het nieuwe wees. Zie geheugen\colisage-bord-oud-supabase.md */
+    SB_URL: "https://ukkpduoirexxzndtgwpc.supabase.co",
+    SB_KEY: "sb_publishable_RozqrztrtqO3ueA05yepHA_Rji0Ks8a",
     POLL_SECONDS: 30,      // verversfrequentie
     PAGE_SECONDS: 8,       // hoe lang elke pagina tours blijft staan
     DETAIL_DREMPEL: 10,    // stukdetail zodra tour-totaal <= dit aantal (0 = uit)
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c13";
+  const COLI_VERSION = "c14";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -683,7 +687,11 @@
         setStatus("demo","Demo · wacht op data"); update(demoData());
       }
     }catch(e){
-      failures++; setStatus("down", failures>2 ? "Verbinding kwijt" : "Hapering");
+      failures++;
+      /* Wordt dit bord rechtstreeks door D365 gevoed, dan is de database niet
+         de bron en zegt een mislukte poging niets over wat er op het scherm
+         staat. Die melding zou dan alleen maar verwarren. */
+      if(!voederLeeft()) setStatus("down", failures>2 ? "Verbinding kwijt" : "Hapering");
     }
   }
   /* ---- schermkeuze-menu ---- */
@@ -830,7 +838,9 @@
   var VOEDER_GELDIG = 15;          /* minuten; daarna neemt de database het weer over */
   var voederTijd = null;
   function voederLeeft(){
-    return voederTijd !== null && (Date.now() - voederTijd) < VOEDER_GELDIG*60000;
+    /* !!voederTijd en niet `!== null`: poll() kan aangeroepen worden voordat
+       de var hierboven is toegewezen, en dan is hij `undefined`. */
+    return !!voederTijd && (Date.now() - voederTijd) < VOEDER_GELDIG*60000;
   }
   function magVanD365(origin){
     try{ return /(^|\.)dynamics\.com$/i.test(new URL(origin).hostname); }
