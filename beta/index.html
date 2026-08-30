@@ -2812,6 +2812,13 @@ function obBuildTicker(){
   var nLaat=0, nVroeg=0, nAfw=0, nAvond=0, early=[], _afwList=[];
   obRoster.forEach(function(p){
     if(p._avond){ nAvond++; return; }   /* avondstudenten/interims apart */
+    /* Inbound telt niet mee in de ploegtellers. Jens, 30/08: "de inbound
+       mensen worden meegeteld bij vrij in de outbound teller, maar dat hoeft
+       niet, ook niet bij de vroege ploeg teller - ze moeten gewoon inzetbaar
+       zijn, dat is alles." Ze blijven dus gewoon in de pool staan onder
+       "Inbound" en zijn te plaatsen; ze tellen alleen niet mee als outbound
+       bezetting. Zonder deze regel vielen ze in nVroeg of nLaat. */
+    if(p._inbound){ return; }
     if(p.status!=="aanwezig" && !p._buitenUren){ nAfw++; _afwList.push(p); return; }
     var h=obWindowFor(p); var tot=h&&h.tot?h.tot:null;
     if(p._afwijking){ early.push(obFmtAfwijker(p,h)); }
@@ -2925,8 +2932,11 @@ function obRender(){
   if(lg){ var cA=0,cB=0,cV=0,cT=0,cAf=0,cAv=0,cIb=0; obRoster.forEach(function(p){ if(p._avond){cAv++;return;} if(p._inbound){cIb++;return;} if(p.status==="verlof")cV++; else if(p.status==="tk")cT++; else if(p.status==="afwezig")cAf++; else if(p.ploeg==="A")cA++; else cB++; });
     lg.textContent="A:"+cA+"  B:"+cB+"  Verlof:"+cV+"  TK:"+cT+"  Afwezig:"+cAf+(cAv?"  Avond:"+cAv:"")+(cIb?"  Inbound:"+cIb:""); }
   // 3 tellers bovenaan: Vrij / Ingepland / Afwezig
-  var nAanwezig=0, nAfw=0; obRoster.forEach(function(p){ if(p.status==="aanwezig") nAanwezig++; else nAfw++; });
-  var nPlacedPresent=0; obRoster.forEach(function(p){ if(p.status==="aanwezig" && placed[p.name]) nPlacedPresent++; });
+  /* Inbound blijft hier ook buiten: deze drie tellers gaan over de OUTBOUND
+     bezetting. Een inbound-collega die nog niet geplaatst is, is geen vrije
+     outbound-kracht. Zie de opmerking in obBuildTicker(). */
+  var nAanwezig=0, nAfw=0; obRoster.forEach(function(p){ if(p._inbound) return; if(p.status==="aanwezig") nAanwezig++; else nAfw++; });
+  var nPlacedPresent=0; obRoster.forEach(function(p){ if(p._inbound) return; if(p.status==="aanwezig" && placed[p.name]) nPlacedPresent++; });
   var stF=document.getElementById("obStFree"), stP=document.getElementById("obStPlan"), stA=document.getElementById("obStAbs");
   if(stF) stF.textContent=Math.max(0, nAanwezig-nPlacedPresent);
   if(stP) stP.textContent=nPlacedPresent;
@@ -3275,7 +3285,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.12b";
+  var APP_VERSION="v4.13b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3366,7 +3376,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.12b";
+  var LOCAL=window.__APP_VERSION||"v4.13b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
