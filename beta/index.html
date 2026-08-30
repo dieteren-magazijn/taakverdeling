@@ -3270,7 +3270,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.10b";
+  var APP_VERSION="v4.11b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3361,7 +3361,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.10b";
+  var LOCAL=window.__APP_VERSION||"v4.11b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -6588,12 +6588,24 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
       /* De delen naast het totaal: klein, maar zichtbaar zonder muis. Jens,
          29/08: "laat ze apart zien en samen". Ze schuiven mee in de flexbox
          van de header en krimpen als eerste weg als de kaart smal wordt. */
-      ".tcoli-d{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;" +
+      /* De kop is een flexbox met vaste kinderen; zonder deze twee regels kan
+         hij niet krimpen en duwt hij de kaart breder dan zijn kolom. In
+         bordmodus staan er vijf kolommen naast elkaar, en dan valt de
+         automatische passendmaker eroverheen - die kijkt naar HOOGTE
+         (scrollHeight) en ziet breedte-overloop niet. */
+      ".tcard > header{min-width:0;}" +
+      ".tcard > header > .tname{min-width:0;overflow:hidden;text-overflow:ellipsis;}" +
+      ".tcoli{flex:0 0 auto;}" +
+      ".tcoli-d{display:flex;align-items:center;gap:5px;min-width:0;flex:0 1 auto;overflow:hidden;" +
         "font-family:var(--fd);font-size:11px;font-weight:600;color:#0a1424;opacity:.72;}" +
       ".tcoli-d i{font-style:normal;white-space:nowrap;}" +
       ".tcoli-d i b{font-weight:800;margin-left:2px;}" +
       ".tcoli-d.oud{opacity:.38;}" +
       "body.board .tcoli-d{font-size:.72vw;gap:.35vw;}" +
+      /* Bij negen afdelingen of meer zet het bord vijf kolommen naast elkaar
+         (.tasks-many). Daar is voor de losse delen geen plaats meer: dan wint
+         het grote getal, en de opsplitsing blijft in de tooltip staan. */
+      "body.board .tasks-many .tcoli-d{display:none;}" +
       ".tcoli.nul{opacity:.42;}" +
       ".tcoli.oud{background:rgba(255,255,255,.42);border-style:dashed;}" +
       "body.board .tcoli{font-size:1.1vw;min-width:1.8vw;height:1.8vw;border-radius:.4vw;padding:0 .45vw;}" +
