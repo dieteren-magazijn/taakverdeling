@@ -342,7 +342,11 @@
   function rowTotal(t){ return WORK_KEYS.reduce((s,k)=>s+(t[k]||0),0); }
   function normalize(tours){
     return tours.map(t=>({
-      tour:t.tour, open:+t.open||0, xdock:+t.xdock||0, groen:+t.groen||0,
+      tour:t.tour,
+      /* het expliciete gangnummer moet dit filter overleven - anders valt een
+         gangregel terug op de naam-regex, en dat is een stille afhankelijkheid */
+      gang:(typeof t.gang==="number"?t.gang:undefined),
+      open:+t.open||0, xdock:+t.xdock||0, groen:+t.groen||0,
       sectorMP:+t.sectorMP||0, sectorH:+t.sectorH||0, banden:+t.banden||0,
       stuks: Array.isArray(t.stuks) ? t.stuks.slice(0,CONFIG.DETAIL_MAX).map(s=>({
         nr:(""+(s.nr||s.item||"?")).trim(),
