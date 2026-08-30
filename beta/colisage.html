@@ -224,7 +224,7 @@
     DETAIL_MAX: 10,        // max detailregels per tour
     FOCUS_VOORLOOP_MIN: 60 // met sluituur: focus start zoveel minuten vooraf
   };
-  const COLI_VERSION = "c12";
+  const COLI_VERSION = "c13";
   // ========================================================
   const TOURS = [
     "TOUR 110","TOUR 111","TOUR 112","TOUR 113","TOUR 114","TOUR 115","TOUR 116","TOUR 117","TOUR 118","TOUR 119",
@@ -267,14 +267,42 @@
   let focusAf = [];      // vandaag verzonden (outbound shipment gedaan) -> niet meer op de schermen
   const SCHERM_PAREN = [[0,9],[1,2],[3,4],[5,6],[7,8]];
   function tourNum(name){ const m=(""+name).match(/\d{3}/); return m?+m[0]:null; }
-  function isSDD(name){ const n=tourNum(name); return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327)); }
-  function inGangen(name){ const n=tourNum(name); if(n===null) return false; return GANGEN_SEL.some(g=>(GANG_TOURS[g]||[]).indexOf(n)>=0); }
+  /* Een regel kan een TOER zijn ("TOUR 640") of een hele GANG ("GANG 4").
+     Een gangregel draagt een expliciet veld `gang`; die komt binnen wanneer
+     het toernummer niet leesbaar is uit D365 (CgkTour geeft 403) en de voeder
+     alleen de shiplane kent. Zie Desktop\COLISAGE\geheugen\shiplane-is-de-gang-van-het-bord.md
+     Zonder dit viel zo'n regel STIL weg: tourNum() zoekt drie cijfers en
+     "GANG 4" heeft er een. */
+  function rijGang(t){
+    if(t && typeof t==="object"){
+      if(typeof t.gang==="number" && t.gang>=0 && t.gang<=9) return t.gang;
+      const m=(""+(t.tour||"")).match(/^\s*GANG\s*(\d)\s*$/i);
+      if(m) return +m[1];
+    }
+    return null;
+  }
+  function isGangRij(t){ return rijGang(t)!==null; }
+  function isSDD(t){
+    if(isGangRij(t)) return false;          /* een gang is nooit SDD - die stroom loopt overdag */
+    const n=tourNum(t&&t.tour!==undefined?t.tour:t);
+    return n!==null && ((n>=110&&n<=119)||(n>=230&&n<=238)||(n>=320&&n<=327));
+  }
+  function inGangen(t){
+    const g=rijGang(t);
+    if(g!==null) return GANGEN_SEL.indexOf(g)>=0;
+    const n=tourNum(t&&t.tour!==undefined?t.tour:t); if(n===null) return false;
+    return GANGEN_SEL.some(g2=>(GANG_TOURS[g2]||[]).indexOf(n)>=0);
+  }
   /* banden-ticker: enkel de sluit-toeren (510-780) */
-  function bandenToer(t){ const n=tourNum(t.tour); return n!==null && n>=500 && n<=799 && focusAf.indexOf(t.tour)<0; }
+  function bandenToer(t){
+    if(focusAf.indexOf(t.tour)>=0) return false;
+    if(isGangRij(t)) return true;           /* gang 0-9 is per definitie de nachtlevering */
+    const n=tourNum(t.tour); return n!==null && n>=500 && n<=799;
+  }
   function schermFilter(tours){
     if(SCHERM_BRIG) return tours;
-    if(SCHERM_SDD) return tours.filter(t=>isSDD(t.tour));
-    if(GANGEN_SEL.length) return tours.filter(t=>inGangen(t.tour));
+    if(SCHERM_SDD) return tours.filter(t=>isSDD(t));
+    if(GANGEN_SEL.length) return tours.filter(t=>inGangen(t));
     return tours;
   }
   let SCHERM_LBL = null;
@@ -619,6 +647,11 @@
     catch(e){ return null; }
   }
   async function poll(){
+    /* Voedt een D365-tabblad ons rechtstreeks, dan is de database niet meer
+       de bron. Zonder deze rem zou poll() elke 30 s de demo-cijfers er
+       overheen schrijven. Valt de voeder stil, dan neemt de database het na
+       VOEDER_GELDIG minuten weer over. */
+    if(voederLeeft()) return;
     let t = tok();
     if(!t && await kioskLogin()) t = tok();
     if(!t){ leesFocusLokaal(); setStatus("demo","Demo · log in op de beta"); update(demoData()); return; }
@@ -776,6 +809,45 @@
   measureRows();
   tickClock(); poll();
   setInterval(tickClock, 1000);
+  /* ── RECHTSTREEKS GEVOED VANUIT D365 ────────────────────────────────────────
+     Naast de database kan dit bord ook rechtstreeks gevoed worden door een
+     openstaand D365-tabblad op DEZELFDE pc, via postMessage. Dat is de weg
+     die vandaag werkt: geen database, geen egress, geen toestemming nodig.
+     De zender is scriptsord-sectoren.js uit het COLISAGE-project (knop
+     "koppel colisage-bord"); die opent dit venster zelf.
+
+     Beperking die erbij hoort: postMessage werkt alleen tussen vensters van
+     dezelfde browser. Voor de TV's in het magazijn blijft er een andere weg
+     nodig - zie Desktop\COLISAGE\geheugen\hoe-het-cijfer-op-het-bord-komt.md
+
+     Zolang er GEEN voeder is verandert er niets: het bord leest uit de
+     database zoals altijd, of toont demo.
+     ─────────────────────────────────────────────────────────────────────── */
+  var VOEDER_GELDIG = 15;          /* minuten; daarna neemt de database het weer over */
+  var voederTijd = null;
+  function voederLeeft(){
+    return voederTijd !== null && (Date.now() - voederTijd) < VOEDER_GELDIG*60000;
+  }
+  function magVanD365(origin){
+    try{ return /(^|\.)dynamics\.com$/i.test(new URL(origin).hostname); }
+    catch(e){ return false; }
+  }
+  window.addEventListener("message", function(e){
+    if(!magVanD365(e.origin)) return;
+    var d = e.data;
+    if(!d || d.bron !== "colisage-sectoren-gang") return;
+    try{
+      voederTijd = Date.parse(d.updated) || Date.now();
+      leesFocusLokaal();
+      var min = Math.round((Date.now()-voederTijd)/60000);
+      setStatus("live", "D365 · " + (min<1 ? "zonet" : min+" min geleden") +
+                        (d.perGang ? " · per gang" : ""));
+      update(d);
+    }catch(x){ /* een fout hier mag het bord nooit zwart maken */ }
+  });
+  /* Meld je aan bij het venster dat ons opende, zodat de voeder mag beginnen. */
+  try{ if(window.opener) window.opener.postMessage({bron:"colisage-bord-klaar"}, "*"); }catch(e){}
+
   setInterval(poll, CONFIG.POLL_SECONDS*1000);
   setInterval(nextPage, CONFIG.PAGE_SECONDS*1000);
 </script>
