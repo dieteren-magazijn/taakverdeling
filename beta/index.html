@@ -3270,7 +3270,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.08b";
+  var APP_VERSION="v4.09b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3361,7 +3361,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.08b";
+  var LOCAL=window.__APP_VERSION||"v4.09b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -6532,7 +6532,12 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
    draait in een openstaand D365-tabblad, opent deze pagina met de knop
    "koppel planning" en stuurt elke ronde zijn cijfers door.
 
-   v4.08b — HET CIJFER STAAT NU IN DE KOP VAN DE AFDELING.
+   v4.09b — de DELEN staan nu ook in de kop, naast het totaal, in plaats van
+   alleen in de tooltip. Jens, 29/08: "laat ze apart zien en samen" — dus
+   SECTOR M + P toont het totaal groot met `M 77` en `P 140` ernaast, en
+   LIFTEN zijn liften per stuk. De tooltip houdt de volledige lijst.
+
+   v4.08b — HET CIJFER STAAT IN DE KOP VAN DE AFDELING.
    v4.07b hing er een eigen balk bovenaan de pagina. Die werkte, maar het waren
    twee stijlen naast elkaar (Jens, 30/08: "nu heb je twee stijlen, oogt niet
    professioneel"). Nu komt het cijfer in de <header> van elke .tcard te staan,
@@ -6580,6 +6585,15 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
         "padding:0 7px;background:rgba(255,255,255,.82);border:1px solid rgba(10,20,36,.25);" +
         "color:#0a1424;cursor:help;}" +
       ".tcoli small{font-weight:600;font-size:10px;opacity:.62;letter-spacing:.04em;}" +
+      /* De delen naast het totaal: klein, maar zichtbaar zonder muis. Jens,
+         29/08: "laat ze apart zien en samen". Ze schuiven mee in de flexbox
+         van de header en krimpen als eerste weg als de kaart smal wordt. */
+      ".tcoli-d{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;" +
+        "font-family:var(--fd);font-size:11px;font-weight:600;color:#0a1424;opacity:.72;}" +
+      ".tcoli-d i{font-style:normal;white-space:nowrap;}" +
+      ".tcoli-d i b{font-weight:800;margin-left:2px;}" +
+      ".tcoli-d.oud{opacity:.38;}" +
+      "body.board .tcoli-d{font-size:.72vw;gap:.35vw;}" +
       ".tcoli.nul{opacity:.42;}" +
       ".tcoli.oud{background:rgba(255,255,255,.42);border-style:dashed;}" +
       "body.board .tcoli{font-size:1.1vw;min-width:1.8vw;height:1.8vw;border-radius:.4vw;padding:0 .45vw;}" +
@@ -6626,7 +6640,11 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
       var a = m[sleutel(naamEl.textContent)];
 
       var sp = h.querySelector(".tcoli");
-      if (!a) { if (sp) sp.remove(); return; }   /* afdeling zonder cijfer blijft zoals ze was */
+      if (!a) {                                  /* afdeling zonder cijfer blijft zoals ze was */
+        if (sp) sp.remove();
+        var dw = h.querySelector(".tcoli-d"); if (dw) dw.remove();
+        return;
+      }
 
       var t = a.totaal || {}, n = t.n || 0;
       if (!sp) {
@@ -6639,15 +6657,32 @@ body.pdragging{touch-action:none;-webkit-user-select:none;user-select:none}
         else h.appendChild(sp);
       }
       sp.innerHTML = n + "<small>TE DOEN</small>";
+      /* De delen komen ERNAAST te staan, niet erin: zo blijft het totaal het
+         grote getal en zijn de stukken toch af te lezen zonder muis. */
+      var dsp = h.querySelector(".tcoli-d");
+      if (!dsp) {
+        dsp = document.createElement("span");
+        dsp.className = "tcoli-d";
+        if (sp.nextSibling) h.insertBefore(dsp, sp.nextSibling); else h.appendChild(dsp);
+      }
       sp.classList.toggle("nul", n === 0);
       sp.classList.toggle("oud", oud);
 
-      /* De delen passen niet in een kop, dus die gaan in de tooltip -
-         daar is ook plaats voor de stuks en het aantal werken. */
+      /* De delen staan NAAST het totaal in de kop, en nog een keer voluit in
+         de tooltip - daar is ook plaats voor de stuks en het aantal werken.
+         Zijn er veel delen (LIFTEN heeft er vijf), dan krimpt de strook in de
+         kop weg; de tooltip blijft dan de volledige lijst tonen. */
       var delen = a.delen || {}, namen = Object.keys(delen).sort(function(x, y){
         return (delen[y].n || 0) - (delen[x].n || 0);
       });
       if (namen.length === 1 && namen[0] === a.naam) namen = [];
+      dsp.innerHTML = namen.length
+        ? namen.map(function(k){
+            return "<i>" + veilig(k) + "<b>" + (delen[k].n || 0) + "</b></i>";
+          }).join("")
+        : "";
+      dsp.classList.toggle("oud", oud);
+
       var uitleg = a.naam + ": " + n + " openstaande pickregels";
       if (t.qty) uitleg += ", " + t.qty + " stuks";
       if (t.werken) uitleg += ", " + t.werken + " werken";
