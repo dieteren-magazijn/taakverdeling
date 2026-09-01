@@ -1,0 +1,16 @@
+# persoonlijk geheugen van Claude - hoort niet in de repo
+geheugen/
+CLAUDE.md
+context-brug.md
+
+# lokale diagnose-snippets, niet voor de publieke repo
+hulpmiddelen/
+
+# toegangen en wachtwoordverwijzingen - NOOIT in de repo
+TOEGANGEN.md
+
+# lokale back-ups: git is de geschiedenis
+*.backup-*
+
+# lokale instellingen van de editor
+.claude/
