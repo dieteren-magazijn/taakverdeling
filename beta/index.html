@@ -584,6 +584,18 @@ function parseNum(v){
   }
   return null;
 }
+/* "TR2", "TR1,5", "SYN2" -> {code:"TR", uren:2}; anders null.
+   Een opleiding van een paar uur wordt in de Excel als TR2 getypt: die
+   persoon werkt gewoon door, met die uren eraf. Zonder deze regel las het
+   bord TR2 als een onbekende code en zette het de hele halve dag op afwezig. */
+function codeUren(v){
+  if(v === null || v === undefined) return null;
+  var m = String(v).trim().toUpperCase().replace(/\s+/g,"").match(/^(TR|SYN)(\d+(?:[.,]\d+)?)$/);
+  if(!m) return null;
+  var n = parseFloat(m[2].replace(",", "."));
+  if(isNaN(n) || n <= 0) return null;
+  return {code:m[1], uren:n};
+}
 function asDate(v){
   if(v instanceof Date) return v;
   if(typeof v === "number" && v > 20000 && v < 60000) return new Date(Math.round((v - 25569) * 86400000));
@@ -598,6 +610,10 @@ function dayTokenOf(v){
 /* één halve-dag-cel interpreteren */
 function halfInfo(v){
   if(v === null || v === undefined || String(v).trim() === "") return {ok:true};
+  var cu = codeUren(v);
+  if(cu) return {ok:true, early:cu.uren, code:cu.code, kleur:"code",
+                 note:((CODE_MAP[cu.code]||{}).label || cu.code) + " " +
+                      (""+cu.uren).replace(".",",") + "u"};
   var n = parseNum(v);
   if(n !== null){
     if(n < 0) return {ok:true, early:-n};
@@ -2185,6 +2201,11 @@ function obClassify(vm,nm){
   // IP = werktaak, blijft in ploeg met badge
   if(a.indexOf("PW")>=0 || b.indexOf("PW")>=0) return {kol:"ploeg", badge:"PW", swap:true};
   var ipB = (both.indexOf("IP")>=0) ? "IP" : null;
+  // opleiding of syndicaal in uren (TR2, SYN1,5) -> blijft in de ploeg
+  var cuVM = codeUren(vm), cuNM = codeUren(nm), cu = cuVM || cuNM;
+  if(cu) return {kol:"ploeg", code:cu.code,
+                 badge:cu.code + " " + (""+cu.uren).replace(".",",") + "u",
+                 aftrekHalf:(cuVM ? "VM" : "NM")};
   // uren-aftrek (-1/-2/...) -> blijft in ploeg met uren-badge
   var ur=null, urHalf=null;
   [vm,nm].forEach(function(v,_ix){ if(v!=null){ var n=parseFloat((""+v).replace(",",".")); if(!isNaN(n)&&n<0){ ur=(""+n).replace(".0",""); urHalf=(_ix===0?"VM":"NM"); } } });
@@ -3285,7 +3306,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.16b";
+  var APP_VERSION="v4.17b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3376,7 +3397,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.16b";
+  var LOCAL=window.__APP_VERSION||"v4.17b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
