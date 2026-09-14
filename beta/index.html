@@ -293,6 +293,7 @@ body.board .ob-scan{width:3.2vw}
 body.board #outboundView .chip.ob-afw{background:#5a3a12;border-color:#f6a800}
 .ob-st{font-size:10px;font-weight:800;letter-spacing:.02em;color:#fff;background:var(--s);border-radius:4px;padding:2px 6px;flex:0 0 auto;min-width:30px;text-align:center}
 .ob-nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+.ob-tag.ob-opl{background:#9ed36a;color:#12240a}
 .ob-tag{font-size:10px;font-weight:800;background:var(--cyan);color:#06121f;border-radius:4px;padding:1px 5px;flex:0 0 auto}
 .ob-ddel{cursor:pointer;color:#0a1424;font-weight:800;opacity:.6}.ob-ddel:hover{opacity:1}
 .ob-colpick{width:22px;height:22px;border:1px solid rgba(10,20,36,.45);border-radius:5px;background:transparent;cursor:pointer;padding:0;flex:0 0 auto;margin-left:4px}
@@ -584,6 +585,71 @@ function parseNum(v){
   }
   return null;
 }
+/* ---- commentaren uit de Excel (v4.19b) --------------------------------
+   Een opleiding van een paar uur staat in de planning vaak als een kale "TR"
+   met een commentaar erbij: "Opleiding DR301 13u30-14u30". Zonder die tekst
+   zag het bord enkel TR en zette het die persoon de hele halve dag afwezig.
+   Hieronder: de tekst uit het commentaar halen, er de uren uit lezen, en de
+   cel behandelen alsof er "TR1" stond - dan pakt de TR2-regel hem verderop op. */
+
+/* Excel bewaart een modern (threaded) commentaar dubbel: eerst een blok
+   Microsoft-boilerplate, daarna "Comment:" met de echte tekst. Wij houden
+   dat laatste stuk over. */
+function cleanComment(t){
+  var s = String(t == null ? "" : t).replace(/\r/g, "");
+  var m = s.match(/Comment:\s*([\s\S]*)$/);
+  if(m) s = m[1];
+  s = s.replace(/\[Threaded comment\]/gi, "")
+       .replace(/Your version of Excel[\s\S]*?linkid=\d+/gi, "");
+  return s.replace(/\s+/g, " ").trim();
+}
+/* commentaartekst van één cel uit een SheetJS-celobject */
+function cellCmt(cell){
+  if(!cell || !cell.c || !cell.c.length) return "";
+  var t = "";
+  for(var i = 0; i < cell.c.length; i++) t += (cell.c[i].t || "") + "\n";
+  return cleanComment(t);
+}
+/* alle commentaren van een blad als {"rij,kolom": tekst}, 0-gebaseerd zoals grid */
+function commentMap(XL, ws){
+  var out = {};
+  if(!ws) return out;
+  for(var a in ws){
+    if(a.charAt(0) === "!") continue;
+    var txt = cellCmt(ws[a]);
+    if(!txt) continue;
+    try{ var rc = XL.utils.decode_cell(a); out[rc.r + "," + rc.c] = txt; }catch(e){}
+  }
+  return out;
+}
+/* "13u30-14u30", "11u-12u", "10u - 11u30", "13u30 -> 15u" -> aantal uren (1, 1.5, ...).
+   Geen tijdspanne in de tekst (bv. "Heftruckopleiding", "4/5de") -> null. */
+function urenUitTekst(t){
+  if(!t) return null;
+  var m = String(t).match(/(\d{1,2})\s*[uh:]\s*(\d{2})?\s*(?:[-–—>]|tot)+\s*(\d{1,2})\s*[uh:]\s*(\d{2})?/i);
+  if(!m) return null;
+  var a = (+m[1]) * 60 + (m[2] ? +m[2] : 0);
+  var b = (+m[3]) * 60 + (m[4] ? +m[4] : 0);
+  var d = b - a;
+  if(!(d > 0) || d > 8 * 60) return null;
+  return Math.round(d / 60 * 100) / 100;
+}
+/* de tijdspanne zelf, kort, voor op de chip: "13u30-14u30" */
+function tijdUitTekst(t){
+  if(!t) return "";
+  var m = String(t).match(/(\d{1,2}\s*[uh:]\s*(?:\d{2})?)\s*(?:[-–—>]|tot)+\s*(\d{1,2}\s*[uh:]\s*(?:\d{2})?)/i);
+  if(!m) return "";
+  function f(x){ return x.replace(/\s+/g,"").replace(/:/,"u"); }
+  return f(m[1]) + "-" + f(m[2]);
+}
+/* kale "TR"/"SYN" + commentaar met een tijdspanne -> "TR1" / "TR1,5"; anders de waarde zelf */
+function cmtCode(v, cmt){
+  var s = (v === null || v === undefined) ? "" : String(v).trim().toUpperCase();
+  if(s !== "TR" && s !== "SYN") return v;
+  var u = urenUitTekst(cmt);
+  return (u === null) ? v : (s + (""+u).replace(".", ","));
+}
+
 /* "TR2", "TR1,5", "SYN2" -> {code:"TR", uren:2}; anders null.
    Een opleiding van een paar uur wordt in de Excel als TR2 getypt: die
    persoon werkt gewoon door, met die uren eraf. Zonder deze regel las het
@@ -608,12 +674,15 @@ function dayTokenOf(v){
 }
 
 /* één halve-dag-cel interpreteren */
-function halfInfo(v){
+function halfInfo(v, cmt){
   if(v === null || v === undefined || String(v).trim() === "") return {ok:true};
+  var v2 = cmtCode(v, cmt), uitCmt = (v2 !== v);
+  v = v2;
   var cu = codeUren(v);
   if(cu) return {ok:true, early:cu.uren, code:cu.code, kleur:"code",
-                 note:((CODE_MAP[cu.code]||{}).label || cu.code) + " " +
-                      (""+cu.uren).replace(".",",") + "u"};
+                 note: uitCmt ? cmt
+                     : (((CODE_MAP[cu.code]||{}).label || cu.code) + " " +
+                        (""+cu.uren).replace(".",",") + "u")};
   var n = parseNum(v);
   if(n !== null){
     if(n < 0) return {ok:true, early:-n};
@@ -656,6 +725,7 @@ function parseSheet(XL, wb, sheetName){
   var ws = wb.Sheets[sheetName];
   if(!ws) return null;
   var grid = XL.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+  var cmt = commentMap(XL, ws);
 
   /* weeknummer + maandag uit rij 1 */
   var week = null, monday = null;
@@ -728,7 +798,7 @@ function parseSheet(XL, wb, sheetName){
   var dayKeys = [], seen = {};
   blocks.forEach(function(b){ b.days.forEach(function(d){ if(!seen[d.key]){ seen[d.key] = 1; dayKeys.push(d.key); } }); });
 
-  return {sheet:sheetName, week:week, monday:monday, dayKeys:dayKeys, blocks:blocks, grid:grid};
+  return {sheet:sheetName, week:week, monday:monday, dayKeys:dayKeys, blocks:blocks, grid:grid, cmt:cmt};
 }
 
 /* status van één lid op één dag */
@@ -738,7 +808,10 @@ function statusOf(model, block, member, dayKey){
   var row = model.grid[member.row] || [];
   var vmVal = row[d.col];
   var nmVal = d.span > 1 ? row[d.col + 1] : vmVal;
-  var info = aggregate(halfInfo(vmVal), halfInfo(nmVal));
+  var cm = model.cmt || {};
+  var vmCmt = cm[member.row + "," + d.col] || "";
+  var nmCmt = d.span > 1 ? (cm[member.row + "," + (d.col + 1)] || "") : vmCmt;
+  var info = aggregate(halfInfo(vmVal, vmCmt), halfInfo(nmVal, nmCmt));
   info.rawVM = (vmVal === null || vmVal === undefined) ? "" : String(vmVal);
   info.rawNM = d.span > 1 ? ((nmVal === null || nmVal === undefined) ? "" : String(nmVal)) : info.rawVM;
   return info;
@@ -1187,7 +1260,7 @@ function setSheet(name){
 async function loadFile(file, viaHandle){
   try{
     window.__planTS=file.lastModified;  var buf = await file.arrayBuffer();
-    var wb = XLSX.read(buf, {type:"array", bookFiles:true, sheetRows:100});
+    var wb = XLSX.read(buf, {type:"array", bookFiles:true, sheetRows:100, cellComments:true});
     ingestWorkbook(wb, file.name + (file.lastModified ? " · " + fmtDT(file.lastModified) : ""));
     toast("Planning ingelezen" + (viaHandle ? " (gekoppeld bestand)" : ""));
   }catch(e){ console.error(e); banner("err", "Kon dit bestand niet lezen als Excel."); }
@@ -1240,7 +1313,7 @@ async function loadFromUrl(url){
     var res = await fetch(odDirect(url));
     if(!res.ok) throw new Error("HTTP " + res.status);
     var buf = await res.arrayBuffer();
-    var wb = XLSX.read(buf, {type:"array", bookFiles:true, sheetRows:100});
+    var wb = XLSX.read(buf, {type:"array", bookFiles:true, sheetRows:100, cellComments:true});
     ingestWorkbook(wb, "via URL · " + fmtDT(Date.now()));
     toast("Planning geladen via URL");
     return true;
@@ -2177,8 +2250,19 @@ function obRole(hex){if(!hex)return"gewoon";var r=parseInt(hex.slice(0,2),16),g=
 /* dagkolommen: ploeg A start D(4), ploeg B start P(16); per dag 2 kolommen */
 var OB_DAYIDX={MA:0,DI:1,WO:2,DO:3,VR:4};
 function obColLetter(n){var s="";n++;while(n>0){var m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
-/* classificeer een dagwaarde-paar (VM,NM) -> {kol, badge} */
-function obClassify(vm,nm){
+/* classificeer een dagwaarde-paar (VM,NM) -> {kol, badge}.
+   Een kale "TR"/"SYN" met een commentaar als "Opleiding DR301 13u30-14u30" is
+   een opleiding van een paar uur: die persoon werkt gewoon door. We vertalen de
+   cel naar "TR1" en laten de bestaande TR2-regel hieronder het werk doen; de
+   tekst zelf gaat als _opl mee naar de chip (v4.19b). */
+function obClassify(vm,nm,cVM,cNM){
+  var v2=cmtCode(vm,cVM), n2=cmtCode(nm,cNM);
+  var uit=(v2!==vm) ? cVM : ((n2!==nm) ? cNM : "");
+  var r=obClassifyRaw(v2,n2);
+  if(uit && r && r.kol==="ploeg"){ r.opl=uit; r.oplT=tijdUitTekst(uit); }
+  return r;
+}
+function obClassifyRaw(vm,nm){
   function up(x){return x==null?"":(""+x).trim().toUpperCase();}
   var a=up(vm), b=up(nm);
   var both=[a,b];
@@ -2465,9 +2549,10 @@ function obFromExcel(){
       if(!afd) continue;
       var rol=obRole(colorAt(nameCol+r));
       var vmCol=obColLetter(dayStart + di*2), nmCol=obColLetter(dayStart + di*2 + 1);
-      var cls=obClassify(ws[vmCol+r]?ws[vmCol+r].v:null, ws[nmCol+r]?ws[nmCol+r].v:null);
+      var _cvm=ws[vmCol+r], _cnm=ws[nmCol+r];
+      var cls=obClassify(_cvm?_cvm.v:null, _cnm?_cnm.v:null, cellCmt(_cvm), cellCmt(_cnm));
       var status = cls.kol==="ploeg" ? "aanwezig" : cls.kol;  // verlof/tk/afwezig
-      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, _aftrekHalf:cls.aftrekHalf||null, _code:cls.code||null, herkomst:afd, _pw:!!cls.swap});
+      roster.push({name:nm, ploeg:(cls.swap?(ploeg==="A"?"B":"A"):ploeg), rol:rol, status:status, badge:cls.badge||null, _halfFree:cls.halfFree||null, _aftrekHalf:cls.aftrekHalf||null, _code:cls.code||null, _opl:cls.opl||null, _oplT:cls.oplT||null, herkomst:afd, _pw:!!cls.swap});
     }
   });
   return roster;
@@ -2784,7 +2869,8 @@ function obChipHTML(p, ctx, dept){
     avPip+obRolePip(p.rol)+
     '<span class="ob-st" style="--s:'+s[1]+'">'+s[0]+'</span>'+
     '<span class="ob-nm">'+esc(p.name)+(window.obQualHTML?window.obQualHTML(p.name):"")+'</span>'+ibWarn+homeTag+
-    (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
+    (p.badge?'<span class="ob-tag">'+esc(p.badge)+'</span>':'')+
+    (p._opl?'<span class="ob-tag ob-opl" title="'+esc(p._opl)+'">'+esc(p._oplT||"opleiding")+'</span>':'')+(p._pw?'<span class="ob-tag" style="background:var(--violet,#a78bfa);color:#1a1205;border-color:var(--violet,#a78bfa)">PW</span>':'')+
     '<span class="ob-clock" data-name="'+esc(p.name)+'" title="Uren instellen">⏰</span>'+
     (ctx==="dept"?'<span class="x" data-name="'+esc(p.name)+'">×</span>':'')+'</div>';
 }
@@ -3306,7 +3392,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.17b";
+  var APP_VERSION="v4.19b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3397,7 +3483,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.17b";
+  var LOCAL=window.__APP_VERSION||"v4.19b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3547,7 +3633,7 @@ body.wl-ro .ob-return{cursor:default}
           var vm=sh[obColLetter(found.ds+di*2)+found.r], nm=sh[obColLetter(found.ds+di*2+1)+found.r];
           var _eVM=!vm||vm.v==null||(""+vm.v).trim()==="", _eNM=!nm||nm.v==null||(""+nm.v).trim()==="";
           if(_eVM && _eNM && totRow){ var _tc=sh[obColLetter(3+di*2)+totRow]; var _tv=(_tc&&_tc.v!=null)?parseFloat((""+_tc.v).replace(",",".")):0; if(!(_tv>0)) continue; }
-          var cls=obClassify(vm?vm.v:null, nm?nm.v:null);
+          var cls=obClassify(vm?vm.v:null, nm?nm.v:null, cellCmt(vm), cellCmt(nm));
           if(cls && cls.kol==="ploeg"){ return monMs + ((w-curW)*7 + di)*86400000; }
         }
       }
@@ -4398,6 +4484,7 @@ body.board #obClockB .oc-date{font-size:1.05vw;margin-top:.25vw}
 body.board #outboundView .chip{flex-wrap:nowrap;height:2.3vw;min-height:0;overflow:hidden;padding:.2vw .5vw;gap:.35vw}
 body.board #outboundView .chip .ob-nm{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:clip;word-break:normal;line-height:1.1}
 body.board #outboundView .chip .ob-tag{order:9;flex:0 0 auto;min-width:5.4vw;text-align:center;font-variant-numeric:tabular-nums;margin-left:0}
+body.board #outboundView .chip .ob-tag.ob-opl{min-width:0}
 body.board #outboundView .chip .sw-pill{flex:0 0 auto;font-size:.6vw;padding:0 .3vw;margin-left:.1vw}
 </style>
 <script>
