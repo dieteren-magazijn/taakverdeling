@@ -103,10 +103,10 @@ De plan-pc leest de Excel elke 30 seconden opnieuw in, maar dat valt stil door:
 
 ## Werkwijze
 
-Staat in `CLAUDE.md`. Kort: bewerk `beta/index.html`, valideer de inline scripts (moet "fouten: 0" geven), bump de versie op drie plaatsen, commit in het Nederlands, push naar `main`, en controleer `beta/version.txt` live.
+Bewerk `beta/index.html` rechtstreeks. Valideer daarna de inline scripts op syntax (moet "fouten: 0" geven), bump de versie op drie plaatsen (`APP_VERSION`, de `LOCAL`-fallback eronder en `beta/version.txt`), commit in het Nederlands en push naar `main`. GitHub Pages deployt automatisch; controleer na een minuut `beta/version.txt` live.
 
 Let op: gebruik geen `sed` op `beta/index.html`. Dat stript alle CR-tekens en zet het hele bestand op LF, wat een diff van 5800 regels geeft. Bewerk met een editor die de regeleindes respecteert.
 
-## Een nieuwe sessie starten
+## Waar de rest van de documentatie staat
 
-`CLAUDE.md` wordt automatisch ingelezen, dus de projectcontext is er meteen. Verwijs naar dit bestand en noem het punt waaraan je wil werken, bijvoorbeeld: "lees HANDOVER.md, we pakken punt 1 en 2 op". De inhoud van het gesprek van vandaag is er morgen niet meer, dus alles wat moet blijven staat in deze twee bestanden.
+`README.md` beschrijft wat de toepassing is, hoe ze in elkaar zit en waar ze draait. `HANDOVER.md` gaat dieper: de architectuur in een pagina, de database, welke persoonsgegevens de toepassing bevat, de bekende valkuilen en de openstaande punten rond eigenaarschap en hosting. Dit bestand houdt de versiegeschiedenis bij.

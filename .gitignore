@@ -1,4 +1,4 @@
-# persoonlijk geheugen van Claude - hoort niet in de repo
+# lokale werkbestanden en notities - horen niet in de repo
 geheugen/
 CLAUDE.md
 context-brug.md
@@ -17,3 +17,12 @@ TOEGANGEN.md
 
 # intern overdrachtsdocument - hoort in GitLab, niet in de publieke repo
 HANDOVER.md
+
+# planning-Excels: personeelsgegevens (namen, ziekte, verlof) - NOOIT in de publieke repo
+Planning excel/
+*.xlsx
+*.xlsm
+
+# schermafdrukken en lokale trackerstand
+snips/
+tracker-stand.md
