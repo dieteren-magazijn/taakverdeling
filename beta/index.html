@@ -564,6 +564,7 @@ var CODE_MAP = {
   "TR":  {label:"Training",        blocks:true,  kleur:"code"},
   "SYN": {label:"Syndicaal",       blocks:true,  kleur:"code"},
   "SV":  {label:"Sociaal verlof",  blocks:true,  kleur:"verlof"},
+  "KV":  {label:"Kleinverlet",     blocks:true,  kleur:"code"},
   "HT":  {label:"Halftijds",       blocks:true,  kleur:"code"},
   "IP":  {label:"iPunkt",          blocks:true,  kleur:"code"},
   "PW":  {label:"Ploegwissel",     blocks:false, kleur:"code"}
@@ -649,6 +650,18 @@ function cmtCode(v, cmt){
   var u = urenUitTekst(cmt);
   return (u === null) ? v : (s + (""+u).replace(".", ","));
 }
+/* negatieve cel ("-1", "-1,5") -> het aantal uren dat eraf gaat; anders null */
+function negUren(v){
+  if(v === null || v === undefined) return null;
+  var n = parseFloat(String(v).trim().replace(",", "."));
+  return (!isNaN(n) && n < 0) ? -n : null;
+}
+/* Een aftrekcel ("-1") met een commentaar als "Opleiding DR301 11u-12u" is
+   hetzelfde geval als een kale TR met zo'n commentaar. De uren staan hier al
+   in de cel zelf, enkel de tekst moest nog op de chip komen (v4.20b). */
+function oplCmt(v, cmt){
+  return (negUren(v) !== null && urenUitTekst(cmt) !== null) ? cmt : "";
+}
 
 /* "TR2", "TR1,5", "SYN2" -> {code:"TR", uren:2}; anders null.
    Een opleiding van een paar uur wordt in de Excel als TR2 getypt: die
@@ -685,7 +698,7 @@ function halfInfo(v, cmt){
                         (""+cu.uren).replace(".",",") + "u")};
   var n = parseNum(v);
   if(n !== null){
-    if(n < 0) return {ok:true, early:-n};
+    if(n < 0){ var _oc = oplCmt(v, cmt); return _oc ? {ok:true, early:-n, note:_oc} : {ok:true, early:-n}; }
     return {ok:true, extra:n};
   }
   var code = norm(v);
@@ -2257,9 +2270,17 @@ function obColLetter(n){var s="";n++;while(n>0){var m=(n-1)%26;s=String.fromChar
    tekst zelf gaat als _opl mee naar de chip (v4.19b). */
 function obClassify(vm,nm,cVM,cNM){
   var v2=cmtCode(vm,cVM), n2=cmtCode(nm,cNM);
-  var uit=(v2!==vm) ? cVM : ((n2!==nm) ? cNM : "");
+  /* de tekst komt uit een kale TR die cmtCode omzette, of uit een aftrekcel
+     "-1" met hetzelfde soort commentaar. Staat er in allebei de helften een,
+     dan tonen we ze allebei (v4.20b). */
+  var tVM=(v2!==vm) ? cVM : oplCmt(vm,cVM), tNM=(n2!==nm) ? cNM : oplCmt(nm,cNM);
+  var t=[]; if(tVM) t.push(tVM); if(tNM && tNM!==tVM) t.push(tNM);
   var r=obClassifyRaw(v2,n2);
-  if(uit && r && r.kol==="ploeg"){ r.opl=uit; r.oplT=tijdUitTekst(uit); }
+  if(t.length && r && r.kol==="ploeg"){
+    r.opl=t.join(" · ");
+    var tt=[]; for(var _i=0;_i<t.length;_i++){ var _x=tijdUitTekst(t[_i]); if(_x) tt.push(_x); }
+    r.oplT=tt.join(" · ");
+  }
   return r;
 }
 function obClassifyRaw(vm,nm){
@@ -2271,25 +2292,31 @@ function obClassifyRaw(vm,nm){
   if(isAll("X")) return {kol:"verlof"};
   if(isAll("Z")) return {kol:"afwezig", badge:"ziek"};
   if(isAll("TK")) return {kol:"tk"};
-  if(a==="TK"||b==="TK"){ var _ot=(a==="TK")?b:a; var _ABT={X:1,Z:1,TR:1,SYN:1,HT:1,TK:1}; if(!_ABT[_ot]) return {kol:"ploeg", halfFree:(a==="TK"?"VM":"NM")}; return {kol:"tk"}; }            // halve dag TK -> tijdskrediet
+  if(a==="TK"||b==="TK"){ var _ot=(a==="TK")?b:a; var _ABT={X:1,Z:1,TR:1,SYN:1,HT:1,TK:1,KV:1}; if(!_ABT[_ot]) return {kol:"ploeg", halfFree:(a==="TK"?"VM":"NM")}; return {kol:"tk"}; }            // halve dag TK -> tijdskrediet
   // halve dag verlof: één helft X, andere helft werkt -> blijf in ploeg (halve dag)
   if(a==="X"||b==="X"){
     var _o = (a==="X") ? b : a;
-    var _ABS={X:1,Z:1,TR:1,SYN:1,HT:1};
+    var _ABS={X:1,Z:1,TR:1,SYN:1,HT:1,KV:1};
     if(!_ABS[_o]) return {kol:"ploeg", halfFree:(a==="X"?"VM":"NM")};
     return {kol:"verlof"};
   }
   if(a==="Z"||b==="Z")   return {kol:"afwezig", badge:"ziek"};
-  // training/syndicaal = afwezig
-  if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("HT")>=0) return {kol:"afwezig", code:(both.indexOf("TR")>=0?"TR":(both.indexOf("SYN")>=0?"SYN":"HT"))};
+  // training/syndicaal/kleinverlet = afwezig. Ook als maar EEN van de twee
+  // helften ingevuld is: een kale TR of KV geldt voor de hele dag.
+  if(both.indexOf("TR")>=0||both.indexOf("SYN")>=0||both.indexOf("KV")>=0||both.indexOf("HT")>=0) return {kol:"afwezig", code:(both.indexOf("TR")>=0?"TR":(both.indexOf("SYN")>=0?"SYN":(both.indexOf("KV")>=0?"KV":"HT")))};
   // IP = werktaak, blijft in ploeg met badge
   if(a.indexOf("PW")>=0 || b.indexOf("PW")>=0) return {kol:"ploeg", badge:"PW", swap:true};
   var ipB = (both.indexOf("IP")>=0) ? "IP" : null;
   // opleiding of syndicaal in uren (TR2, SYN1,5) -> blijft in de ploeg
   var cuVM = codeUren(vm), cuNM = codeUren(nm), cu = cuVM || cuNM;
-  if(cu) return {kol:"ploeg", code:cu.code,
-                 badge:cu.code + " " + (""+cu.uren).replace(".",",") + "u",
-                 aftrekHalf:(cuVM ? "VM" : "NM")};
+  if(cu){
+    /* de andere helft kan een gewone aftrek zijn ("-1" met de opleiding in het
+       commentaar); die uren horen bij dezelfde dag (v4.20b) */
+    var _ex=negUren(cuVM ? nm : vm)||0, _tot=Math.round((cu.uren+_ex)*100)/100;
+    return {kol:"ploeg", code:cu.code,
+            badge:cu.code + " " + (""+_tot).replace(".",",") + "u",
+            aftrekHalf:(cuVM ? "VM" : "NM")};
+  }
   // uren-aftrek (-1/-2/...) -> blijft in ploeg met uren-badge
   var ur=null, urHalf=null;
   [vm,nm].forEach(function(v,_ix){ if(v!=null){ var n=parseFloat((""+v).replace(",",".")); if(!isNaN(n)&&n<0){ ur=(""+n).replace(".0",""); urHalf=(_ix===0?"VM":"NM"); } } });
@@ -3392,7 +3419,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.19b";
+  var APP_VERSION="v4.20b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3483,7 +3510,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.19b";
+  var LOCAL=window.__APP_VERSION||"v4.20b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
@@ -3605,7 +3632,7 @@ body.wl-ro .ob-return{cursor:default}
   "use strict";
   function roster(){ try{ return (typeof obRoster!=="undefined"&&obRoster)?obRoster:[]; }catch(e){ return []; } }
   function hoursMap(){ try{ return (typeof store!=="undefined"&&store.get)?(store.get("vp_ob_hours")||{}):{}; }catch(e){ return {}; } }
-  function isAbsent(p){ return p && (p.status==="verlof" || p.status==="tk" || (p.status==="afwezig" && (p.badge==="ziek" || p._code==="TR" || p._code==="SYN"))); }
+  function isAbsent(p){ return p && (p.status==="verlof" || p.status==="tk" || (p.status==="afwezig" && (p.badge==="ziek" || p._code==="TR" || p._code==="SYN" || p._code==="KV"))); }
   function findP(name){ var r=roster(); for(var i=0;i<r.length;i++) if(r[i].name===name) return r[i]; return null; }
   function fmtDate(ms){ var d=new Date(ms); var dn=["zo","ma","di","wo","do","vr","za"][d.getDay()]; return dn+" "+("0"+d.getDate()).slice(-2)+"/"+("0"+(d.getMonth()+1)).slice(-2); }
   var _retCache={}, _retKey="";
