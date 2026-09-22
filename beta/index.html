@@ -692,13 +692,16 @@ function halfInfo(v, cmt){
   var v2 = cmtCode(v, cmt), uitCmt = (v2 !== v);
   v = v2;
   var cu = codeUren(v);
-  if(cu) return {ok:true, early:cu.uren, code:cu.code, kleur:"code",
-                 note: uitCmt ? cmt
-                     : (((CODE_MAP[cu.code]||{}).label || cu.code) + " " +
-                        (""+cu.uren).replace(".",",") + "u")};
+  /* een opleiding valt MIDDEN in de dag: die uren zijn geen "vroeger weg",
+     dus enkel de tekst als note, geen early (v4.21b) */
+  if(cu) return uitCmt
+    ? {ok:true, code:cu.code, kleur:"code", note:cmt}
+    : {ok:true, early:cu.uren, code:cu.code, kleur:"code",
+       note:(((CODE_MAP[cu.code]||{}).label || cu.code) + " " +
+             (""+cu.uren).replace(".",",") + "u")};
   var n = parseNum(v);
   if(n !== null){
-    if(n < 0){ var _oc = oplCmt(v, cmt); return _oc ? {ok:true, early:-n, note:_oc} : {ok:true, early:-n}; }
+    if(n < 0){ var _oc = oplCmt(v, cmt); return _oc ? {ok:true, note:_oc} : {ok:true, early:-n}; }
     return {ok:true, extra:n};
   }
   var code = norm(v);
@@ -2275,7 +2278,12 @@ function obClassify(vm,nm,cVM,cNM){
      dan tonen we ze allebei (v4.20b). */
   var tVM=(v2!==vm) ? cVM : oplCmt(vm,cVM), tNM=(n2!==nm) ? cNM : oplCmt(nm,cNM);
   var t=[]; if(tVM) t.push(tVM); if(tNM && tNM!==tVM) t.push(tNM);
-  var r=obClassifyRaw(v2,n2);
+  /* Een opleiding valt MIDDEN in de dag: die persoon begint en eindigt op zijn
+     gewone uur. De cel zelf ("-1", of de TR die cmtCode naar TR1 omzette) mag
+     dus geen uren-badge en geen korter venster geven - anders staat er
+     "14:00-21:00 -1u" waar "13:00-21:00" hoort. Enkel de groene tag blijft
+     over. Een kale "-1" zonder opleiding is wel echt vroeger weg (v4.21b). */
+  var r=obClassifyRaw(tVM?null:v2, tNM?null:n2);
   if(t.length && r && r.kol==="ploeg"){
     r.opl=t.join(" · ");
     var tt=[]; for(var _i=0;_i<t.length;_i++){ var _x=tijdUitTekst(t[_i]); if(_x) tt.push(_x); }
@@ -3419,7 +3427,7 @@ body.wl-ro.board::after{ display:none; }
 </style>
 <script>
 (function(){
-  var APP_VERSION="v4.20b";
+  var APP_VERSION="v4.21b";
   window.__APP_VERSION=APP_VERSION;
   function show(){ try{ var host=document.querySelector(".topbar-in"); if(!host || document.getElementById("appVer")) return; var s=document.createElement("span"); s.id="appVer"; s.textContent=APP_VERSION; s.title="App-versie van deze PC (geen badge = oude versie, herlaad met Ctrl+F5)"; s.style.cssText="margin-left:8px;align-self:center;font:600 11px/1 var(--fb,system-ui,sans-serif);color:var(--muted,#8fa6c9);border:1px solid var(--line2,rgba(141,178,255,.32));border-radius:999px;padding:4px 9px"; host.appendChild(s); }catch(e){} }
   if(document.readyState!=="loading") setTimeout(show,800); else window.addEventListener("DOMContentLoaded",function(){ setTimeout(show,800); });
@@ -3510,7 +3518,7 @@ body.board #moreWrap{display:none}
 <script>
 (function(){
   "use strict";
-  var LOCAL=window.__APP_VERSION||"v4.20b";
+  var LOCAL=window.__APP_VERSION||"v4.21b";
   var outdated=false, banner=null, reloadT=null; function doReload(t){ try{ var g=JSON.parse(sessionStorage.getItem("vp_upd")||"{}"); if(g.v===t && (Date.now()-g.t)<150000) return; sessionStorage.setItem("vp_upd", JSON.stringify({v:t,t:Date.now()})); }catch(e){} location.replace(location.origin+location.pathname+"?v="+encodeURIComponent(t||Date.now())); }
   window.__verOutdated=function(){ return outdated; };
   function showBanner(){
